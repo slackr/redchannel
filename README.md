@@ -51,7 +51,7 @@ Command-line switches are available to overwrite configuration values.
 
 ```c
 $ git clone --recurse-submodules https://github.com/slackr/redchannel
-$ cd redchannel-c2
+$ cd redchannel
 $ vim ./conf/redchannel.conf
 $ node app.js --help
 ...
