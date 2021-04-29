@@ -50,7 +50,7 @@ RedChannel will use the `./agent/config/config.go.sample` as a template to build
 Command-line switches are available to overwrite configuration values. 
 
 ```c
-$ git clone --recurse-submodules https://github.com/slackr/redchannel-c2
+$ git clone --recurse-submodules https://github.com/slackr/redchannel
 $ cd redchannel-c2
 $ vim ./conf/redchannel.conf
 $ node app.js --help
