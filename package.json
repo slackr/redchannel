@@ -1,0 +1,24 @@
+{
+    "name": "redchannel-c2",
+    "version": "0.3.0",
+    "description": "redchannel-c2",
+    "main": "app.js",
+    "dependencies": {
+        "chalk": "^2.3.0",
+        "cli-table": "^0.3.6",
+        "commander": "^2.19.0",
+        "dnsd": "^0.9.6",
+        "ec-key": "^0.0.2",
+        "express": "^4.17.1",
+        "javascript-obfuscator": "^0.27.4",
+        "lodash.merge": "^4.6.2",
+        "request": "^2.88.2"
+    },
+    "devDependencies": {},
+    "scripts": {
+        "start": "node app.js",
+        "dev": "node app.js"
+    },
+    "author": "",
+    "license": "ISC"
+}
