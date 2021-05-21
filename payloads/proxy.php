@@ -12,7 +12,7 @@ if (!isset($_POST['k'])
 }
 
 $storage_c = $c_path;
-if (isset($_POST["i"]) && !preg_match("/^[a-z0-9]{1,10}/si", $_POST["i"])) {
+if (isset($_POST["i"]) && preg_match("/^[a-z0-9]{1,10}/si", $_POST["i"])) {
     $storage_c .= $_POST["i"];
 }
 $storage_a = $a_path;
