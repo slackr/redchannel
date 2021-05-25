@@ -4,6 +4,7 @@
     "description": "redchannel-c2",
     "main": "app.js",
     "dependencies": {
+        "axios": "^0.21.1",
         "chalk": "^2.3.0",
         "cli-table": "^0.3.6",
         "commander": "^2.19.0",
@@ -19,7 +20,13 @@
     "scripts": {
         "start": "node app.js",
         "dev": "node app.js",
-        "test":"jest"
+        "test": "jest"
+    },
+    "jest": {
+        "collectCoverage": true,
+        "coverageReporters": [
+            "html"
+        ]
     },
     "author": "",
     "license": "ISC"
