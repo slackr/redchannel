@@ -1,5 +1,5 @@
 node_modules/
 conf/*.conf
 pkg/*
-src/*
+dist/*
 coverage/

