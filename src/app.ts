@@ -14,7 +14,7 @@ const EXPECTED_DATA_SEGMENTS = 5;
 
 const rc = new RedChannel(c2_message_handler);
 const ui = new RedChannelUI(rc);
-rc.ui = ui;
+rc.log = ui;
 
 const cli = new Command();
 cli.version(rc.version, "-v, --version")
@@ -29,7 +29,6 @@ cli.version(rc.version, "-v, --version")
     .option("-I, --agent-interval [ms]", "check in interval for the agent", "")
     .option("-R, --agent-resolver [ip:port]", "set the resolver to use for the agent", "")
     .option("-d, --debug", "enable debug", false)
-
     .parse(process.argv);
 
 rc.config_file = cli.getOptionValue("config");
@@ -70,7 +69,7 @@ if (process.env.RC_PASSWORD && process.env.RC_PASSWORD.length > 0) {
 }
 
 const rcDomain = cli.getOptionValue("domain") || rc.config.c2.domain;
-if (rcDomain) {
+if (!rcDomain) {
     rc.config.c2.domain = rcDomain;
     ui.error("please specify the c2 domain via cli or config file, see '--help'");
     process.exit(1);
@@ -275,14 +274,16 @@ function c2_message_handler(req, res) {
 
         ui.debug(`agent ${agent_id} checking in, sending next queued command`);
         const records = rc.agents[agent_id]?.sendq?.shift();
-        records.forEach((record) => {
-            res.answer.push({
-                name: hostname,
-                type: "AAAA",
-                data: record,
-                ttl: ttl,
+        if (records) {
+            records.forEach((record) => {
+                res.answer.push({
+                    name: hostname,
+                    type: "AAAA",
+                    data: record,
+                    ttl: ttl,
+                });
             });
-        });
+        }
 
         // flood protection, if the agent dns resolver retries a query, data can be lost
         rc.agents[agent_id].ignore[rand_id] = setTimeout(function () {

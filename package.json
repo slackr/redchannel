@@ -2,10 +2,10 @@
     "name": "redchannel-c2",
     "version": "0.3.0",
     "description": "redchannel-c2",
-    "main": "app.js",
+    "main": "dist/app.js",
     "dependencies": {
         "axios": "^1.1.3",
-        "chalk": "^5.1.2",
+        "chalk": "^4.1.2",
         "cli-table": "^0.3.11",
         "commander": "^9.4.1",
         "dnsd": "^0.9.6",
@@ -16,18 +16,16 @@
         "lodash.merge": "^4.6.2"
     },
     "devDependencies": {
-        "@types/axios": "^0.14.0",
-        "@types/chalk": "^2.2.0",
-        "@types/commander": "^2.12.2",
         "concurrently": "^7.4.0",
         "typescript": "^4.6.4"
     },
     "scripts": {
-        "build": "tsc",
-        "build:watch": "tsc --watch",
+        "build": "npm run clean && npx tsc",
+        "build:watch": "npm run clean && npx tsc --watch",
+        "clean": "npx tsc --build --clean",
         "start": "npm run build && node dist/app.js",
         "debug": "node dist/app.js",
-        "dev": "concurrently --kill-others \"npm run build:watch\" \"npm run debug\"",
+        "dev": "npm run build && npm run debug",
         "test": "jest"
     },
     "jest": {

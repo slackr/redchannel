@@ -5,12 +5,14 @@ import * as fs from "fs";
 import RedChannel, { AgentCommands } from "./redchannel";
 import { emsg } from "../utils/utils";
 import { CliTableWithPush } from "../utils/defs";
+import RedChannelLogger from "./logger";
 
-class RedChannelUI {
+class RedChannelUI extends RedChannelLogger {
     redchannel: RedChannel;
     console: readline.Interface;
 
     constructor(redchannel) {
+        super();
         this.redchannel = redchannel;
         this.console = readline.createInterface({
             input: process.stdin,
@@ -103,7 +105,7 @@ class RedChannelUI {
                     this.warn(`debug ${this.redchannel.config.debug ? "enabled" : "disabled"}`);
                     break;
                 case "back":
-                    this.redchannel.interact = { ident: "" };
+                    this.redchannel.interact = null;
                     this.reset_prompt();
                     break;
                 case "help":
@@ -160,14 +162,14 @@ class RedChannelUI {
                         break;
                     }
 
-                    const command = param.join(" ");
-                    if (command.length == 0) {
+                    const executeCommand = param.join(" ");
+                    if (executeCommand.length == 0) {
                         this.error("command failed, insufficient parameters, see 'help'");
                         break;
                     }
 
                     this.warn("sending shell command to " + chalk.blue(this.redchannel.interact.ident) + "");
-                    this.redchannel.command_shell(command);
+                    this.redchannel.command_shell(executeCommand);
                     break;
                 case "set":
                     if (!this.redchannel.interact.secret) {
@@ -237,7 +239,7 @@ class RedChannelUI {
                     this.redchannel.queue_data(this.redchannel.interact.ident, AgentCommands.AGENT_MSG, message);
                     break;
                 default:
-                    this.error("invalid command: " + command + ", see 'help'");
+                    this.error(`invalid command: ${command}, see 'help'`);
                     break;
             }
         } else if (this.redchannel.using_module.length > 0) {
@@ -304,9 +306,12 @@ class RedChannelUI {
 
                     if (typeof this.redchannel.modules[usingModule].actions[command + " " + settingName] === "function") {
                         // call it with this.redchannel as first param
-                        let ret = this.redchannel.modules[usingModule].actions[command + " " + settingName].bind(this.redchannel)(param);
-                        if (ret.error) this.error(ret.message);
-                        if (!ret.error && ret.message.length > 0) this.info(ret.message);
+                        try {
+                            const commandResult = this.redchannel.modules[usingModule].actions[command + " " + settingName].bind(this.redchannel)(param);
+                            if (commandResult) this.info(commandResult.message);
+                        } catch (ex) {
+                            this.error(emsg(ex));
+                        }
                     }
 
                     break;
@@ -355,16 +360,16 @@ class RedChannelUI {
                     // TODO: request sysinfo from all agents
                     break;
                 case "kill":
-                    const agentId = param.shift();
+                    const killAgentId = param.shift();
 
-                    if (!interactAgentId) {
+                    if (!killAgentId) {
                         this.error("please specify an agent id, see 'agents'");
                         break;
                     }
 
-                    const agentToKill = this.redchannel.get_agent(interactAgentId);
+                    const agentToKill = this.redchannel.get_agent(killAgentId);
                     if (!agentToKill) {
-                        this.error("agent " + chalk.blue(interactAgentId) + " not found");
+                        this.error("agent " + chalk.blue(killAgentId) + " not found");
                     } else {
                         this.warn("killing " + chalk.blue(agentToKill.ident) + ", agent may reconnect");
                         this.redchannel.kill_agent(agentToKill.ident);
@@ -374,16 +379,16 @@ class RedChannelUI {
                     this.show_help("c2");
                     break;
                 case "use":
-                    const moduleName = param.shift();
-                    if (!moduleName) {
-                        this.error("unknown module: '" + moduleName + "', see 'help'");
+                    const useModuleName = param.shift();
+                    if (!useModuleName) {
+                        this.error("unknown module: '" + useModuleName + "', see 'help'");
                         break;
                     }
-                    this.redchannel.using_module = moduleName;
+                    this.redchannel.using_module = useModuleName;
                     this.reset_prompt();
                     break;
                 default:
-                    this.error("invalid command: " + command + ", see 'help'");
+                    this.error(`invalid command: ${command}, see 'help'`);
                     break;
             }
         }

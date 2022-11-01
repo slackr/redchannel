@@ -3,6 +3,11 @@ import * as crypto from "crypto";
 import { emsg } from "../utils/utils";
 import { ECKeyWithPublicPoint } from "../utils/defs";
 
+export interface CipherModel {
+    iv: Buffer;
+    data: Buffer;
+}
+
 class RedChannelCrypto {
     privateKey: ECKeyWithPublicPoint | null = null;
     publicKey: ECKey | null = null;
@@ -23,7 +28,7 @@ class RedChannelCrypto {
         }
     }
 
-    aes_encrypt(buffer, key) {
+    aes_encrypt(buffer, key): CipherModel {
         let iv = crypto.randomBytes(this.BLOCK_LENGTH);
         let ciphertext: Buffer;
         try {

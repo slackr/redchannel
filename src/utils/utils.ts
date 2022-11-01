@@ -1,7 +1,3 @@
-export const isValidObjectId = (id: string) => {
-    return typeof id === "string" && id.length > 10;
-};
-
 export const log = {
     error: (...msg) => {
         console.error(new Date().toISOString(), ...msg);

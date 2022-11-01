@@ -4,10 +4,13 @@
         "noImplicitReturns": true,
         "noImplicitAny": false,
         "noUnusedLocals": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "lib": ["es2021"],
         "outDir": "dist",
         "sourceMap": true,
         "strict": true,
-        "target": "es2019"
+        "target": "es2021"
     },
     "compileOnSave": true,
     "include": ["src"]

