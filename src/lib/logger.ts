@@ -1,4 +1,4 @@
-export default class RedChannelLogger {
+export default class Logger {
     error(msg) {
         console.error(msg);
     }
@@ -19,5 +19,11 @@ export default class RedChannelLogger {
     }
     msg(msg, level = "info") {
         console.log(msg);
+    }
+    display_table(columns: string[], rows: Array<string[]>) {
+        console.log(columns.join("\t"));
+        for (const row of rows) {
+            console.log(row.join("\t"));
+        }
     }
 }

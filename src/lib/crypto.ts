@@ -8,7 +8,7 @@ export interface CipherModel {
     data: Buffer;
 }
 
-class RedChannelCrypto {
+class Crypto {
     privateKey: ECKeyWithPublicPoint | null = null;
     publicKey: ECKey | null = null;
 
@@ -113,4 +113,4 @@ class RedChannelCrypto {
     }
 }
 
-export default RedChannelCrypto;
+export default Crypto;

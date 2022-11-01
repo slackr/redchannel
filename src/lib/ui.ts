@@ -2,12 +2,15 @@ import chalk from "chalk";
 import cliTable from "cli-table";
 import * as readline from "readline";
 import * as fs from "fs";
-import RedChannel, { AgentCommands } from "./redchannel";
+import RedChannel, { AgentCommand } from "./redchannel";
 import { emsg } from "../utils/utils";
 import { CliTableWithPush } from "../utils/defs";
-import RedChannelLogger from "./logger";
+import Logger from "./logger";
+import Helper from "./helper";
 
-class RedChannelUI extends RedChannelLogger {
+const Commands = Helper.Commands();
+
+class UserInterface extends Logger {
     redchannel: RedChannel;
     console: readline.Interface;
 
@@ -30,7 +33,7 @@ class RedChannelUI extends RedChannelLogger {
             const agentSecret = agent.secret != null ? agent.secret.toString("hex") : "n/a";
             // prettier-ignore
             rows.push([
-                chalk.blue(agent.ident),
+                chalk.blue(agent.id),
                 agent.ip,
                 agent.channel,
                 chalk.greenBright(agentSecret),
@@ -45,12 +48,12 @@ class RedChannelUI extends RedChannelLogger {
         this.info(`${help_module} commands:`);
 
         const rows: any[] = [];
-        Object.keys(this.redchannel.commands[help_module]).forEach((cmd) => {
-            rows.push([chalk.yellow(cmd), chalk.red(this.redchannel.commands[help_module][cmd]["params"].join(" ")), chalk.yellow(this.redchannel.commands[help_module][cmd]["desc"])]);
+        Object.keys(Commands[help_module]).forEach((cmd) => {
+            rows.push([chalk.yellow(cmd), chalk.red(Commands[help_module][cmd]["params"].join(" ")), chalk.yellow(Commands[help_module][cmd]["desc"])]);
         });
         if (this.redchannel.using_module) {
-            Object.keys(this.redchannel.commands.module_common).forEach((cmd) => {
-                rows.push([chalk.yellow(cmd), chalk.red(this.redchannel.commands.module_common[cmd]["params"].join(" ")), chalk.yellow(this.redchannel.commands.module_common[cmd]["desc"])]);
+            Object.keys(Commands.module_common).forEach((cmd) => {
+                rows.push([chalk.yellow(cmd), chalk.red(Commands.module_common[cmd]["params"].join(" ")), chalk.yellow(Commands.module_common[cmd]["desc"])]);
             });
         }
 
@@ -76,12 +79,12 @@ class RedChannelUI extends RedChannelLogger {
             completions = this.redchannel.get_all_agents(command + " ");
         } else {
             if (this.redchannel.interact) {
-                completions = Object.keys(this.redchannel.commands.agent);
+                completions = Object.keys(Commands.agent);
             } else if (this.redchannel.using_module) {
-                completions = Object.keys(this.redchannel.commands[this.redchannel.using_module]);
-                completions = completions.concat(Object.keys(this.redchannel.commands.module_common));
+                completions = Object.keys(Commands[this.redchannel.using_module]);
+                completions = completions.concat(Object.keys(Commands.module_common));
             } else {
-                completions = Object.keys(this.redchannel.commands.c2);
+                completions = Object.keys(Commands.c2);
             }
         }
 
@@ -113,11 +116,11 @@ class RedChannelUI extends RedChannelLogger {
                     break;
                 case "sysinfo":
                     if (!this.redchannel.interact.secret) {
-                        this.error(`cannot send sysinfo to ${chalk.blue(this.redchannel.interact.ident)}, start 'keyx' first`);
+                        this.error(`cannot send sysinfo to ${chalk.blue(this.redchannel.interact.id)}, start 'keyx' first`);
                         break;
                     }
 
-                    this.info(`requesting sysinfo from ${chalk.blue(this.redchannel.interact.ident)}`);
+                    this.info(`requesting sysinfo from ${chalk.blue(this.redchannel.interact.id)}`);
 
                     this.redchannel.command_sysinfo();
                     break;
@@ -133,7 +136,7 @@ class RedChannelUI extends RedChannelLogger {
                     if (!this.redchannel.interact) {
                         this.error("agent '" + chalk.blue(this.redchannel.interact ? agentId : "") + "' not found");
                     } else {
-                        this.warn("interacting with " + chalk.blue(this.redchannel.interact.ident));
+                        this.warn("interacting with " + chalk.blue(this.redchannel.interact.id));
                         this.reset_prompt();
                     }
                     break;
@@ -142,23 +145,23 @@ class RedChannelUI extends RedChannelLogger {
                     break;
                 case "shutdown":
                     if (!this.redchannel.interact.secret) {
-                        this.error("cannot send shutdown to " + chalk.blue(this.redchannel.interact.ident) + ", start 'keyx' first");
+                        this.error("cannot send shutdown to " + chalk.blue(this.redchannel.interact.id) + ", start 'keyx' first");
                         break;
                     }
 
                     const agentToShutdown = param.shift();
-                    if (agentToShutdown !== this.redchannel.interact.ident) {
+                    if (agentToShutdown !== this.redchannel.interact.id) {
                         this.warn("please confirm shutdown by entering the agent id, see 'help'");
                         break;
                     }
 
-                    this.warn("sending shutdown command to " + chalk.blue(this.redchannel.interact.ident));
+                    this.warn("sending shutdown command to " + chalk.blue(this.redchannel.interact.id));
                     this.redchannel.command_shutdown();
                     break;
                 case "shell":
                 case "exec_cmd":
                     if (!this.redchannel.interact.secret) {
-                        this.error("cannot send command to " + chalk.blue(this.redchannel.interact.ident) + ", start 'keyx' first");
+                        this.error("cannot send command to " + chalk.blue(this.redchannel.interact.id) + ", start 'keyx' first");
                         break;
                     }
 
@@ -168,12 +171,12 @@ class RedChannelUI extends RedChannelLogger {
                         break;
                     }
 
-                    this.warn("sending shell command to " + chalk.blue(this.redchannel.interact.ident) + "");
+                    this.warn("sending shell command to " + chalk.blue(this.redchannel.interact.id) + "");
                     this.redchannel.command_shell(executeCommand);
                     break;
                 case "set":
                     if (!this.redchannel.interact.secret) {
-                        this.error("cannot send config to " + chalk.blue(this.redchannel.interact.ident) + ", start 'keyx' first");
+                        this.error("cannot send config to " + chalk.blue(this.redchannel.interact.id) + ", start 'keyx' first");
                         break;
                     }
 
@@ -221,22 +224,22 @@ class RedChannelUI extends RedChannelLogger {
                     const setConfigData = config_name_map[setting] + "=" + configValue;
 
                     // if changing the c2 password, issue keyx again
-                    this.success("setting '" + config_name_map[setting] + "' to value '" + configValue + "' on agent: " + this.redchannel.interact.ident);
+                    this.success("setting '" + config_name_map[setting] + "' to value '" + configValue + "' on agent: " + this.redchannel.interact.id);
                     this.redchannel.command_set_config(setConfigData);
                     break;
                 case "keyx":
-                    this.warn("keyx started with agent " + chalk.blue(this.redchannel.interact.ident));
-                    this.redchannel.command_keyx(this.redchannel.interact.ident);
+                    this.warn("keyx started with agent " + chalk.blue(this.redchannel.interact.id));
+                    this.redchannel.command_keyx(this.redchannel.interact.id);
                     break;
                 case "msg":
                     if (!this.redchannel.interact.secret) {
-                        this.error("cannot send msg to " + chalk.blue(this.redchannel.interact.ident) + ", start 'keyx' first");
+                        this.error("cannot send msg to " + chalk.blue(this.redchannel.interact.id) + ", start 'keyx' first");
                         break;
                     }
 
                     const message = param.join(" ");
-                    this.warn("sending message to " + chalk.blue(this.redchannel.interact.ident) + "");
-                    this.redchannel.queue_data(this.redchannel.interact.ident, AgentCommands.AGENT_MSG, message);
+                    this.warn("sending message to " + chalk.blue(this.redchannel.interact.id) + "");
+                    this.redchannel.queue_data(this.redchannel.interact.id, AgentCommand.AGENT_MSG, message);
                     break;
                 default:
                     this.error(`invalid command: ${command}, see 'help'`);
@@ -283,7 +286,7 @@ class RedChannelUI extends RedChannelLogger {
                     }
 
                     // get the help object for the command (for set, its 'set property')
-                    const commandHelp = this.redchannel.commands[usingModule][command + " " + settingName];
+                    const commandHelp = Commands[usingModule][command + " " + settingName];
                     if (commandHelp.validate_regex && commandHelp.validate_regex.test instanceof Function && !commandHelp.validate_regex.test(settingValue)) {
                         this.error("invalid setting value, see 'help'");
                         break;
@@ -346,7 +349,7 @@ class RedChannelUI extends RedChannelLogger {
                     if (!this.redchannel.interact) {
                         this.error("agent " + chalk.blue(interactAgentId) + " not found");
                     } else {
-                        this.info("interacting with " + chalk.blue(this.redchannel.interact.ident) + "");
+                        this.info("interacting with " + chalk.blue(this.redchannel.interact.id) + "");
                     }
                     break;
                 case "keyx":
@@ -371,8 +374,8 @@ class RedChannelUI extends RedChannelLogger {
                     if (!agentToKill) {
                         this.error("agent " + chalk.blue(killAgentId) + " not found");
                     } else {
-                        this.warn("killing " + chalk.blue(agentToKill.ident) + ", agent may reconnect");
-                        this.redchannel.kill_agent(agentToKill.ident);
+                        this.warn("killing " + chalk.blue(agentToKill.id) + ", agent may reconnect");
+                        this.redchannel.kill_agent(agentToKill.id);
                     }
                     break;
                 case "help":
@@ -445,7 +448,7 @@ class RedChannelUI extends RedChannelLogger {
     reset_prompt() {
         const prompt = chalk.red("> ");
         if (this.redchannel.interact) {
-            this.console.setPrompt(chalk.red("agent(") + chalk.blue(this.redchannel.interact.ident) + chalk.red(")") + prompt);
+            this.console.setPrompt(chalk.red("agent(") + chalk.blue(this.redchannel.interact.id) + chalk.red(")") + prompt);
         } else if (this.redchannel.using_module.length > 0) {
             this.console.setPrompt(this.redchannel.using_module + prompt);
         } else {
@@ -455,4 +458,4 @@ class RedChannelUI extends RedChannelLogger {
     }
 }
 
-export default RedChannelUI;
+export default UserInterface;

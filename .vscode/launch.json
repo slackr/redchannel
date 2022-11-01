@@ -2,17 +2,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch Program",
-            "program": "${workspaceFolder}/app.js",
-            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.env",
             "env": {
                 "RC_PASSWORD": "redchannel"
             },
-            "args": [
-                "--debug"
-            ]
+            "args": ["--debug"],
+            "type": "node",
+            "request": "launch",
+            "name": "Debug RedChannel",
+            "program": "${workspaceFolder}/src/app.ts",
+            "preLaunchTask": "npm: build",
+            "sourceMaps": true,
+            "console": "integratedTerminal",
+            "smartStep": true,
+            "internalConsoleOptions": "neverOpen"
         }
     ]
 }
