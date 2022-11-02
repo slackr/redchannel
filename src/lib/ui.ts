@@ -1,14 +1,11 @@
 import chalk from "chalk";
 import cliTable from "cli-table";
 import * as readline from "readline";
-import * as fs from "fs";
 import RedChannel, { AgentCommand } from "./redchannel";
 import { emsg } from "../utils/utils";
 import { CliTableWithPush } from "../utils/defs";
 import Logger from "./logger";
-import Helper from "./helper";
-
-const Commands = Helper.Commands();
+import BaseModule, { Command, RunReturn } from "../modules/base";
 
 class UserInterface extends Logger {
     redchannel: RedChannel;
@@ -20,16 +17,15 @@ class UserInterface extends Logger {
         this.console = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
-            completer: this.completer_handler.bind(this),
+            completer: this.completerHandler.bind(this),
         });
-        this.console.on("line", this.input_handler.bind(this));
+        this.console.on("line", this.inputHandler.bind(this));
     }
 
-    show_agents() {
-        // this.info("agents:");
+    showAgents() {
         const rows: any[] = [];
-        Object.keys(this.redchannel.agents).forEach((a) => {
-            const agent = this.redchannel.agents[a];
+        for (const id of this.redchannel.agents.keys()) {
+            const agent = this.redchannel.agents.get(id)!;
             const agentSecret = agent.secret != null ? agent.secret.toString("hex") : "n/a";
             // prettier-ignore
             rows.push([
@@ -39,28 +35,24 @@ class UserInterface extends Logger {
                 chalk.greenBright(agentSecret),
                 agent.lastseen ? new Date(agent.lastseen * 1000).toLocaleString() : "never"
             ]);
-        });
-
-        this.display_table(["id", "src", "channel", "secret", "lastseen"], rows);
-    }
-
-    show_help(help_module) {
-        this.info(`${help_module} commands:`);
-
-        const rows: any[] = [];
-        Object.keys(Commands[help_module]).forEach((cmd) => {
-            rows.push([chalk.yellow(cmd), chalk.red(Commands[help_module][cmd]["params"].join(" ")), chalk.yellow(Commands[help_module][cmd]["desc"])]);
-        });
-        if (this.redchannel.using_module) {
-            Object.keys(Commands.module_common).forEach((cmd) => {
-                rows.push([chalk.yellow(cmd), chalk.red(Commands.module_common[cmd]["params"].join(" ")), chalk.yellow(Commands.module_common[cmd]["desc"])]);
-            });
         }
 
-        this.display_table(["command", "params", "description"], rows);
+        this.displayTable(["id", "src", "channel", "secret", "lastseen"], rows);
     }
 
-    display_table(columns, rows) {
+    showHelp(module: BaseModule) {
+        this.info(`${module.name} commands:`);
+
+        const rows: any[] = [];
+        for (const commandName of module.commands.keys()) {
+            const command = module.commands.get(commandName);
+            if (command) rows.push([chalk.yellow(commandName), chalk.red(command.arguments.join(" ")), chalk.yellow(command.description)]);
+        }
+
+        this.displayTable(["command", "arguments", "description"], rows);
+    }
+
+    displayTable(columns, rows) {
         const table = new cliTable({
             head: columns,
         }) as CliTableWithPush;
@@ -71,20 +63,22 @@ class UserInterface extends Logger {
         this.echo(chalk.gray(table.toString()));
     }
 
-    completer_handler(line) {
+    completerHandler(line) {
         let completions: string[] = [];
 
         const command = line.split(" ")[0];
         if (command == "interact" || command == "kill") {
-            completions = this.redchannel.get_all_agents(command + " ");
+            completions = this.redchannel.getAllAgents(command + " ");
+        } else if (command == "use") {
+            completions = Object.keys(this.redchannel.modules);
         } else {
             if (this.redchannel.interact) {
-                completions = Object.keys(Commands.agent);
-            } else if (this.redchannel.using_module) {
-                completions = Object.keys(Commands[this.redchannel.using_module]);
-                completions = completions.concat(Object.keys(Commands.module_common));
+                completions = Object.keys(this.redchannel.modules.agent);
+            } else if (this.redchannel.usingModule) {
+                completions = Object.keys(this.redchannel.modules[this.redchannel.usingModule].commands);
+                completions = completions.concat(Object.keys(new BaseModule("base", "").commands));
             } else {
-                completions = Object.keys(Commands.c2);
+                completions = Object.keys(this.redchannel.modules.c2);
             }
         }
 
@@ -92,9 +86,9 @@ class UserInterface extends Logger {
         return [hits, line];
     }
 
-    input_handler(input) {
+    inputHandler(input) {
         if (!input.replace(/ /g, "")) {
-            this.reset_prompt();
+            this.resetPrompt();
             return;
         }
 
@@ -109,10 +103,10 @@ class UserInterface extends Logger {
                     break;
                 case "back":
                     this.redchannel.interact = null;
-                    this.reset_prompt();
+                    this.resetPrompt();
                     break;
                 case "help":
-                    this.show_help("agent");
+                    this.showHelp(this.redchannel.modules.agent);
                     break;
                 case "sysinfo":
                     if (!this.redchannel.interact.secret) {
@@ -122,7 +116,7 @@ class UserInterface extends Logger {
 
                     this.info(`requesting sysinfo from ${chalk.blue(this.redchannel.interact.id)}`);
 
-                    this.redchannel.command_sysinfo();
+                    this.redchannel.sendCommandSysinfo();
                     break;
                 case "interact":
                     const agentId = param.shift();
@@ -132,16 +126,16 @@ class UserInterface extends Logger {
                         break;
                     }
 
-                    this.redchannel.interact = this.redchannel.get_agent(agentId);
+                    this.redchannel.interact = this.redchannel.getAgent(agentId);
                     if (!this.redchannel.interact) {
                         this.error("agent '" + chalk.blue(this.redchannel.interact ? agentId : "") + "' not found");
                     } else {
                         this.warn("interacting with " + chalk.blue(this.redchannel.interact.id));
-                        this.reset_prompt();
+                        this.resetPrompt();
                     }
                     break;
                 case "agents":
-                    this.show_agents();
+                    this.showAgents();
                     break;
                 case "shutdown":
                     if (!this.redchannel.interact.secret) {
@@ -156,7 +150,7 @@ class UserInterface extends Logger {
                     }
 
                     this.warn("sending shutdown command to " + chalk.blue(this.redchannel.interact.id));
-                    this.redchannel.command_shutdown();
+                    this.redchannel.sendCommandShutdown();
                     break;
                 case "shell":
                 case "exec_cmd":
@@ -172,7 +166,7 @@ class UserInterface extends Logger {
                     }
 
                     this.warn("sending shell command to " + chalk.blue(this.redchannel.interact.id) + "");
-                    this.redchannel.command_shell(executeCommand);
+                    this.redchannel.sendCommandShell(executeCommand);
                     break;
                 case "set":
                     if (!this.redchannel.interact.secret) {
@@ -181,16 +175,16 @@ class UserInterface extends Logger {
                     }
 
                     const setting = param.shift();
-                    const agent_settings = {
+                    const agentSettings = {
                         // domain: this.redchannel.config.c2.domain, // cannot set these dynamically
                         // password: this.redchannel.config.c2.password, // cannot set these dynamically
                         interval: this.redchannel.config.c2.interval,
-                        proxy_enabled: this.redchannel.config.proxy.enabled,
-                        proxy_url: this.redchannel.config.proxy.url,
-                        proxy_key: this.redchannel.config.proxy.key,
+                        proxy_enabled: this.redchannel.modules.proxy.config.enabled,
+                        proxy_url: this.redchannel.modules.proxy.config.url,
+                        proxy_key: this.redchannel.modules.proxy.config.key,
                     };
 
-                    const config_name_map = {
+                    const agentConfigToProxyMap = {
                         domain: "d",
                         interval: "i",
                         password: "p",
@@ -199,7 +193,7 @@ class UserInterface extends Logger {
                         proxy_key: "pk",
                     };
 
-                    if (!Object.keys(agent_settings).includes(setting)) {
+                    if (!Object.keys(agentSettings).includes(setting)) {
                         this.error("invalid config setting, see 'help'");
                         break;
                     }
@@ -211,7 +205,7 @@ class UserInterface extends Logger {
                     }
 
                     // TODO: regex validate value
-                    const settingType = typeof agent_settings[setting];
+                    const settingType = typeof agentSettings[setting];
                     switch (settingType) {
                         case "boolean":
                             configValue = ["off", "0", "false", "no"].includes(configValue) ? "false" : "true";
@@ -221,15 +215,15 @@ class UserInterface extends Logger {
                             break;
                     }
 
-                    const setConfigData = config_name_map[setting] + "=" + configValue;
+                    const setConfigData = agentConfigToProxyMap[setting] + "=" + configValue;
 
                     // if changing the c2 password, issue keyx again
-                    this.success("setting '" + config_name_map[setting] + "' to value '" + configValue + "' on agent: " + this.redchannel.interact.id);
-                    this.redchannel.command_set_config(setConfigData);
+                    this.success("setting '" + agentConfigToProxyMap[setting] + "' to value '" + configValue + "' on agent: " + this.redchannel.interact.id);
+                    this.redchannel.sendCommandSetConfig(setConfigData);
                     break;
                 case "keyx":
                     this.warn("keyx started with agent " + chalk.blue(this.redchannel.interact.id));
-                    this.redchannel.command_keyx(this.redchannel.interact.id);
+                    this.redchannel.sendCommandKeyx(this.redchannel.interact.id);
                     break;
                 case "msg":
                     if (!this.redchannel.interact.secret) {
@@ -239,92 +233,68 @@ class UserInterface extends Logger {
 
                     const message = param.join(" ");
                     this.warn("sending message to " + chalk.blue(this.redchannel.interact.id) + "");
-                    this.redchannel.queue_data(this.redchannel.interact.id, AgentCommand.AGENT_MSG, message);
+                    this.redchannel.queueData(this.redchannel.interact.id, AgentCommand.AGENT_MSG, message);
                     break;
                 default:
                     this.error(`invalid command: ${command}, see 'help'`);
                     break;
             }
-        } else if (this.redchannel.using_module.length > 0) {
-            const usingModule = this.redchannel.using_module;
+        } else if (this.redchannel.usingModule) {
+            const usingModule = this.redchannel.modules[this.redchannel.usingModule] as BaseModule;
             switch (command) {
                 case "reload":
                 case "reset":
                     try {
-                        const config = JSON.parse(fs.readFileSync(this.redchannel.config_file).toString());
-                        this.redchannel.config[usingModule] = config[usingModule];
-                        this.info("module configuration reset, see 'config'");
+                        usingModule.resetConfig();
                     } catch (ex) {
-                        this.error(`error parsing config file ${this.redchannel.config_file} during reset: ${emsg(ex)}`);
+                        this.error(`error resetting module config: ${emsg(ex)}`);
+                        break;
                     }
+                    this.info("module configuration reset, see 'config'");
                     break;
                 case "ls":
                 case "info":
                 case "config":
                     this.info("module config:");
-                    this.info(JSON.stringify(this.redchannel.config[usingModule], null, "  "));
+                    this.info(JSON.stringify(usingModule.config, null, "  "));
                     break;
                 case "help":
-                    this.show_help(usingModule);
+                    this.showHelp(usingModule);
                     break;
                 case "back":
-                    this.redchannel.using_module = "";
-                    this.reset_prompt();
+                    this.redchannel.usingModule = "";
+                    this.resetPrompt();
                     break;
                 case "set":
                     const settingName = param.shift();
-                    const settingType = typeof this.redchannel.config[usingModule][settingName];
-                    if (settingType === "undefined") {
-                        this.error("unknown module setting '" + settingName + "', see 'help'");
-                        break;
-                    }
-
                     const settingValue = param.join(" ");
                     if (settingValue.length === 0) {
                         this.error("please specify setting value, see 'help'");
                         break;
                     }
 
-                    // get the help object for the command (for set, its 'set property')
-                    const commandHelp = Commands[usingModule][command + " " + settingName];
-                    if (commandHelp.validate_regex && commandHelp.validate_regex.test instanceof Function && !commandHelp.validate_regex.test(settingValue)) {
-                        this.error("invalid setting value, see 'help'");
+                    const setCommand = usingModule.commands.get(`set ${settingName}`) as Command;
+
+                    if (setCommand.validateRegex && !setCommand.validateRegex.test(settingValue)) {
+                        this.error(`invalid '${settingName}' value, see 'help'`);
                         break;
                     }
-                    switch (settingType) {
-                        case "number":
-                            this.redchannel.config[usingModule][settingName] = parseInt(settingValue);
-                            break;
-                        case "boolean":
-                            this.redchannel.config[usingModule][settingName] = ["off", "0", "false", "no"].includes(settingValue) ? false : true;
-                            break;
-                        case "object":
-                            this.redchannel.config[usingModule][settingName] = settingValue.split(",");
-                            break;
-                        default:
-                            this.redchannel.config[usingModule][settingName] = settingValue;
-                            break;
-                    }
-                    this.info("set " + settingName + " = '" + this.redchannel.config[usingModule][settingName] + "'");
+                    if (setCommand.execute) setCommand.execute(settingValue);
 
-                    if (typeof this.redchannel.modules[usingModule].actions[command + " " + settingName] === "function") {
-                        // call it with this.redchannel as first param
-                        try {
-                            const commandResult = this.redchannel.modules[usingModule].actions[command + " " + settingName].bind(this.redchannel)(param);
-                            if (commandResult) this.info(commandResult.message);
-                        } catch (ex) {
-                            this.error(emsg(ex));
-                        }
-                    }
-
+                    this.info("set " + settingName + " = '" + usingModule.config[settingName] + "'");
                     break;
                 default:
-                    // is the command a module action?
-                    if (typeof this.redchannel.modules[usingModule].actions[command] === "function") {
-                        // call it with this.redchannel as first param
-                        let ret = this.redchannel.modules[usingModule].actions[command].bind(this.redchannel)(param);
-                        if (ret.error) this.error(ret.message);
-                        if (!ret.error && ret.message.length > 0) this.info(ret.message);
+                    // is the module command?
+                    const executeCommand = usingModule.commands.get(command);
+                    if (executeCommand?.execute) {
+                        let commandReturn: RunReturn;
+                        try {
+                            commandReturn = executeCommand.execute(param);
+                        } catch (ex) {
+                            this.error(`error running command ${command}: ${emsg(ex)}`);
+                            break;
+                        }
+                        this.info(commandReturn.message);
                         break;
                     }
                     this.error("invalid command: " + command + ", see 'help'");
@@ -345,7 +315,7 @@ class UserInterface extends Logger {
                         break;
                     }
 
-                    this.redchannel.interact = this.redchannel.get_agent(interactAgentId);
+                    this.redchannel.interact = this.redchannel.getAgent(interactAgentId);
                     if (!this.redchannel.interact) {
                         this.error("agent " + chalk.blue(interactAgentId) + " not found");
                     } else {
@@ -354,10 +324,10 @@ class UserInterface extends Logger {
                     break;
                 case "keyx":
                     this.warn("keyx started with all agents");
-                    this.redchannel.command_keyx(); // null agent id will send broadcast
+                    this.redchannel.sendCommandKeyx(); // null agent id will send broadcast
                     break;
                 case "agents":
-                    this.show_agents();
+                    this.showAgents();
                     break;
                 case "sysinfo":
                     // TODO: request sysinfo from all agents
@@ -370,16 +340,16 @@ class UserInterface extends Logger {
                         break;
                     }
 
-                    const agentToKill = this.redchannel.get_agent(killAgentId);
+                    const agentToKill = this.redchannel.getAgent(killAgentId);
                     if (!agentToKill) {
                         this.error("agent " + chalk.blue(killAgentId) + " not found");
                     } else {
                         this.warn("killing " + chalk.blue(agentToKill.id) + ", agent may reconnect");
-                        this.redchannel.kill_agent(agentToKill.id);
+                        this.redchannel.killAgent(agentToKill.id);
                     }
                     break;
                 case "help":
-                    this.show_help("c2");
+                    this.showHelp(this.redchannel.modules.c2);
                     break;
                 case "use":
                     const useModuleName = param.shift();
@@ -387,8 +357,8 @@ class UserInterface extends Logger {
                         this.error("unknown module: '" + useModuleName + "', see 'help'");
                         break;
                     }
-                    this.redchannel.using_module = useModuleName;
-                    this.reset_prompt();
+                    this.redchannel.usingModule = useModuleName;
+                    this.resetPrompt();
                     break;
                 default:
                     this.error(`invalid command: ${command}, see 'help'`);
@@ -396,7 +366,7 @@ class UserInterface extends Logger {
             }
         }
 
-        this.reset_prompt();
+        this.resetPrompt();
     }
 
     error(msg) {
@@ -442,15 +412,15 @@ class UserInterface extends Logger {
                 console.log(chalk.gray(`* ${msg}`));
                 break;
         }
-        this.reset_prompt();
+        this.resetPrompt();
     }
 
-    reset_prompt() {
+    resetPrompt() {
         const prompt = chalk.red("> ");
         if (this.redchannel.interact) {
             this.console.setPrompt(chalk.red("agent(") + chalk.blue(this.redchannel.interact.id) + chalk.red(")") + prompt);
-        } else if (this.redchannel.using_module.length > 0) {
-            this.console.setPrompt(this.redchannel.using_module + prompt);
+        } else if (this.redchannel.usingModule.length > 0) {
+            this.console.setPrompt(this.redchannel.usingModule + prompt);
         } else {
             this.console.setPrompt(prompt);
         }

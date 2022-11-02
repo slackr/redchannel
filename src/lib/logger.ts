@@ -20,7 +20,7 @@ export default class Logger {
     msg(msg, level = "info") {
         console.log(msg);
     }
-    display_table(columns: string[], rows: Array<string[]>) {
+    displayTable(columns: string[], rows: Array<string[]>) {
         console.log(columns.join("\t"));
         for (const row of rows) {
             console.log(row.join("\t"));

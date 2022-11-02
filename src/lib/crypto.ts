@@ -8,6 +8,11 @@ export interface CipherModel {
     data: Buffer;
 }
 
+export enum KeyExportType {
+    PEM = "pem",
+    UNCOMPRESSED = "uncompressed",
+}
+
 class Crypto {
     privateKey: ECKeyWithPublicPoint | null = null;
     publicKey: ECKey | null = null;
@@ -19,7 +24,7 @@ class Crypto {
 
     constructor() {}
 
-    generate_keys() {
+    generateKeys() {
         try {
             this.privateKey = ecKey.createECKey(this.CURVE) as ECKeyWithPublicPoint;
             this.publicKey = this.privateKey.asPublicECKey(); //.toString('pem')
@@ -28,7 +33,7 @@ class Crypto {
         }
     }
 
-    aes_encrypt(buffer, key): CipherModel {
+    aesEncrypt(buffer: Buffer, key: crypto.CipherKey): CipherModel {
         let iv = crypto.randomBytes(this.BLOCK_LENGTH);
         let ciphertext: Buffer;
         try {
@@ -42,7 +47,7 @@ class Crypto {
         return { iv: iv, data: ciphertext };
     }
 
-    aes_decrypt(buffer, key, iv) {
+    aesDecrypt(buffer: Buffer, key: crypto.CipherKey, iv: Buffer) {
         let result: Buffer;
         try {
             let plaintext = crypto.createDecipheriv(this.AES_ALGO, key, iv);
@@ -54,7 +59,7 @@ class Crypto {
         return result;
     }
 
-    derive_secret(otherKey, salt) {
+    deriveSecret(otherKey: ECKey, salt: string) {
         if (!this.privateKey) throw new Error("no master key found, generate keys first");
 
         let secret;
@@ -77,7 +82,7 @@ class Crypto {
     }
 
     // imports a public key from an uncompressed format (Buffer)
-    import_uncompressed_pubkey(uncompressedPublicKey) {
+    importUncompressedPublicKey(uncompressedPublicKey) {
         let importedPublicKey: ECKey;
 
         try {
@@ -92,16 +97,16 @@ class Crypto {
     }
 
     // exports our public key to an uncompressed format (hex string) or pem
-    export_pubkey(format) {
+    exportPublicKey(format: KeyExportType) {
         if (!this.privateKey) return "";
 
         let pubkey = "";
         try {
             switch (format) {
-                case "pem":
+                case KeyExportType.PEM:
                     pubkey = this.privateKey.asPublicECKey().toString("pem");
                     break;
-                case "uncompressed":
+                case KeyExportType.UNCOMPRESSED:
                 default:
                     pubkey = this.privateKey.publicCodePoint.toString("hex");
                     break;
