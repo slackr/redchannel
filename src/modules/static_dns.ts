@@ -1,6 +1,8 @@
 import { Constants } from "../utils/utils";
 import BaseModule from "./base";
 
+const MODULE_DESCRIPTION = "add or remove static dns records for the dns c2";
+
 export type StaticDnsHost = string;
 export type StaticDnsIp = string;
 
@@ -9,6 +11,8 @@ export default class StaticDnsModule extends BaseModule {
 
     constructor(protected configFile) {
         super("static_dns", configFile);
+
+        this.description = MODULE_DESCRIPTION;
 
         this.config = new Map<StaticDnsHost, StaticDnsIp>(Object.entries(this.loadConfig()));
 

@@ -7,9 +7,17 @@ export interface Command {
     description: string;
     validateRegex?: RegExp;
     execute?: Function;
+    executeCallbackAvailable?: boolean;
 }
+export interface ExecuteCallbackResult {
+    message: string;
+    code?: number | null;
+}
+export type ExecuteCallbackFunction = (result: ExecuteCallbackResult) => void;
+
 export type CommandName = string;
 export type Commands = Map<CommandName, Command>;
+
 export interface RunReturn {
     message: string;
 }
@@ -34,19 +42,52 @@ export default class BaseModule {
             reset: {
                 arguments: [],
                 description: "reset config to .conf values",
-                execute: this.resetConfig,
+                execute: () => {
+                    this.config = this.resetConfig();
+                },
             },
             config: {
                 arguments: [],
                 description: "view config",
+                execute: () => {
+                    return JSON.stringify(this.config || {});
+                },
+            },
+            keyx: {
+                arguments: [],
+                description: "start key exchange with all agents",
+            },
+            agents: {
+                arguments: [],
+                description: "show active agents",
+            },
+            kill: {
+                arguments: ["<agent id>"],
+                description: "deletes the agent from memory, agent may reconnect",
+            },
+            interact: {
+                arguments: ["<agent id>"],
+                description: "interact with an agent",
+            },
+            back: {
+                arguments: [],
+                description: "back to c2 menu",
             },
             help: {
                 arguments: [],
                 description: "show available commands",
             },
-            back: {
+            debug: {
                 arguments: [],
-                description: "back to main menu",
+                description: "show debug information messages",
+            },
+            use: {
+                arguments: ["<module name>"],
+                description: "use a module",
+            },
+            modules: {
+                arguments: [],
+                description: "show all modules",
             },
         });
     }

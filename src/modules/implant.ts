@@ -6,7 +6,9 @@ import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 import Logger from "../lib/logger";
 import { RedChannelConfig } from "../lib/redchannel";
 import { Constants, emsg } from "../utils/utils";
-import BaseModule from "./base";
+import BaseModule, { ExecuteCallbackFunction, ExecuteCallbackResult } from "./base";
+
+const MODULE_DESCRIPTION = "build implants for operations";
 
 const AGENT_PATH = "./agent";
 const AGENT_CONFIG_PATH = `${AGENT_PATH}/config/config.go`;
@@ -33,6 +35,8 @@ export default class ImplantModule extends BaseModule {
     constructor(protected configFile, protected redChannelConfig: RedChannelConfig, protected redChannelModules: any) {
         super("implant", configFile);
 
+        this.description = MODULE_DESCRIPTION;
+
         this.log = new Logger();
 
         this.config = {
@@ -49,12 +53,10 @@ export default class ImplantModule extends BaseModule {
             build: {
                 arguments: ["[os]", "[arch]"],
                 description: "build the agent for the target os and arch",
-                execute: this.run,
-            },
-            generate: {
-                arguments: ["[os]", "[arch]"],
-                description: "alias for 'build'",
-                execute: this.run,
+                execute: (params: string[], callback?: ExecuteCallbackFunction) => {
+                    this.run(params, callback);
+                },
+                executeCallbackAvailable: true,
             },
             log: {
                 arguments: [],
@@ -80,6 +82,7 @@ export default class ImplantModule extends BaseModule {
             "set interval": {
                 arguments: ["<ms>"],
                 description: "set implant c2 query interval",
+                validateRegex: /^[0-9]+$/,
                 execute: (params: string[]) => {
                     this.config.interval = Number(params[0]) || this.config.interval;
                 },
@@ -102,7 +105,7 @@ export default class ImplantModule extends BaseModule {
         });
     }
 
-    run(params: string[]) {
+    run(params: string[], onBuildCompleteCallback?: ExecuteCallbackFunction) {
         const targetOs = params[0] ?? this.config.os;
         const targetArch = params[1] ?? this.config.arch;
         const debug = this.config.debug;
@@ -144,14 +147,17 @@ export default class ImplantModule extends BaseModule {
             // TODO: do this with docker instead? https://hub.docker.com/_/golang
             childProcess = spawn(spawnBinary, commandArguments, {
                 env: goEnvironment,
-                cwd: buildPath /*, windowsVerbatimArguments: true*/,
+                cwd: buildPath,
+                windowsVerbatimArguments: true,
             });
             childProcess.on("close", (code) => {
                 // send this message to the UI somehow
-                this.log.success(`agent build for os: ${targetOs}, arch: ${targetArch}, debug: ${debug ? "true" : "false"}, return code: ${code}`);
+                const result: ExecuteCallbackResult = { message: `agent build for os: ${targetOs}, arch: ${targetArch}, debug: ${debug ? "true" : "false"}, return code: ${code}`, code: code };
+                this.log.success(result.message);
+                if (onBuildCompleteCallback) onBuildCompleteCallback(result);
             });
         } catch (ex) {
-            throw new Error(`failed to launch build command: '${emsg(ex)}', build command: '${spawnBinary} ${commandArguments.join(" ")}'`);
+            throw new Error(`failed to launch build command: '${spawnBinary} ${commandArguments.join(" ")}', err: ${emsg(ex)}`);
         }
 
         try {

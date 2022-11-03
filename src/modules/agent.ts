@@ -1,9 +1,13 @@
 import { Constants } from "../utils/utils";
 import BaseModule from "./base";
 
+const MODULE_DESCRIPTION = "manage active agents";
+
 export default class AgentModule extends BaseModule {
     constructor(protected configFile) {
         super("agent", configFile);
+
+        this.description = MODULE_DESCRIPTION;
 
         this.config = this.loadConfig;
 
@@ -16,14 +20,6 @@ export default class AgentModule extends BaseModule {
                 arguments: [],
                 description: "start a key exchange with the agent",
             },
-            agents: {
-                arguments: [],
-                description: "show active agents",
-            },
-            interact: {
-                arguments: ["<agent id>"],
-                description: "interact with an agent",
-            },
             shell: {
                 arguments: ["<command>"],
                 description: "execute a shell command, alias: exec_cmd",
@@ -35,14 +31,6 @@ export default class AgentModule extends BaseModule {
             shutdown: {
                 arguments: ["<agent id>"],
                 description: "shutdown the agent, confirm by entering the id, agent will not reconnect",
-            },
-            debug: {
-                arguments: [],
-                description: "show verbose messages",
-            },
-            help: {
-                arguments: [],
-                description: "show available commands",
             },
             "set proxy_url": {
                 arguments: ["<url>"],
