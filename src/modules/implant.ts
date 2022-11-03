@@ -4,9 +4,9 @@ import * as fs from "fs";
 import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 
 import Logger from "../lib/logger";
-import { RedChannelConfig } from "../lib/redchannel";
 import { Constants, emsg } from "../utils/utils";
-import BaseModule, { ExecuteCallbackFunction, ExecuteCallbackResult } from "./base";
+import BaseModule, { ExecuteCallbackFunction, ExecuteCallbackResult, ExecuteReturn } from "./base";
+import RedChannel from "../lib/redchannel";
 
 const MODULE_DESCRIPTION = "build implants for operations";
 
@@ -30,9 +30,9 @@ export default class ImplantModule extends BaseModule {
 
     /**
      * @param redChannelConfig The redchannel config object, used to grab config data while building the agent config
-     * @param redChannelModules The red channel modules object, used to grab data from other modules while building the agent config
+     * @param redChannel The red channel modules object, used to grab data from other modules while building the agent config
      */
-    constructor(protected configFile, protected redChannelConfig: RedChannelConfig, protected redChannelModules: any) {
+    constructor(protected configFile, protected redChannel: RedChannel) {
         super("implant", configFile);
 
         this.description = MODULE_DESCRIPTION;
@@ -53,8 +53,8 @@ export default class ImplantModule extends BaseModule {
             build: {
                 arguments: ["[os]", "[arch]"],
                 description: "build the agent for the target os and arch",
-                execute: (params: string[], callback?: ExecuteCallbackFunction) => {
-                    this.run(params, callback);
+                execute: (params: string[], callback?: ExecuteCallbackFunction): ExecuteReturn => {
+                    return this.run(params, callback);
                 },
                 executeCallbackAvailable: true,
             },
@@ -67,7 +67,7 @@ export default class ImplantModule extends BaseModule {
                 arguments: ["<windows|linux|darwin|...>"],
                 description: "set the target os for the build (GOOS)",
                 validateRegex: Constants.VALID_BUILD_TARGET_OS,
-                execute: (params: string[]) => {
+                execute: (params: string) => {
                     this.config.os = params[0];
                 },
             },
@@ -75,7 +75,7 @@ export default class ImplantModule extends BaseModule {
                 arguments: ["<amd64|386|arm64|mips|...>"],
                 description: "set the target arch for the build (GOARCH)",
                 validateRegex: Constants.VALID_BUILD_TARGET_ARCH,
-                execute: (params: string[]) => {
+                execute: (params: string) => {
                     this.config.arch = params[0];
                 },
             },
@@ -83,7 +83,7 @@ export default class ImplantModule extends BaseModule {
                 arguments: ["<ms>"],
                 description: "set implant c2 query interval",
                 validateRegex: /^[0-9]+$/,
-                execute: (params: string[]) => {
+                execute: (params: string) => {
                     this.config.interval = Number(params[0]) || this.config.interval;
                 },
             },
@@ -91,14 +91,14 @@ export default class ImplantModule extends BaseModule {
                 arguments: ["<ip:port>"],
                 description: "set implant resolver ip:port (8.8.8.8:53)",
                 validateRegex: Constants.VALID_IMPLANT_RESOLVER,
-                execute: (params: string[]) => {
+                execute: (params: string) => {
                     this.config.resolver = params[0];
                 },
             },
             "set debug": {
                 arguments: ["<1|0>"],
                 description: "build debug version of the implant",
-                execute: (params: string[]) => {
+                execute: (params: string) => {
                     this.config.debug = params[0] != "0" && params[0] != "false" ? true : false;
                 },
             },
@@ -170,7 +170,7 @@ export default class ImplantModule extends BaseModule {
 
         this.config.output_file = outputFile;
 
-        const binaryUrl = this.redChannelConfig.c2.web_url + this.redChannelConfig.c2.binary_route;
+        const binaryUrl = this.redChannel.modules.c2.config.web_url + this.redChannel.modules.c2.config.binary_route;
 
         return {
             message: `building ${debug ? "(debug)" : ""} agent for os: ${targetOs}, arch: ${targetArch}, binary will be available here: ${outputFile} and ${binaryUrl}`,
@@ -200,13 +200,13 @@ export default class ImplantModule extends BaseModule {
             throw new Error(`failed to read agent config file template '${agentConfigPath}.sample': ${emsg(ex)}`);
         }
 
-        configData = configData.replace(/^\s*c\.C2Domain\s*=\s*\".*\".*$/im, `c.C2Domain = "${this.redChannelConfig.c2.domain}"`);
-        configData = configData.replace(/^\s*c\.C2Password\s*=\s*\".*\".*$/im, `c.C2Password = "${this.redChannelConfig.c2.plaintext_password}"`);
-        configData = configData.replace(/^\s*c\.Resolver\s*=\s*\".*\".*$/im, `c.Resolver = "${this.redChannelModules.implant.resolver}"`);
-        configData = configData.replace(/^\s*c\.C2Interval\s*=.*$/im, `c.C2Interval = ${this.redChannelModules.implant.interval}`);
-        configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.redChannelModules.proxy.enabled}`);
-        configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*\".*\".*$/im, `c.ProxyUrl = "${this.redChannelModules.proxy.url}"`);
-        configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*\".*\".*$/im, `c.ProxyKey = "${this.redChannelModules.proxy.key}"`);
+        configData = configData.replace(/^\s*c\.C2Domain\s*=\s*\".*\".*$/im, `c.C2Domain = "${this.redChannel.modules.c2.config.domain}"`);
+        configData = configData.replace(/^\s*c\.C2Password\s*=\s*\".*\".*$/im, `c.C2Password = "${this.redChannel.modules.c2.config.plaintext_password}"`);
+        configData = configData.replace(/^\s*c\.Resolver\s*=\s*\".*\".*$/im, `c.Resolver = "${this.config.resolver}"`);
+        configData = configData.replace(/^\s*c\.C2Interval\s*=.*$/im, `c.C2Interval = ${this.config.interval}`);
+        configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.redChannel.modules.proxy.config.enabled}`);
+        configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*\".*\".*$/im, `c.ProxyUrl = "${this.redChannel.modules.proxy.config.url}"`);
+        configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*\".*\".*$/im, `c.ProxyKey = "${this.redChannel.modules.proxy.config.key}"`);
 
         try {
             fs.writeFileSync(agentConfigPath, configData, { flag: "w" });

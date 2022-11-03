@@ -1,8 +1,9 @@
 import axios from "axios";
 import * as fs from "fs";
 import { Constants, emsg } from "../utils/utils";
-import BaseModule from "./base";
+import BaseModule, { ExecuteReturn } from "./base";
 import Logger from "../lib/logger";
+import RedChannel from "../lib/redchannel";
 
 const MODULE_DESCRIPTION = "manage the proxy configuration";
 
@@ -11,7 +12,7 @@ export default class ProxyModule extends BaseModule {
     log: Logger;
     payload: string;
 
-    constructor(protected configFile: string, protected c2Domain: string, protected c2MessageHandler: Function) {
+    constructor(protected configFile: string, protected redChannel: RedChannel, protected c2MessageHandler: Function) {
         super("proxy", configFile);
         this.log = new Logger();
 
@@ -33,39 +34,46 @@ export default class ProxyModule extends BaseModule {
                 description: "generate proxy payload with the specified key",
                 execute: this.run,
             },
+            payload: {
+                arguments: [],
+                description: "get the current generated payload",
+                execute: () => {
+                    return { message: this.payload };
+                },
+            },
             "set url": {
                 arguments: ["<url>"],
                 description: "set the proxy url to use (http://proxy.domain.tld/proxy.php)",
                 validateRegex: Constants.VALID_URL_REGEX,
-                execute: (params: string[]) => {
-                    this.config.url = params[0];
+                execute: (params: string) => {
+                    this.config.url = params;
                 },
             },
             "set enabled": {
                 arguments: ["<1|0>"],
                 description: "enable or disable proxy communication channel",
-                execute: (params: string[]) => {
-                    this.config.enabled = params[0] != "0" && params[0] != "false" ? true : false;
+                execute: (params: string) => {
+                    this.config.enabled = params != "0" && params != "false" ? true : false;
                 },
             },
             "set key": {
                 arguments: ["<key>"],
                 description: "key to use for proxy communication",
-                execute: (params: string[]) => {
-                    this.config.key = params[0];
+                execute: (params: string) => {
+                    this.config.key = params;
                 },
             },
             "set interval": {
                 arguments: ["<ms>"],
                 description: "how often to fetch data from proxy, in ms",
-                execute: (params: string[]) => {
-                    this.config.interval = Number(params[0]) || this.config.interval;
+                execute: (params: string) => {
+                    this.config.interval = Number(params) || this.config.interval;
                 },
             },
         });
     }
 
-    run() {
+    run(): ExecuteReturn {
         if (!this.config.key) throw new Error(`proxy key is required, see 'help'`);
 
         let data: Buffer;
@@ -113,12 +121,13 @@ export default class ProxyModule extends BaseModule {
             this.log.error(`proxy is not enabled: try 'set enabled 1'`);
             return;
         }
-        if (this.config.url) {
-            // this.log.error(`proxy is missing the url: see 'help'`);
+
+        if (!this.config.url) {
+            this.log.error(`proxy config is missing the url: see 'help'`);
             return;
         }
-        if (this.config.key) {
-            // this.log.error(`proxy is missing a key: see 'help'`);
+        if (!this.config.key) {
+            this.log.error(`proxy config is missing a key: see 'help'`);
             return;
         }
 
@@ -157,7 +166,7 @@ export default class ProxyModule extends BaseModule {
                 question: [
                     {
                         type: "PROXY",
-                        name: `${q}.${this.c2Domain}`,
+                        name: `${q}.${this.redChannel.modules.c2.config.domain}`,
                     },
                 ],
                 answer: [],
@@ -179,12 +188,18 @@ export default class ProxyModule extends BaseModule {
         return { message: message };
     }
 
-    /**
-     * Proxy loop
-     */
     proxyFetchLoop() {
         if (this.fetchTimer) clearTimeout(this.fetchTimer);
         if (!this.config.enabled) return;
+
+        if (!this.config.url) {
+            this.log.error(`proxy config is missing the url: see 'help'`);
+            return;
+        }
+        if (!this.config.key) {
+            this.log.error(`proxy config is missing a key: see 'help'`);
+            return;
+        }
 
         this.getFromProxy()?.finally(() => {
             this.fetchTimer = setTimeout(() => {

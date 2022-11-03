@@ -5,7 +5,7 @@ import RedChannel, { AgentCommand, AgentModel } from "./redchannel";
 import { emsg } from "../utils/utils";
 import { CliTableWithPush } from "../utils/defs";
 import Logger from "./logger";
-import BaseModule, { Command, ExecuteCallbackFunction, ExecuteCallbackResult, RunReturn } from "../modules/base";
+import BaseModule, { Command, ExecuteCallbackFunction, ExecuteCallbackResult, ExecuteReturn } from "../modules/base";
 
 class UserInterface extends Logger {
     redchannel: RedChannel;
@@ -20,7 +20,7 @@ class UserInterface extends Logger {
         super();
 
         this.redchannel = redchannel;
-        this.usingModule = null;
+        this.usingModule = "c2";
         this.interact = null;
 
         this.console = readline.createInterface({
@@ -180,8 +180,8 @@ class UserInterface extends Logger {
                 }
                 break;
             case "debug":
-                this.redchannel.config.debug = !this.redchannel.config.debug;
-                this.warn("debug " + (this.redchannel.config.debug ? "enabled" : "disabled"));
+                this.redchannel.modules.c2.config.debug = !this.redchannel.modules.c2.config.debug;
+                this.warn("debug " + (this.redchannel.modules.c2.config.debug ? "enabled" : "disabled"));
                 break;
             case "interact":
                 const interactAgentId = inputParams.shift();
@@ -223,7 +223,7 @@ class UserInterface extends Logger {
                 this.showHelp(usingModule);
                 break;
             case "back":
-                this.usingModule = "";
+                this.usingModule = "c2";
                 this.resetPrompt();
                 break;
             case "set":
@@ -252,14 +252,13 @@ class UserInterface extends Logger {
                     };
                 }
                 if (setCommand.execute) setCommand.execute.bind(usingModule)(settingValue, callback.bind(this));
-
                 this.info("set " + settingName + " = '" + usingModule.config[settingName] + "'");
                 break;
             default:
                 // is the module a command?
                 const executeCommand = usingModule.commands.get(command);
                 if (executeCommand?.execute) {
-                    let commandResult: RunReturn;
+                    let commandResult: ExecuteReturn;
 
                     let callback: ExecuteCallbackFunction = () => {};
                     if (executeCommand.executeCallbackAvailable) {
@@ -289,8 +288,8 @@ class UserInterface extends Logger {
 
         switch (command) {
             case "debug":
-                this.redchannel.config.debug = !this.redchannel.config.debug;
-                this.warn(`debug ${this.redchannel.config.debug ? "enabled" : "disabled"}`);
+                this.redchannel.modules.c2.config.debug = !this.redchannel.modules.c2.config.debug;
+                this.warn(`debug ${this.redchannel.modules.c2.config.debug ? "enabled" : "disabled"}`);
                 break;
             case "back":
                 this.interact = null;
@@ -385,9 +384,9 @@ class UserInterface extends Logger {
                 }
 
                 const agentSettings = {
-                    // domain: this.redchannel.config.c2.domain, // cannot set these dynamically
-                    // password: this.redchannel.config.c2.password, // cannot set these dynamically
-                    interval: this.redchannel.config.c2.interval,
+                    // domain: this.redchannel.modules.c2.config.c2.domain, // cannot set these dynamically
+                    // password: this.redchannel.modules.c2.config.c2.password, // cannot set these dynamically
+                    interval: this.redchannel.modules.c2.config.interval,
                     proxy_enabled: this.redchannel.modules.proxy.config.enabled,
                     proxy_url: this.redchannel.modules.proxy.config.url,
                     proxy_key: this.redchannel.modules.proxy.config.key,
@@ -475,7 +474,7 @@ class UserInterface extends Logger {
         this.msg(msg, "info");
     }
     debug(msg) {
-        if (this.redchannel.config.debug) this.msg(msg, "debug");
+        if (this.redchannel.modules.c2.config.debug) this.msg(msg, "debug");
     }
     success(msg) {
         this.msg(msg, "success");

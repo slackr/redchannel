@@ -2,13 +2,37 @@ import BaseModule from "./base";
 
 const MODULE_DESCRIPTION = "handles redchannel c2 management";
 
+export type C2Config = {
+    domain: string;
+    dns_ip: string;
+    dns_port: number;
+    web_ip: string;
+    web_port: number;
+    interval: number;
+    plaintext_password: string;
+    binary_route: string;
+    web_url: string;
+};
+
 export default class C2Module extends BaseModule {
-    constructor(protected configFile) {
+    constructor(domain: string, debug: boolean, protected configFile) {
         super("c2", configFile);
 
         this.description = MODULE_DESCRIPTION;
 
-        this.config = this.loadConfig();
+        this.config = {
+            domain: domain ?? "",
+            dns_ip: "127.0.0.1",
+            dns_port: 53,
+            web_ip: "127.0.0.1",
+            web_port: 4321,
+            interval: 5000,
+            plaintext_password: "",
+            binary_route: "/agent",
+            debug: debug,
+            web_url: "",
+        };
+        this.config = this.loadConfig() as C2Config;
 
         this.defineCommands({});
     }
