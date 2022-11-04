@@ -13,6 +13,7 @@ export interface ExecuteCallbackResult {
     message: string;
     code?: number | null;
 }
+
 export type ExecuteCallbackFunction = (result: ExecuteCallbackResult) => void;
 
 export type CommandName = string;

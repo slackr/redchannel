@@ -1,4 +1,3 @@
-import axios from "axios";
 import * as crypto from "crypto";
 import * as path from "path";
 import ECKey from "ec-key";
@@ -25,29 +24,6 @@ export enum AgentCommand {
     AGENT_SET_CONFIG = 0x08,
     AGENT_IGNORE = 0xff,
 }
-
-export type SkimmerConfig = {
-    payload_route: string;
-    data_route: string;
-    url: string;
-    target_classes: string[];
-    target_ids: string[];
-};
-export type ProxyConfig = {
-    enabled: boolean;
-    url: string;
-    key: string;
-    interval: number;
-};
-
-export type ImplantConfig = {
-    os: string;
-    arch: string;
-    resolver: string;
-    interval: number;
-    output_file: string;
-    debug: boolean;
-};
 
 // to clarify the Map()s
 export type DataId = string;
@@ -134,7 +110,17 @@ export default class RedChannel {
             agent: new AgentModule(this.configFile),
             skimmer: new SkimmerModule(this.configFile),
             static_dns: new StaticDnsModule(this.configFile),
-            proxy: new ProxyModule(this.configFile, this, this.c2MessageHandler.bind(this)),
+            proxy: new ProxyModule(
+                this.configFile,
+                this,
+                this.c2MessageHandler.bind(this),
+                (result) => {
+                    this.log.debug(result.message);
+                },
+                (error) => {
+                    this.log.error(error.message);
+                }
+            ),
             implant: new ImplantModule(this.configFile, this),
         };
 
@@ -340,7 +326,7 @@ export default class RedChannel {
         if (records.length > 0) {
             agent.sendq?.push(records);
             if (this.modules.proxy.config.enabled && agent.channel == AgentChannel.PROXY) {
-                this.sendToProxy(agent.id, records);
+                this.modules.proxy.sendToProxy(agent.id, records);
 
                 // cleanup sendq if proxying to agent
                 agent.sendq = [];
@@ -348,75 +334,6 @@ export default class RedChannel {
         }
         //console.log("* queued up " + total_records + " records in " + total_commands + " command(s) for agent: " + agent_id);
         //console.log("`- records: " + JSON.stringify(records));
-    }
-
-    async sendToProxy(agentId: string, records: string[]) {
-        const recordsString = `${records.join(";")};`;
-
-        // console.log("* sending data to proxy: " + str_data);
-        const data = {
-            d: recordsString,
-            k: this.modules.proxy.config.key,
-            i: agentId,
-            p: "c",
-        };
-
-        try {
-            const res = await axios.post(this.modules.proxy.config.url, data);
-            this.log.debug(`proxy send response: ${res.data}`);
-        } catch (ex) {
-            this.log.error(`failed to send data to proxy: ${emsg(ex)}`);
-        }
-        return;
-    }
-
-    async getFromProxy() {
-        if (!this.modules.proxy.config.enabled) return;
-        if (this.modules.proxy.config?.url || this.modules.proxy.config?.key) return;
-
-        const data = {
-            url: this.modules.proxy.config.url,
-            form: {
-                k: this.modules.proxy.config.key,
-                f: "a",
-            },
-        };
-
-        return axios
-            .post(this.modules.proxy.config.url, data)
-            .then((result) => this.processProxyData(result.data))
-            .catch((ex) => {
-                this.log.error(`proxy fetch failed: ${emsg(ex)}`);
-            });
-    }
-
-    processProxyData(proxyData: string) {
-        // we expect the proxy to respond with ERR 1, or similar
-        // this.this.log.debug(`proxy response:\n${proxyData}`);
-        if (proxyData.length <= 5) throw new Error(`unexpected response (too small)`);
-        if (!Constants.VALID_PROXY_DATA.test(proxyData)) throw new Error(`invalid incoming proxy data`);
-
-        // grab proxy response and build mock dns queries
-        let data = proxyData.replace(/;$/, "").split(";");
-        data.forEach((q) => {
-            let req = {
-                connection: {
-                    remoteAddress: this.modules.proxy.config.url,
-                    type: "PROXY",
-                },
-            };
-            let res = {
-                question: [
-                    {
-                        type: "PROXY",
-                        name: `${q}.${this.modules.c2.config.domain}`,
-                    },
-                ],
-                answer: [],
-                end: () => {},
-            };
-            this.c2MessageHandler(req, res);
-        });
     }
 
     padZero(proxyData, max_len) {

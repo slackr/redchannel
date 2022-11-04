@@ -23,7 +23,7 @@ export const Constants = {
     VALID_ROUTE_REGEX: /^\/[a-zA-Z0-9_\-\.]*$/,
     VALID_IMPLANT_RESOLVER:
         /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$/i,
-    VALID_PROXY_DATA: /^[\:\;a-f0-9\.]+$/,
+    VALID_PROXY_DATA: /^([\:\;a-f0-9\.]+|ERR .+|OK .+)$/,
     VALID_IP_REGEX: /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/,
     VALID_HOST_REGEX: /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/,
     VALID_BUILD_TARGET_OS: /^(windows|linux|darwin|android|netbsd|openbsd|freebsd|dragonfly|solaris)$/i,
