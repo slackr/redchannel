@@ -23,7 +23,7 @@
         "build": "npm run clean && npx tsc",
         "build:watch": "npm run clean && npx tsc --watch",
         "clean": "npx tsc --build --clean",
-        "start": "npm run build && node dist/app.js",
+        "start": "npm run build && node dist/app.js --",
         "debug": "node dist/app.js -- --debug",
         "dev": "concurrently -P --kill-others \"npm run build:watch\" \"npm run debug\"",
         "test": "jest"

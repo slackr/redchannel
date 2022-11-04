@@ -10,7 +10,7 @@ import RedChannel from "../lib/redchannel";
 
 const MODULE_DESCRIPTION = "build implants for operations";
 
-const AGENT_PATH = "./agent";
+const AGENT_PATH = `${process.cwd()}/agent`;
 const AGENT_CONFIG_PATH = `${AGENT_PATH}/config/config.go`;
 const AGENT_BUILD_SCRIPT = `${AGENT_PATH}/tools/build.py`;
 const AGENT_BUILD_LOG_PATH = `${AGENT_PATH}/build/build.log`;
@@ -119,7 +119,7 @@ export default class ImplantModule extends BaseModule {
             throw new Error(`error generating build config: ${emsg(ex)}`);
         }
 
-        const buildPath = `agent`;
+        const buildPath = AGENT_PATH;
         const outputFile = `${buildPath}/build/agent${targetOs === "windows" ? ".exe" : ""}`;
 
         // prettier-ignore
