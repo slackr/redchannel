@@ -236,11 +236,14 @@ export default class RedChannel {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
 
-        let dataPayload = this.encryptPayload(data, agent.secret);
-        if (dataPayload.length == 0) dataPayload = crypto.randomBytes(2).toString("hex");
+        let dataPayload: string = "";
+
+        // keyx payload is just our key, unencrypted
+        if (command === AgentCommand.AGENT_KEYX) dataPayload = data;
+        else dataPayload = this.encryptPayload(data, agent.secret);
 
         const dataBlocks = dataPayload.match(/[a-f0-9]{1,4}/g);
-        if (!dataBlocks) return;
+        if (!dataBlocks) throw new Error(`invalid encrypted payload`);
 
         // prettier-ignore
         const totalRecords =

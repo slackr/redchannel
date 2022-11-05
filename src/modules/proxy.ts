@@ -104,7 +104,7 @@ export default class ProxyModule extends BaseModule {
             },
             "set enabled": {
                 arguments: ["<1|0>"],
-                description: "enable or disable proxy communication channel",
+                description: "enable or disable proxy communication channel, remember to 'start' after enabling",
                 execute: (params: string) => {
                     this.config.enabled = params != "0" && params != "false" ? true : false;
                 },

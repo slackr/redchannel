@@ -201,7 +201,7 @@ export default class ImplantModule extends BaseModule {
         }
 
         configData = configData.replace(/^\s*c\.C2Domain\s*=\s*\".*\".*$/im, `c.C2Domain = "${this.redChannel.modules.c2.config.domain}"`);
-        configData = configData.replace(/^\s*c\.C2Password\s*=\s*\".*\".*$/im, `c.C2Password = "${this.redChannel.modules.c2.config.plaintext_password}"`);
+        configData = configData.replace(/^\s*c\.C2Password\s*=\s*\".*\".*$/im, `c.C2Password = "${this.redChannel.plaintextPassword}"`);
         configData = configData.replace(/^\s*c\.Resolver\s*=\s*\".*\".*$/im, `c.Resolver = "${this.config.resolver}"`);
         configData = configData.replace(/^\s*c\.C2Interval\s*=.*$/im, `c.C2Interval = ${this.config.interval}`);
         configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.redChannel.modules.proxy.config.enabled}`);

@@ -1,4 +1,4 @@
-import ECKey, * as ecKey from "ec-key";
+import ECKey, * as ellipticCurveKey from "ec-key";
 import * as crypto from "crypto";
 import { emsg } from "../utils/utils";
 import { ECKeyWithPublicPoint } from "../utils/defs";
@@ -26,7 +26,7 @@ class Crypto {
 
     generateKeys() {
         try {
-            this.privateKey = ecKey.createECKey(this.CURVE) as ECKeyWithPublicPoint;
+            this.privateKey = ellipticCurveKey.createECKey(this.CURVE) as ECKeyWithPublicPoint;
             this.publicKey = this.privateKey.asPublicECKey(); //.toString('pem')
         } catch (ex) {
             throw new Error(`failed to generate keys: ${emsg(ex)}`);
@@ -86,7 +86,7 @@ class Crypto {
         let importedPublicKey: ECKey;
 
         try {
-            importedPublicKey = new ecKey({
+            importedPublicKey = new ECKey({
                 curve: this.CURVE,
                 publicKey: uncompressedPublicKey,
             });
