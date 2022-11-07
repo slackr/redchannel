@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package redchannel;
+
+option go_package = './proto';
+
+message Control {
+  enum AgentCommands {
+    AGENT_UNSPECIFIED = 0;
+    AGENT_CHECKIN = 1;
+    AGENT_SYSINFO = 2;
+    AGENT_EXECUTE = 3;
+    AGENT_EXECUTE_SHELLCODE = 4;
+    AGENT_MESSAGE = 5;
+    AGENT_SHUTDOWN = 6;
+    AGENT_KEYX = 7;
+    AGENT_SET_CONFIG = 8;
+    AGENT_IGNORE = 9;
+  }
+  message AgentConfig {
+    string c2_domain = 1;
+    string c2_password = 2;
+    string resolver = 3;
+    uint32 c2_interval_ms = 4;
+    bool use_web_channel = 5;
+    string web_url = 6;
+    string web_key = 7;
+  }
+  enum AgentCommandStatus {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_SUCCESS = 1;
+    STATUS_ERROR = 2;
+  }
+}
+// c2 and agent communicate via Command messages
+// Request message comes from the c2 and instructs the agent what to do
+// (command) with the input, along with any additional data, such as config in
+// the event of a SET_CONFIG command
+message Command {
+  message Request {
+    Control.AgentCommands command = 1;
+    string input = 2;
+    Control.AgentConfig config = 3;
+  }
+  message Response {
+    Control.AgentCommands command = 1;
+    string output = 2;
+    Control.AgentCommandStatus status = 4;
+  }
+}
