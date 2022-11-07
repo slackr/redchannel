@@ -39,12 +39,12 @@ message AgentConfig {
 message Command {
   message Request {
     AgentCommand command = 1;
-    string input = 2;
+    bytes input = 2;
     AgentConfig config = 3;
   }
   message Response {
     AgentCommand command = 1;
-    string output = 2;
+    bytes output = 2;
     AgentCommandStatus status = 4;
   }
 }

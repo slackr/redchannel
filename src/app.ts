@@ -1,14 +1,14 @@
 import chalk from "chalk";
 import * as dnsd from "dnsd";
 import * as fs from "fs";
-import { Command } from "commander";
+import { Command as Commander } from "commander";
 
 import RedChannel from "./lib/redchannel";
 import UserInterface from "./lib/ui";
 import Logger from "./lib/logger";
 import { Config, Constants, Banner, emsg } from "./utils/utils";
 
-const cli = new Command();
+const cli = new Commander();
 cli.version(Constants.VERSION, "-v, --version")
     .usage("[options]")
     .option("-c, --config <path/to/rc.conf>", "specify a redchannel config file", Config.DEFAULT_CONFIG_FILE)

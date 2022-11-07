@@ -1,11 +1,13 @@
 import chalk from "chalk";
 import cliTable from "cli-table";
 import * as readline from "readline";
-import RedChannel, { AgentCommand, AgentModel } from "./redchannel";
+import RedChannel, { AgentModel } from "./redchannel";
 import { emsg } from "../utils/utils";
 import { CliTableWithPush } from "../utils/defs";
 import Logger from "./logger";
 import BaseModule, { Command, ExecuteCallbackFunction, ExecuteCallbackResult, ExecuteReturn } from "../modules/base";
+
+import { implant } from "../pb/implant";
 
 class UserInterface extends Logger {
     redchannel: RedChannel;
@@ -453,7 +455,7 @@ class UserInterface extends Logger {
                 this.warn("sending message to " + chalk.blue(this.interact.id) + "");
 
                 try {
-                    this.redchannel.queueData(this.interact.id, AgentCommand.AGENT_MSG, message);
+                    this.redchannel.queueData(this.interact.id, implant.AgentCommand.AGENT_MESSAGE, message);
                 } catch (ex) {
                     this.error(emsg(ex));
                 }

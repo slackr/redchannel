@@ -9,18 +9,18 @@ var $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.ut
 // Exported root namespace
 var $root = $protobuf.roots["default"] || ($protobuf.roots["default"] = {});
 
-$root.redchannel = (function() {
+$root.implant = (function() {
 
     /**
-     * Namespace redchannel.
-     * @exports redchannel
+     * Namespace implant.
+     * @exports implant
      * @namespace
      */
-    var redchannel = {};
+    var implant = {};
 
     /**
      * AgentCommand enum.
-     * @name redchannel.AgentCommand
+     * @name implant.AgentCommand
      * @enum {number}
      * @property {number} AGENT_UNSPECIFIED=0 AGENT_UNSPECIFIED value
      * @property {number} AGENT_CHECKIN=1 AGENT_CHECKIN value
@@ -33,7 +33,7 @@ $root.redchannel = (function() {
      * @property {number} AGENT_SET_CONFIG=8 AGENT_SET_CONFIG value
      * @property {number} AGENT_IGNORE=9 AGENT_IGNORE value
      */
-    redchannel.AgentCommand = (function() {
+    implant.AgentCommand = (function() {
         var valuesById = {}, values = Object.create(valuesById);
         values[valuesById[0] = "AGENT_UNSPECIFIED"] = 0;
         values[valuesById[1] = "AGENT_CHECKIN"] = 1;
@@ -50,13 +50,13 @@ $root.redchannel = (function() {
 
     /**
      * AgentCommandStatus enum.
-     * @name redchannel.AgentCommandStatus
+     * @name implant.AgentCommandStatus
      * @enum {number}
      * @property {number} STATUS_UNSPECIFIED=0 STATUS_UNSPECIFIED value
      * @property {number} STATUS_SUCCESS=1 STATUS_SUCCESS value
      * @property {number} STATUS_ERROR=2 STATUS_ERROR value
      */
-    redchannel.AgentCommandStatus = (function() {
+    implant.AgentCommandStatus = (function() {
         var valuesById = {}, values = Object.create(valuesById);
         values[valuesById[0] = "STATUS_UNSPECIFIED"] = 0;
         values[valuesById[1] = "STATUS_SUCCESS"] = 1;
@@ -64,11 +64,11 @@ $root.redchannel = (function() {
         return values;
     })();
 
-    redchannel.AgentConfig = (function() {
+    implant.AgentConfig = (function() {
 
         /**
          * Properties of an AgentConfig.
-         * @memberof redchannel
+         * @memberof implant
          * @interface IAgentConfig
          * @property {string|null} [c2Domain] AgentConfig c2Domain
          * @property {string|null} [c2Password] AgentConfig c2Password
@@ -81,11 +81,11 @@ $root.redchannel = (function() {
 
         /**
          * Constructs a new AgentConfig.
-         * @memberof redchannel
+         * @memberof implant
          * @classdesc Represents an AgentConfig.
          * @implements IAgentConfig
          * @constructor
-         * @param {redchannel.IAgentConfig=} [properties] Properties to set
+         * @param {implant.IAgentConfig=} [properties] Properties to set
          */
         function AgentConfig(properties) {
             if (properties)
@@ -97,7 +97,7 @@ $root.redchannel = (function() {
         /**
          * AgentConfig c2Domain.
          * @member {string} c2Domain
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @instance
          */
         AgentConfig.prototype.c2Domain = "";
@@ -105,7 +105,7 @@ $root.redchannel = (function() {
         /**
          * AgentConfig c2Password.
          * @member {string} c2Password
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @instance
          */
         AgentConfig.prototype.c2Password = "";
@@ -113,7 +113,7 @@ $root.redchannel = (function() {
         /**
          * AgentConfig resolver.
          * @member {string} resolver
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @instance
          */
         AgentConfig.prototype.resolver = "";
@@ -121,7 +121,7 @@ $root.redchannel = (function() {
         /**
          * AgentConfig c2IntervalMs.
          * @member {number} c2IntervalMs
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @instance
          */
         AgentConfig.prototype.c2IntervalMs = 0;
@@ -129,7 +129,7 @@ $root.redchannel = (function() {
         /**
          * AgentConfig useWebChannel.
          * @member {boolean} useWebChannel
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @instance
          */
         AgentConfig.prototype.useWebChannel = false;
@@ -137,7 +137,7 @@ $root.redchannel = (function() {
         /**
          * AgentConfig webUrl.
          * @member {string} webUrl
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @instance
          */
         AgentConfig.prototype.webUrl = "";
@@ -145,7 +145,7 @@ $root.redchannel = (function() {
         /**
          * AgentConfig webKey.
          * @member {string} webKey
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @instance
          */
         AgentConfig.prototype.webKey = "";
@@ -153,21 +153,21 @@ $root.redchannel = (function() {
         /**
          * Creates a new AgentConfig instance using the specified properties.
          * @function create
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @static
-         * @param {redchannel.IAgentConfig=} [properties] Properties to set
-         * @returns {redchannel.AgentConfig} AgentConfig instance
+         * @param {implant.IAgentConfig=} [properties] Properties to set
+         * @returns {implant.AgentConfig} AgentConfig instance
          */
         AgentConfig.create = function create(properties) {
             return new AgentConfig(properties);
         };
 
         /**
-         * Encodes the specified AgentConfig message. Does not implicitly {@link redchannel.AgentConfig.verify|verify} messages.
+         * Encodes the specified AgentConfig message. Does not implicitly {@link implant.AgentConfig.verify|verify} messages.
          * @function encode
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @static
-         * @param {redchannel.IAgentConfig} message AgentConfig message or plain object to encode
+         * @param {implant.IAgentConfig} message AgentConfig message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
@@ -192,11 +192,11 @@ $root.redchannel = (function() {
         };
 
         /**
-         * Encodes the specified AgentConfig message, length delimited. Does not implicitly {@link redchannel.AgentConfig.verify|verify} messages.
+         * Encodes the specified AgentConfig message, length delimited. Does not implicitly {@link implant.AgentConfig.verify|verify} messages.
          * @function encodeDelimited
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @static
-         * @param {redchannel.IAgentConfig} message AgentConfig message or plain object to encode
+         * @param {implant.IAgentConfig} message AgentConfig message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
@@ -207,18 +207,18 @@ $root.redchannel = (function() {
         /**
          * Decodes an AgentConfig message from the specified reader or buffer.
          * @function decode
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
          * @param {number} [length] Message length if known beforehand
-         * @returns {redchannel.AgentConfig} AgentConfig
+         * @returns {implant.AgentConfig} AgentConfig
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
         AgentConfig.decode = function decode(reader, length) {
             if (!(reader instanceof $Reader))
                 reader = $Reader.create(reader);
-            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.redchannel.AgentConfig();
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.implant.AgentConfig();
             while (reader.pos < end) {
                 var tag = reader.uint32();
                 switch (tag >>> 3) {
@@ -261,10 +261,10 @@ $root.redchannel = (function() {
         /**
          * Decodes an AgentConfig message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {redchannel.AgentConfig} AgentConfig
+         * @returns {implant.AgentConfig} AgentConfig
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
@@ -277,7 +277,7 @@ $root.redchannel = (function() {
         /**
          * Verifies an AgentConfig message.
          * @function verify
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @static
          * @param {Object.<string,*>} message Plain object to verify
          * @returns {string|null} `null` if valid, otherwise the reason why it is not
@@ -312,15 +312,15 @@ $root.redchannel = (function() {
         /**
          * Creates an AgentConfig message from a plain object. Also converts values to their respective internal types.
          * @function fromObject
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @static
          * @param {Object.<string,*>} object Plain object
-         * @returns {redchannel.AgentConfig} AgentConfig
+         * @returns {implant.AgentConfig} AgentConfig
          */
         AgentConfig.fromObject = function fromObject(object) {
-            if (object instanceof $root.redchannel.AgentConfig)
+            if (object instanceof $root.implant.AgentConfig)
                 return object;
-            var message = new $root.redchannel.AgentConfig();
+            var message = new $root.implant.AgentConfig();
             if (object.c2Domain != null)
                 message.c2Domain = String(object.c2Domain);
             if (object.c2Password != null)
@@ -341,9 +341,9 @@ $root.redchannel = (function() {
         /**
          * Creates a plain object from an AgentConfig message. Also converts values to other types if specified.
          * @function toObject
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @static
-         * @param {redchannel.AgentConfig} message AgentConfig
+         * @param {implant.AgentConfig} message AgentConfig
          * @param {$protobuf.IConversionOptions} [options] Conversion options
          * @returns {Object.<string,*>} Plain object
          */
@@ -380,7 +380,7 @@ $root.redchannel = (function() {
         /**
          * Converts this AgentConfig to JSON.
          * @function toJSON
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @instance
          * @returns {Object.<string,*>} JSON object
          */
@@ -391,7 +391,7 @@ $root.redchannel = (function() {
         /**
          * Gets the default type url for AgentConfig
          * @function getTypeUrl
-         * @memberof redchannel.AgentConfig
+         * @memberof implant.AgentConfig
          * @static
          * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
          * @returns {string} The default type url
@@ -400,27 +400,27 @@ $root.redchannel = (function() {
             if (typeUrlPrefix === undefined) {
                 typeUrlPrefix = "type.googleapis.com";
             }
-            return typeUrlPrefix + "/redchannel.AgentConfig";
+            return typeUrlPrefix + "/implant.AgentConfig";
         };
 
         return AgentConfig;
     })();
 
-    redchannel.Command = (function() {
+    implant.Command = (function() {
 
         /**
          * Properties of a Command.
-         * @memberof redchannel
+         * @memberof implant
          * @interface ICommand
          */
 
         /**
          * Constructs a new Command.
-         * @memberof redchannel
+         * @memberof implant
          * @classdesc Represents a Command.
          * @implements ICommand
          * @constructor
-         * @param {redchannel.ICommand=} [properties] Properties to set
+         * @param {implant.ICommand=} [properties] Properties to set
          */
         function Command(properties) {
             if (properties)
@@ -432,21 +432,21 @@ $root.redchannel = (function() {
         /**
          * Creates a new Command instance using the specified properties.
          * @function create
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @static
-         * @param {redchannel.ICommand=} [properties] Properties to set
-         * @returns {redchannel.Command} Command instance
+         * @param {implant.ICommand=} [properties] Properties to set
+         * @returns {implant.Command} Command instance
          */
         Command.create = function create(properties) {
             return new Command(properties);
         };
 
         /**
-         * Encodes the specified Command message. Does not implicitly {@link redchannel.Command.verify|verify} messages.
+         * Encodes the specified Command message. Does not implicitly {@link implant.Command.verify|verify} messages.
          * @function encode
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @static
-         * @param {redchannel.ICommand} message Command message or plain object to encode
+         * @param {implant.ICommand} message Command message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
@@ -457,11 +457,11 @@ $root.redchannel = (function() {
         };
 
         /**
-         * Encodes the specified Command message, length delimited. Does not implicitly {@link redchannel.Command.verify|verify} messages.
+         * Encodes the specified Command message, length delimited. Does not implicitly {@link implant.Command.verify|verify} messages.
          * @function encodeDelimited
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @static
-         * @param {redchannel.ICommand} message Command message or plain object to encode
+         * @param {implant.ICommand} message Command message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
@@ -472,18 +472,18 @@ $root.redchannel = (function() {
         /**
          * Decodes a Command message from the specified reader or buffer.
          * @function decode
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
          * @param {number} [length] Message length if known beforehand
-         * @returns {redchannel.Command} Command
+         * @returns {implant.Command} Command
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
         Command.decode = function decode(reader, length) {
             if (!(reader instanceof $Reader))
                 reader = $Reader.create(reader);
-            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.redchannel.Command();
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.implant.Command();
             while (reader.pos < end) {
                 var tag = reader.uint32();
                 switch (tag >>> 3) {
@@ -498,10 +498,10 @@ $root.redchannel = (function() {
         /**
          * Decodes a Command message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {redchannel.Command} Command
+         * @returns {implant.Command} Command
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
@@ -514,7 +514,7 @@ $root.redchannel = (function() {
         /**
          * Verifies a Command message.
          * @function verify
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @static
          * @param {Object.<string,*>} message Plain object to verify
          * @returns {string|null} `null` if valid, otherwise the reason why it is not
@@ -528,23 +528,23 @@ $root.redchannel = (function() {
         /**
          * Creates a Command message from a plain object. Also converts values to their respective internal types.
          * @function fromObject
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @static
          * @param {Object.<string,*>} object Plain object
-         * @returns {redchannel.Command} Command
+         * @returns {implant.Command} Command
          */
         Command.fromObject = function fromObject(object) {
-            if (object instanceof $root.redchannel.Command)
+            if (object instanceof $root.implant.Command)
                 return object;
-            return new $root.redchannel.Command();
+            return new $root.implant.Command();
         };
 
         /**
          * Creates a plain object from a Command message. Also converts values to other types if specified.
          * @function toObject
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @static
-         * @param {redchannel.Command} message Command
+         * @param {implant.Command} message Command
          * @param {$protobuf.IConversionOptions} [options] Conversion options
          * @returns {Object.<string,*>} Plain object
          */
@@ -555,7 +555,7 @@ $root.redchannel = (function() {
         /**
          * Converts this Command to JSON.
          * @function toJSON
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @instance
          * @returns {Object.<string,*>} JSON object
          */
@@ -566,7 +566,7 @@ $root.redchannel = (function() {
         /**
          * Gets the default type url for Command
          * @function getTypeUrl
-         * @memberof redchannel.Command
+         * @memberof implant.Command
          * @static
          * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
          * @returns {string} The default type url
@@ -575,27 +575,27 @@ $root.redchannel = (function() {
             if (typeUrlPrefix === undefined) {
                 typeUrlPrefix = "type.googleapis.com";
             }
-            return typeUrlPrefix + "/redchannel.Command";
+            return typeUrlPrefix + "/implant.Command";
         };
 
         Command.Request = (function() {
 
             /**
              * Properties of a Request.
-             * @memberof redchannel.Command
+             * @memberof implant.Command
              * @interface IRequest
-             * @property {redchannel.AgentCommand|null} [command] Request command
-             * @property {string|null} [input] Request input
-             * @property {redchannel.IAgentConfig|null} [config] Request config
+             * @property {implant.AgentCommand|null} [command] Request command
+             * @property {Uint8Array|null} [input] Request input
+             * @property {implant.IAgentConfig|null} [config] Request config
              */
 
             /**
              * Constructs a new Request.
-             * @memberof redchannel.Command
+             * @memberof implant.Command
              * @classdesc Represents a Request.
              * @implements IRequest
              * @constructor
-             * @param {redchannel.Command.IRequest=} [properties] Properties to set
+             * @param {implant.Command.IRequest=} [properties] Properties to set
              */
             function Request(properties) {
                 if (properties)
@@ -606,24 +606,24 @@ $root.redchannel = (function() {
 
             /**
              * Request command.
-             * @member {redchannel.AgentCommand} command
-             * @memberof redchannel.Command.Request
+             * @member {implant.AgentCommand} command
+             * @memberof implant.Command.Request
              * @instance
              */
             Request.prototype.command = 0;
 
             /**
              * Request input.
-             * @member {string} input
-             * @memberof redchannel.Command.Request
+             * @member {Uint8Array} input
+             * @memberof implant.Command.Request
              * @instance
              */
-            Request.prototype.input = "";
+            Request.prototype.input = $util.newBuffer([]);
 
             /**
              * Request config.
-             * @member {redchannel.IAgentConfig|null|undefined} config
-             * @memberof redchannel.Command.Request
+             * @member {implant.IAgentConfig|null|undefined} config
+             * @memberof implant.Command.Request
              * @instance
              */
             Request.prototype.config = null;
@@ -631,21 +631,21 @@ $root.redchannel = (function() {
             /**
              * Creates a new Request instance using the specified properties.
              * @function create
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @static
-             * @param {redchannel.Command.IRequest=} [properties] Properties to set
-             * @returns {redchannel.Command.Request} Request instance
+             * @param {implant.Command.IRequest=} [properties] Properties to set
+             * @returns {implant.Command.Request} Request instance
              */
             Request.create = function create(properties) {
                 return new Request(properties);
             };
 
             /**
-             * Encodes the specified Request message. Does not implicitly {@link redchannel.Command.Request.verify|verify} messages.
+             * Encodes the specified Request message. Does not implicitly {@link implant.Command.Request.verify|verify} messages.
              * @function encode
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @static
-             * @param {redchannel.Command.IRequest} message Request message or plain object to encode
+             * @param {implant.Command.IRequest} message Request message or plain object to encode
              * @param {$protobuf.Writer} [writer] Writer to encode to
              * @returns {$protobuf.Writer} Writer
              */
@@ -655,18 +655,18 @@ $root.redchannel = (function() {
                 if (message.command != null && Object.hasOwnProperty.call(message, "command"))
                     writer.uint32(/* id 1, wireType 0 =*/8).int32(message.command);
                 if (message.input != null && Object.hasOwnProperty.call(message, "input"))
-                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.input);
+                    writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.input);
                 if (message.config != null && Object.hasOwnProperty.call(message, "config"))
-                    $root.redchannel.AgentConfig.encode(message.config, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                    $root.implant.AgentConfig.encode(message.config, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
                 return writer;
             };
 
             /**
-             * Encodes the specified Request message, length delimited. Does not implicitly {@link redchannel.Command.Request.verify|verify} messages.
+             * Encodes the specified Request message, length delimited. Does not implicitly {@link implant.Command.Request.verify|verify} messages.
              * @function encodeDelimited
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @static
-             * @param {redchannel.Command.IRequest} message Request message or plain object to encode
+             * @param {implant.Command.IRequest} message Request message or plain object to encode
              * @param {$protobuf.Writer} [writer] Writer to encode to
              * @returns {$protobuf.Writer} Writer
              */
@@ -677,18 +677,18 @@ $root.redchannel = (function() {
             /**
              * Decodes a Request message from the specified reader or buffer.
              * @function decode
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @static
              * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
              * @param {number} [length] Message length if known beforehand
-             * @returns {redchannel.Command.Request} Request
+             * @returns {implant.Command.Request} Request
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
             Request.decode = function decode(reader, length) {
                 if (!(reader instanceof $Reader))
                     reader = $Reader.create(reader);
-                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.redchannel.Command.Request();
+                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.implant.Command.Request();
                 while (reader.pos < end) {
                     var tag = reader.uint32();
                     switch (tag >>> 3) {
@@ -697,11 +697,11 @@ $root.redchannel = (function() {
                             break;
                         }
                     case 2: {
-                            message.input = reader.string();
+                            message.input = reader.bytes();
                             break;
                         }
                     case 3: {
-                            message.config = $root.redchannel.AgentConfig.decode(reader, reader.uint32());
+                            message.config = $root.implant.AgentConfig.decode(reader, reader.uint32());
                             break;
                         }
                     default:
@@ -715,10 +715,10 @@ $root.redchannel = (function() {
             /**
              * Decodes a Request message from the specified reader or buffer, length delimited.
              * @function decodeDelimited
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @static
              * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @returns {redchannel.Command.Request} Request
+             * @returns {implant.Command.Request} Request
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
@@ -731,7 +731,7 @@ $root.redchannel = (function() {
             /**
              * Verifies a Request message.
              * @function verify
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @static
              * @param {Object.<string,*>} message Plain object to verify
              * @returns {string|null} `null` if valid, otherwise the reason why it is not
@@ -756,10 +756,10 @@ $root.redchannel = (function() {
                         break;
                     }
                 if (message.input != null && message.hasOwnProperty("input"))
-                    if (!$util.isString(message.input))
-                        return "input: string expected";
+                    if (!(message.input && typeof message.input.length === "number" || $util.isString(message.input)))
+                        return "input: buffer expected";
                 if (message.config != null && message.hasOwnProperty("config")) {
-                    var error = $root.redchannel.AgentConfig.verify(message.config);
+                    var error = $root.implant.AgentConfig.verify(message.config);
                     if (error)
                         return "config." + error;
                 }
@@ -769,15 +769,15 @@ $root.redchannel = (function() {
             /**
              * Creates a Request message from a plain object. Also converts values to their respective internal types.
              * @function fromObject
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @static
              * @param {Object.<string,*>} object Plain object
-             * @returns {redchannel.Command.Request} Request
+             * @returns {implant.Command.Request} Request
              */
             Request.fromObject = function fromObject(object) {
-                if (object instanceof $root.redchannel.Command.Request)
+                if (object instanceof $root.implant.Command.Request)
                     return object;
-                var message = new $root.redchannel.Command.Request();
+                var message = new $root.implant.Command.Request();
                 switch (object.command) {
                 default:
                     if (typeof object.command === "number") {
@@ -827,11 +827,14 @@ $root.redchannel = (function() {
                     break;
                 }
                 if (object.input != null)
-                    message.input = String(object.input);
+                    if (typeof object.input === "string")
+                        $util.base64.decode(object.input, message.input = $util.newBuffer($util.base64.length(object.input)), 0);
+                    else if (object.input.length >= 0)
+                        message.input = object.input;
                 if (object.config != null) {
                     if (typeof object.config !== "object")
-                        throw TypeError(".redchannel.Command.Request.config: object expected");
-                    message.config = $root.redchannel.AgentConfig.fromObject(object.config);
+                        throw TypeError(".implant.Command.Request.config: object expected");
+                    message.config = $root.implant.AgentConfig.fromObject(object.config);
                 }
                 return message;
             };
@@ -839,9 +842,9 @@ $root.redchannel = (function() {
             /**
              * Creates a plain object from a Request message. Also converts values to other types if specified.
              * @function toObject
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @static
-             * @param {redchannel.Command.Request} message Request
+             * @param {implant.Command.Request} message Request
              * @param {$protobuf.IConversionOptions} [options] Conversion options
              * @returns {Object.<string,*>} Plain object
              */
@@ -851,22 +854,28 @@ $root.redchannel = (function() {
                 var object = {};
                 if (options.defaults) {
                     object.command = options.enums === String ? "AGENT_UNSPECIFIED" : 0;
-                    object.input = "";
+                    if (options.bytes === String)
+                        object.input = "";
+                    else {
+                        object.input = [];
+                        if (options.bytes !== Array)
+                            object.input = $util.newBuffer(object.input);
+                    }
                     object.config = null;
                 }
                 if (message.command != null && message.hasOwnProperty("command"))
-                    object.command = options.enums === String ? $root.redchannel.AgentCommand[message.command] === undefined ? message.command : $root.redchannel.AgentCommand[message.command] : message.command;
+                    object.command = options.enums === String ? $root.implant.AgentCommand[message.command] === undefined ? message.command : $root.implant.AgentCommand[message.command] : message.command;
                 if (message.input != null && message.hasOwnProperty("input"))
-                    object.input = message.input;
+                    object.input = options.bytes === String ? $util.base64.encode(message.input, 0, message.input.length) : options.bytes === Array ? Array.prototype.slice.call(message.input) : message.input;
                 if (message.config != null && message.hasOwnProperty("config"))
-                    object.config = $root.redchannel.AgentConfig.toObject(message.config, options);
+                    object.config = $root.implant.AgentConfig.toObject(message.config, options);
                 return object;
             };
 
             /**
              * Converts this Request to JSON.
              * @function toJSON
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @instance
              * @returns {Object.<string,*>} JSON object
              */
@@ -877,7 +886,7 @@ $root.redchannel = (function() {
             /**
              * Gets the default type url for Request
              * @function getTypeUrl
-             * @memberof redchannel.Command.Request
+             * @memberof implant.Command.Request
              * @static
              * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
              * @returns {string} The default type url
@@ -886,7 +895,7 @@ $root.redchannel = (function() {
                 if (typeUrlPrefix === undefined) {
                     typeUrlPrefix = "type.googleapis.com";
                 }
-                return typeUrlPrefix + "/redchannel.Command.Request";
+                return typeUrlPrefix + "/implant.Command.Request";
             };
 
             return Request;
@@ -896,20 +905,20 @@ $root.redchannel = (function() {
 
             /**
              * Properties of a Response.
-             * @memberof redchannel.Command
+             * @memberof implant.Command
              * @interface IResponse
-             * @property {redchannel.AgentCommand|null} [command] Response command
-             * @property {string|null} [output] Response output
-             * @property {redchannel.AgentCommandStatus|null} [status] Response status
+             * @property {implant.AgentCommand|null} [command] Response command
+             * @property {Uint8Array|null} [output] Response output
+             * @property {implant.AgentCommandStatus|null} [status] Response status
              */
 
             /**
              * Constructs a new Response.
-             * @memberof redchannel.Command
+             * @memberof implant.Command
              * @classdesc Represents a Response.
              * @implements IResponse
              * @constructor
-             * @param {redchannel.Command.IResponse=} [properties] Properties to set
+             * @param {implant.Command.IResponse=} [properties] Properties to set
              */
             function Response(properties) {
                 if (properties)
@@ -920,24 +929,24 @@ $root.redchannel = (function() {
 
             /**
              * Response command.
-             * @member {redchannel.AgentCommand} command
-             * @memberof redchannel.Command.Response
+             * @member {implant.AgentCommand} command
+             * @memberof implant.Command.Response
              * @instance
              */
             Response.prototype.command = 0;
 
             /**
              * Response output.
-             * @member {string} output
-             * @memberof redchannel.Command.Response
+             * @member {Uint8Array} output
+             * @memberof implant.Command.Response
              * @instance
              */
-            Response.prototype.output = "";
+            Response.prototype.output = $util.newBuffer([]);
 
             /**
              * Response status.
-             * @member {redchannel.AgentCommandStatus} status
-             * @memberof redchannel.Command.Response
+             * @member {implant.AgentCommandStatus} status
+             * @memberof implant.Command.Response
              * @instance
              */
             Response.prototype.status = 0;
@@ -945,21 +954,21 @@ $root.redchannel = (function() {
             /**
              * Creates a new Response instance using the specified properties.
              * @function create
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @static
-             * @param {redchannel.Command.IResponse=} [properties] Properties to set
-             * @returns {redchannel.Command.Response} Response instance
+             * @param {implant.Command.IResponse=} [properties] Properties to set
+             * @returns {implant.Command.Response} Response instance
              */
             Response.create = function create(properties) {
                 return new Response(properties);
             };
 
             /**
-             * Encodes the specified Response message. Does not implicitly {@link redchannel.Command.Response.verify|verify} messages.
+             * Encodes the specified Response message. Does not implicitly {@link implant.Command.Response.verify|verify} messages.
              * @function encode
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @static
-             * @param {redchannel.Command.IResponse} message Response message or plain object to encode
+             * @param {implant.Command.IResponse} message Response message or plain object to encode
              * @param {$protobuf.Writer} [writer] Writer to encode to
              * @returns {$protobuf.Writer} Writer
              */
@@ -969,18 +978,18 @@ $root.redchannel = (function() {
                 if (message.command != null && Object.hasOwnProperty.call(message, "command"))
                     writer.uint32(/* id 1, wireType 0 =*/8).int32(message.command);
                 if (message.output != null && Object.hasOwnProperty.call(message, "output"))
-                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.output);
+                    writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.output);
                 if (message.status != null && Object.hasOwnProperty.call(message, "status"))
                     writer.uint32(/* id 4, wireType 0 =*/32).int32(message.status);
                 return writer;
             };
 
             /**
-             * Encodes the specified Response message, length delimited. Does not implicitly {@link redchannel.Command.Response.verify|verify} messages.
+             * Encodes the specified Response message, length delimited. Does not implicitly {@link implant.Command.Response.verify|verify} messages.
              * @function encodeDelimited
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @static
-             * @param {redchannel.Command.IResponse} message Response message or plain object to encode
+             * @param {implant.Command.IResponse} message Response message or plain object to encode
              * @param {$protobuf.Writer} [writer] Writer to encode to
              * @returns {$protobuf.Writer} Writer
              */
@@ -991,18 +1000,18 @@ $root.redchannel = (function() {
             /**
              * Decodes a Response message from the specified reader or buffer.
              * @function decode
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @static
              * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
              * @param {number} [length] Message length if known beforehand
-             * @returns {redchannel.Command.Response} Response
+             * @returns {implant.Command.Response} Response
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
             Response.decode = function decode(reader, length) {
                 if (!(reader instanceof $Reader))
                     reader = $Reader.create(reader);
-                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.redchannel.Command.Response();
+                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.implant.Command.Response();
                 while (reader.pos < end) {
                     var tag = reader.uint32();
                     switch (tag >>> 3) {
@@ -1011,7 +1020,7 @@ $root.redchannel = (function() {
                             break;
                         }
                     case 2: {
-                            message.output = reader.string();
+                            message.output = reader.bytes();
                             break;
                         }
                     case 4: {
@@ -1029,10 +1038,10 @@ $root.redchannel = (function() {
             /**
              * Decodes a Response message from the specified reader or buffer, length delimited.
              * @function decodeDelimited
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @static
              * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @returns {redchannel.Command.Response} Response
+             * @returns {implant.Command.Response} Response
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
@@ -1045,7 +1054,7 @@ $root.redchannel = (function() {
             /**
              * Verifies a Response message.
              * @function verify
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @static
              * @param {Object.<string,*>} message Plain object to verify
              * @returns {string|null} `null` if valid, otherwise the reason why it is not
@@ -1070,8 +1079,8 @@ $root.redchannel = (function() {
                         break;
                     }
                 if (message.output != null && message.hasOwnProperty("output"))
-                    if (!$util.isString(message.output))
-                        return "output: string expected";
+                    if (!(message.output && typeof message.output.length === "number" || $util.isString(message.output)))
+                        return "output: buffer expected";
                 if (message.status != null && message.hasOwnProperty("status"))
                     switch (message.status) {
                     default:
@@ -1087,15 +1096,15 @@ $root.redchannel = (function() {
             /**
              * Creates a Response message from a plain object. Also converts values to their respective internal types.
              * @function fromObject
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @static
              * @param {Object.<string,*>} object Plain object
-             * @returns {redchannel.Command.Response} Response
+             * @returns {implant.Command.Response} Response
              */
             Response.fromObject = function fromObject(object) {
-                if (object instanceof $root.redchannel.Command.Response)
+                if (object instanceof $root.implant.Command.Response)
                     return object;
-                var message = new $root.redchannel.Command.Response();
+                var message = new $root.implant.Command.Response();
                 switch (object.command) {
                 default:
                     if (typeof object.command === "number") {
@@ -1145,7 +1154,10 @@ $root.redchannel = (function() {
                     break;
                 }
                 if (object.output != null)
-                    message.output = String(object.output);
+                    if (typeof object.output === "string")
+                        $util.base64.decode(object.output, message.output = $util.newBuffer($util.base64.length(object.output)), 0);
+                    else if (object.output.length >= 0)
+                        message.output = object.output;
                 switch (object.status) {
                 default:
                     if (typeof object.status === "number") {
@@ -1172,9 +1184,9 @@ $root.redchannel = (function() {
             /**
              * Creates a plain object from a Response message. Also converts values to other types if specified.
              * @function toObject
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @static
-             * @param {redchannel.Command.Response} message Response
+             * @param {implant.Command.Response} message Response
              * @param {$protobuf.IConversionOptions} [options] Conversion options
              * @returns {Object.<string,*>} Plain object
              */
@@ -1184,22 +1196,28 @@ $root.redchannel = (function() {
                 var object = {};
                 if (options.defaults) {
                     object.command = options.enums === String ? "AGENT_UNSPECIFIED" : 0;
-                    object.output = "";
+                    if (options.bytes === String)
+                        object.output = "";
+                    else {
+                        object.output = [];
+                        if (options.bytes !== Array)
+                            object.output = $util.newBuffer(object.output);
+                    }
                     object.status = options.enums === String ? "STATUS_UNSPECIFIED" : 0;
                 }
                 if (message.command != null && message.hasOwnProperty("command"))
-                    object.command = options.enums === String ? $root.redchannel.AgentCommand[message.command] === undefined ? message.command : $root.redchannel.AgentCommand[message.command] : message.command;
+                    object.command = options.enums === String ? $root.implant.AgentCommand[message.command] === undefined ? message.command : $root.implant.AgentCommand[message.command] : message.command;
                 if (message.output != null && message.hasOwnProperty("output"))
-                    object.output = message.output;
+                    object.output = options.bytes === String ? $util.base64.encode(message.output, 0, message.output.length) : options.bytes === Array ? Array.prototype.slice.call(message.output) : message.output;
                 if (message.status != null && message.hasOwnProperty("status"))
-                    object.status = options.enums === String ? $root.redchannel.AgentCommandStatus[message.status] === undefined ? message.status : $root.redchannel.AgentCommandStatus[message.status] : message.status;
+                    object.status = options.enums === String ? $root.implant.AgentCommandStatus[message.status] === undefined ? message.status : $root.implant.AgentCommandStatus[message.status] : message.status;
                 return object;
             };
 
             /**
              * Converts this Response to JSON.
              * @function toJSON
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @instance
              * @returns {Object.<string,*>} JSON object
              */
@@ -1210,7 +1228,7 @@ $root.redchannel = (function() {
             /**
              * Gets the default type url for Response
              * @function getTypeUrl
-             * @memberof redchannel.Command.Response
+             * @memberof implant.Command.Response
              * @static
              * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
              * @returns {string} The default type url
@@ -1219,7 +1237,7 @@ $root.redchannel = (function() {
                 if (typeUrlPrefix === undefined) {
                     typeUrlPrefix = "type.googleapis.com";
                 }
-                return typeUrlPrefix + "/redchannel.Command.Response";
+                return typeUrlPrefix + "/implant.Command.Response";
             };
 
             return Response;
@@ -1228,7 +1246,7 @@ $root.redchannel = (function() {
         return Command;
     })();
 
-    return redchannel;
+    return implant;
 })();
 
 module.exports = $root;

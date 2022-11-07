@@ -1,7 +1,7 @@
 import * as $protobuf from "protobufjs";
 import Long = require("long");
-/** Namespace redchannel. */
-export namespace redchannel {
+/** Namespace implant. */
+export namespace implant {
 
     /** AgentCommand enum. */
     enum AgentCommand {
@@ -56,7 +56,7 @@ export namespace redchannel {
          * Constructs a new AgentConfig.
          * @param [properties] Properties to set
          */
-        constructor(properties?: redchannel.IAgentConfig);
+        constructor(properties?: implant.IAgentConfig);
 
         /** AgentConfig c2Domain. */
         public c2Domain: string;
@@ -84,23 +84,23 @@ export namespace redchannel {
          * @param [properties] Properties to set
          * @returns AgentConfig instance
          */
-        public static create(properties?: redchannel.IAgentConfig): redchannel.AgentConfig;
+        public static create(properties?: implant.IAgentConfig): implant.AgentConfig;
 
         /**
-         * Encodes the specified AgentConfig message. Does not implicitly {@link redchannel.AgentConfig.verify|verify} messages.
+         * Encodes the specified AgentConfig message. Does not implicitly {@link implant.AgentConfig.verify|verify} messages.
          * @param message AgentConfig message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encode(message: redchannel.IAgentConfig, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encode(message: implant.IAgentConfig, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Encodes the specified AgentConfig message, length delimited. Does not implicitly {@link redchannel.AgentConfig.verify|verify} messages.
+         * Encodes the specified AgentConfig message, length delimited. Does not implicitly {@link implant.AgentConfig.verify|verify} messages.
          * @param message AgentConfig message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encodeDelimited(message: redchannel.IAgentConfig, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encodeDelimited(message: implant.IAgentConfig, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
          * Decodes an AgentConfig message from the specified reader or buffer.
@@ -110,7 +110,7 @@ export namespace redchannel {
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): redchannel.AgentConfig;
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): implant.AgentConfig;
 
         /**
          * Decodes an AgentConfig message from the specified reader or buffer, length delimited.
@@ -119,7 +119,7 @@ export namespace redchannel {
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): redchannel.AgentConfig;
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): implant.AgentConfig;
 
         /**
          * Verifies an AgentConfig message.
@@ -133,7 +133,7 @@ export namespace redchannel {
          * @param object Plain object
          * @returns AgentConfig
          */
-        public static fromObject(object: { [k: string]: any }): redchannel.AgentConfig;
+        public static fromObject(object: { [k: string]: any }): implant.AgentConfig;
 
         /**
          * Creates a plain object from an AgentConfig message. Also converts values to other types if specified.
@@ -141,7 +141,7 @@ export namespace redchannel {
          * @param [options] Conversion options
          * @returns Plain object
          */
-        public static toObject(message: redchannel.AgentConfig, options?: $protobuf.IConversionOptions): { [k: string]: any };
+        public static toObject(message: implant.AgentConfig, options?: $protobuf.IConversionOptions): { [k: string]: any };
 
         /**
          * Converts this AgentConfig to JSON.
@@ -168,30 +168,30 @@ export namespace redchannel {
          * Constructs a new Command.
          * @param [properties] Properties to set
          */
-        constructor(properties?: redchannel.ICommand);
+        constructor(properties?: implant.ICommand);
 
         /**
          * Creates a new Command instance using the specified properties.
          * @param [properties] Properties to set
          * @returns Command instance
          */
-        public static create(properties?: redchannel.ICommand): redchannel.Command;
+        public static create(properties?: implant.ICommand): implant.Command;
 
         /**
-         * Encodes the specified Command message. Does not implicitly {@link redchannel.Command.verify|verify} messages.
+         * Encodes the specified Command message. Does not implicitly {@link implant.Command.verify|verify} messages.
          * @param message Command message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encode(message: redchannel.ICommand, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encode(message: implant.ICommand, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Encodes the specified Command message, length delimited. Does not implicitly {@link redchannel.Command.verify|verify} messages.
+         * Encodes the specified Command message, length delimited. Does not implicitly {@link implant.Command.verify|verify} messages.
          * @param message Command message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encodeDelimited(message: redchannel.ICommand, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encodeDelimited(message: implant.ICommand, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
          * Decodes a Command message from the specified reader or buffer.
@@ -201,7 +201,7 @@ export namespace redchannel {
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): redchannel.Command;
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): implant.Command;
 
         /**
          * Decodes a Command message from the specified reader or buffer, length delimited.
@@ -210,7 +210,7 @@ export namespace redchannel {
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): redchannel.Command;
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): implant.Command;
 
         /**
          * Verifies a Command message.
@@ -224,7 +224,7 @@ export namespace redchannel {
          * @param object Plain object
          * @returns Command
          */
-        public static fromObject(object: { [k: string]: any }): redchannel.Command;
+        public static fromObject(object: { [k: string]: any }): implant.Command;
 
         /**
          * Creates a plain object from a Command message. Also converts values to other types if specified.
@@ -232,7 +232,7 @@ export namespace redchannel {
          * @param [options] Conversion options
          * @returns Plain object
          */
-        public static toObject(message: redchannel.Command, options?: $protobuf.IConversionOptions): { [k: string]: any };
+        public static toObject(message: implant.Command, options?: $protobuf.IConversionOptions): { [k: string]: any };
 
         /**
          * Converts this Command to JSON.
@@ -254,13 +254,13 @@ export namespace redchannel {
         interface IRequest {
 
             /** Request command */
-            command?: (redchannel.AgentCommand|null);
+            command?: (implant.AgentCommand|null);
 
             /** Request input */
-            input?: (string|null);
+            input?: (Uint8Array|null);
 
             /** Request config */
-            config?: (redchannel.IAgentConfig|null);
+            config?: (implant.IAgentConfig|null);
         }
 
         /** Represents a Request. */
@@ -270,39 +270,39 @@ export namespace redchannel {
              * Constructs a new Request.
              * @param [properties] Properties to set
              */
-            constructor(properties?: redchannel.Command.IRequest);
+            constructor(properties?: implant.Command.IRequest);
 
             /** Request command. */
-            public command: redchannel.AgentCommand;
+            public command: implant.AgentCommand;
 
             /** Request input. */
-            public input: string;
+            public input: Uint8Array;
 
             /** Request config. */
-            public config?: (redchannel.IAgentConfig|null);
+            public config?: (implant.IAgentConfig|null);
 
             /**
              * Creates a new Request instance using the specified properties.
              * @param [properties] Properties to set
              * @returns Request instance
              */
-            public static create(properties?: redchannel.Command.IRequest): redchannel.Command.Request;
+            public static create(properties?: implant.Command.IRequest): implant.Command.Request;
 
             /**
-             * Encodes the specified Request message. Does not implicitly {@link redchannel.Command.Request.verify|verify} messages.
+             * Encodes the specified Request message. Does not implicitly {@link implant.Command.Request.verify|verify} messages.
              * @param message Request message or plain object to encode
              * @param [writer] Writer to encode to
              * @returns Writer
              */
-            public static encode(message: redchannel.Command.IRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+            public static encode(message: implant.Command.IRequest, writer?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Encodes the specified Request message, length delimited. Does not implicitly {@link redchannel.Command.Request.verify|verify} messages.
+             * Encodes the specified Request message, length delimited. Does not implicitly {@link implant.Command.Request.verify|verify} messages.
              * @param message Request message or plain object to encode
              * @param [writer] Writer to encode to
              * @returns Writer
              */
-            public static encodeDelimited(message: redchannel.Command.IRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+            public static encodeDelimited(message: implant.Command.IRequest, writer?: $protobuf.Writer): $protobuf.Writer;
 
             /**
              * Decodes a Request message from the specified reader or buffer.
@@ -312,7 +312,7 @@ export namespace redchannel {
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): redchannel.Command.Request;
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): implant.Command.Request;
 
             /**
              * Decodes a Request message from the specified reader or buffer, length delimited.
@@ -321,7 +321,7 @@ export namespace redchannel {
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): redchannel.Command.Request;
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): implant.Command.Request;
 
             /**
              * Verifies a Request message.
@@ -335,7 +335,7 @@ export namespace redchannel {
              * @param object Plain object
              * @returns Request
              */
-            public static fromObject(object: { [k: string]: any }): redchannel.Command.Request;
+            public static fromObject(object: { [k: string]: any }): implant.Command.Request;
 
             /**
              * Creates a plain object from a Request message. Also converts values to other types if specified.
@@ -343,7 +343,7 @@ export namespace redchannel {
              * @param [options] Conversion options
              * @returns Plain object
              */
-            public static toObject(message: redchannel.Command.Request, options?: $protobuf.IConversionOptions): { [k: string]: any };
+            public static toObject(message: implant.Command.Request, options?: $protobuf.IConversionOptions): { [k: string]: any };
 
             /**
              * Converts this Request to JSON.
@@ -363,13 +363,13 @@ export namespace redchannel {
         interface IResponse {
 
             /** Response command */
-            command?: (redchannel.AgentCommand|null);
+            command?: (implant.AgentCommand|null);
 
             /** Response output */
-            output?: (string|null);
+            output?: (Uint8Array|null);
 
             /** Response status */
-            status?: (redchannel.AgentCommandStatus|null);
+            status?: (implant.AgentCommandStatus|null);
         }
 
         /** Represents a Response. */
@@ -379,39 +379,39 @@ export namespace redchannel {
              * Constructs a new Response.
              * @param [properties] Properties to set
              */
-            constructor(properties?: redchannel.Command.IResponse);
+            constructor(properties?: implant.Command.IResponse);
 
             /** Response command. */
-            public command: redchannel.AgentCommand;
+            public command: implant.AgentCommand;
 
             /** Response output. */
-            public output: string;
+            public output: Uint8Array;
 
             /** Response status. */
-            public status: redchannel.AgentCommandStatus;
+            public status: implant.AgentCommandStatus;
 
             /**
              * Creates a new Response instance using the specified properties.
              * @param [properties] Properties to set
              * @returns Response instance
              */
-            public static create(properties?: redchannel.Command.IResponse): redchannel.Command.Response;
+            public static create(properties?: implant.Command.IResponse): implant.Command.Response;
 
             /**
-             * Encodes the specified Response message. Does not implicitly {@link redchannel.Command.Response.verify|verify} messages.
+             * Encodes the specified Response message. Does not implicitly {@link implant.Command.Response.verify|verify} messages.
              * @param message Response message or plain object to encode
              * @param [writer] Writer to encode to
              * @returns Writer
              */
-            public static encode(message: redchannel.Command.IResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+            public static encode(message: implant.Command.IResponse, writer?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Encodes the specified Response message, length delimited. Does not implicitly {@link redchannel.Command.Response.verify|verify} messages.
+             * Encodes the specified Response message, length delimited. Does not implicitly {@link implant.Command.Response.verify|verify} messages.
              * @param message Response message or plain object to encode
              * @param [writer] Writer to encode to
              * @returns Writer
              */
-            public static encodeDelimited(message: redchannel.Command.IResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+            public static encodeDelimited(message: implant.Command.IResponse, writer?: $protobuf.Writer): $protobuf.Writer;
 
             /**
              * Decodes a Response message from the specified reader or buffer.
@@ -421,7 +421,7 @@ export namespace redchannel {
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): redchannel.Command.Response;
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): implant.Command.Response;
 
             /**
              * Decodes a Response message from the specified reader or buffer, length delimited.
@@ -430,7 +430,7 @@ export namespace redchannel {
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): redchannel.Command.Response;
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): implant.Command.Response;
 
             /**
              * Verifies a Response message.
@@ -444,7 +444,7 @@ export namespace redchannel {
              * @param object Plain object
              * @returns Response
              */
-            public static fromObject(object: { [k: string]: any }): redchannel.Command.Response;
+            public static fromObject(object: { [k: string]: any }): implant.Command.Response;
 
             /**
              * Creates a plain object from a Response message. Also converts values to other types if specified.
@@ -452,7 +452,7 @@ export namespace redchannel {
              * @param [options] Conversion options
              * @returns Plain object
              */
-            public static toObject(message: redchannel.Command.Response, options?: $protobuf.IConversionOptions): { [k: string]: any };
+            public static toObject(message: implant.Command.Response, options?: $protobuf.IConversionOptions): { [k: string]: any };
 
             /**
              * Converts this Response to JSON.

@@ -10,7 +10,8 @@
         "outDir": "dist",
         "sourceMap": true,
         "strict": true,
-        "target": "es2021"
+        "target": "es2021",
+        "allowJs": true
     },
     "compileOnSave": true,
     "include": ["src"]

