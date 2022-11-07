@@ -18,23 +18,76 @@ $root.redchannel = (function() {
      */
     var redchannel = {};
 
-    redchannel.Control = (function() {
+    /**
+     * AgentCommand enum.
+     * @name redchannel.AgentCommand
+     * @enum {number}
+     * @property {number} AGENT_UNSPECIFIED=0 AGENT_UNSPECIFIED value
+     * @property {number} AGENT_CHECKIN=1 AGENT_CHECKIN value
+     * @property {number} AGENT_SYSINFO=2 AGENT_SYSINFO value
+     * @property {number} AGENT_EXECUTE=3 AGENT_EXECUTE value
+     * @property {number} AGENT_EXECUTE_SHELLCODE=4 AGENT_EXECUTE_SHELLCODE value
+     * @property {number} AGENT_MESSAGE=5 AGENT_MESSAGE value
+     * @property {number} AGENT_SHUTDOWN=6 AGENT_SHUTDOWN value
+     * @property {number} AGENT_KEYX=7 AGENT_KEYX value
+     * @property {number} AGENT_SET_CONFIG=8 AGENT_SET_CONFIG value
+     * @property {number} AGENT_IGNORE=9 AGENT_IGNORE value
+     */
+    redchannel.AgentCommand = (function() {
+        var valuesById = {}, values = Object.create(valuesById);
+        values[valuesById[0] = "AGENT_UNSPECIFIED"] = 0;
+        values[valuesById[1] = "AGENT_CHECKIN"] = 1;
+        values[valuesById[2] = "AGENT_SYSINFO"] = 2;
+        values[valuesById[3] = "AGENT_EXECUTE"] = 3;
+        values[valuesById[4] = "AGENT_EXECUTE_SHELLCODE"] = 4;
+        values[valuesById[5] = "AGENT_MESSAGE"] = 5;
+        values[valuesById[6] = "AGENT_SHUTDOWN"] = 6;
+        values[valuesById[7] = "AGENT_KEYX"] = 7;
+        values[valuesById[8] = "AGENT_SET_CONFIG"] = 8;
+        values[valuesById[9] = "AGENT_IGNORE"] = 9;
+        return values;
+    })();
+
+    /**
+     * AgentCommandStatus enum.
+     * @name redchannel.AgentCommandStatus
+     * @enum {number}
+     * @property {number} STATUS_UNSPECIFIED=0 STATUS_UNSPECIFIED value
+     * @property {number} STATUS_SUCCESS=1 STATUS_SUCCESS value
+     * @property {number} STATUS_ERROR=2 STATUS_ERROR value
+     */
+    redchannel.AgentCommandStatus = (function() {
+        var valuesById = {}, values = Object.create(valuesById);
+        values[valuesById[0] = "STATUS_UNSPECIFIED"] = 0;
+        values[valuesById[1] = "STATUS_SUCCESS"] = 1;
+        values[valuesById[2] = "STATUS_ERROR"] = 2;
+        return values;
+    })();
+
+    redchannel.AgentConfig = (function() {
 
         /**
-         * Properties of a Control.
+         * Properties of an AgentConfig.
          * @memberof redchannel
-         * @interface IControl
+         * @interface IAgentConfig
+         * @property {string|null} [c2Domain] AgentConfig c2Domain
+         * @property {string|null} [c2Password] AgentConfig c2Password
+         * @property {string|null} [resolver] AgentConfig resolver
+         * @property {number|null} [c2IntervalMs] AgentConfig c2IntervalMs
+         * @property {boolean|null} [useWebChannel] AgentConfig useWebChannel
+         * @property {string|null} [webUrl] AgentConfig webUrl
+         * @property {string|null} [webKey] AgentConfig webKey
          */
 
         /**
-         * Constructs a new Control.
+         * Constructs a new AgentConfig.
          * @memberof redchannel
-         * @classdesc Represents a Control.
-         * @implements IControl
+         * @classdesc Represents an AgentConfig.
+         * @implements IAgentConfig
          * @constructor
-         * @param {redchannel.IControl=} [properties] Properties to set
+         * @param {redchannel.IAgentConfig=} [properties] Properties to set
          */
-        function Control(properties) {
+        function AgentConfig(properties) {
             if (properties)
                 for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
                     if (properties[keys[i]] != null)
@@ -42,63 +95,161 @@ $root.redchannel = (function() {
         }
 
         /**
-         * Creates a new Control instance using the specified properties.
-         * @function create
-         * @memberof redchannel.Control
-         * @static
-         * @param {redchannel.IControl=} [properties] Properties to set
-         * @returns {redchannel.Control} Control instance
+         * AgentConfig c2Domain.
+         * @member {string} c2Domain
+         * @memberof redchannel.AgentConfig
+         * @instance
          */
-        Control.create = function create(properties) {
-            return new Control(properties);
+        AgentConfig.prototype.c2Domain = "";
+
+        /**
+         * AgentConfig c2Password.
+         * @member {string} c2Password
+         * @memberof redchannel.AgentConfig
+         * @instance
+         */
+        AgentConfig.prototype.c2Password = "";
+
+        /**
+         * AgentConfig resolver.
+         * @member {string} resolver
+         * @memberof redchannel.AgentConfig
+         * @instance
+         */
+        AgentConfig.prototype.resolver = "";
+
+        /**
+         * AgentConfig c2IntervalMs.
+         * @member {number} c2IntervalMs
+         * @memberof redchannel.AgentConfig
+         * @instance
+         */
+        AgentConfig.prototype.c2IntervalMs = 0;
+
+        /**
+         * AgentConfig useWebChannel.
+         * @member {boolean} useWebChannel
+         * @memberof redchannel.AgentConfig
+         * @instance
+         */
+        AgentConfig.prototype.useWebChannel = false;
+
+        /**
+         * AgentConfig webUrl.
+         * @member {string} webUrl
+         * @memberof redchannel.AgentConfig
+         * @instance
+         */
+        AgentConfig.prototype.webUrl = "";
+
+        /**
+         * AgentConfig webKey.
+         * @member {string} webKey
+         * @memberof redchannel.AgentConfig
+         * @instance
+         */
+        AgentConfig.prototype.webKey = "";
+
+        /**
+         * Creates a new AgentConfig instance using the specified properties.
+         * @function create
+         * @memberof redchannel.AgentConfig
+         * @static
+         * @param {redchannel.IAgentConfig=} [properties] Properties to set
+         * @returns {redchannel.AgentConfig} AgentConfig instance
+         */
+        AgentConfig.create = function create(properties) {
+            return new AgentConfig(properties);
         };
 
         /**
-         * Encodes the specified Control message. Does not implicitly {@link redchannel.Control.verify|verify} messages.
+         * Encodes the specified AgentConfig message. Does not implicitly {@link redchannel.AgentConfig.verify|verify} messages.
          * @function encode
-         * @memberof redchannel.Control
+         * @memberof redchannel.AgentConfig
          * @static
-         * @param {redchannel.IControl} message Control message or plain object to encode
+         * @param {redchannel.IAgentConfig} message AgentConfig message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        Control.encode = function encode(message, writer) {
+        AgentConfig.encode = function encode(message, writer) {
             if (!writer)
                 writer = $Writer.create();
+            if (message.c2Domain != null && Object.hasOwnProperty.call(message, "c2Domain"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.c2Domain);
+            if (message.c2Password != null && Object.hasOwnProperty.call(message, "c2Password"))
+                writer.uint32(/* id 2, wireType 2 =*/18).string(message.c2Password);
+            if (message.resolver != null && Object.hasOwnProperty.call(message, "resolver"))
+                writer.uint32(/* id 3, wireType 2 =*/26).string(message.resolver);
+            if (message.c2IntervalMs != null && Object.hasOwnProperty.call(message, "c2IntervalMs"))
+                writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.c2IntervalMs);
+            if (message.useWebChannel != null && Object.hasOwnProperty.call(message, "useWebChannel"))
+                writer.uint32(/* id 5, wireType 0 =*/40).bool(message.useWebChannel);
+            if (message.webUrl != null && Object.hasOwnProperty.call(message, "webUrl"))
+                writer.uint32(/* id 6, wireType 2 =*/50).string(message.webUrl);
+            if (message.webKey != null && Object.hasOwnProperty.call(message, "webKey"))
+                writer.uint32(/* id 7, wireType 2 =*/58).string(message.webKey);
             return writer;
         };
 
         /**
-         * Encodes the specified Control message, length delimited. Does not implicitly {@link redchannel.Control.verify|verify} messages.
+         * Encodes the specified AgentConfig message, length delimited. Does not implicitly {@link redchannel.AgentConfig.verify|verify} messages.
          * @function encodeDelimited
-         * @memberof redchannel.Control
+         * @memberof redchannel.AgentConfig
          * @static
-         * @param {redchannel.IControl} message Control message or plain object to encode
+         * @param {redchannel.IAgentConfig} message AgentConfig message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        Control.encodeDelimited = function encodeDelimited(message, writer) {
+        AgentConfig.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
 
         /**
-         * Decodes a Control message from the specified reader or buffer.
+         * Decodes an AgentConfig message from the specified reader or buffer.
          * @function decode
-         * @memberof redchannel.Control
+         * @memberof redchannel.AgentConfig
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
          * @param {number} [length] Message length if known beforehand
-         * @returns {redchannel.Control} Control
+         * @returns {redchannel.AgentConfig} AgentConfig
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        Control.decode = function decode(reader, length) {
+        AgentConfig.decode = function decode(reader, length) {
             if (!(reader instanceof $Reader))
                 reader = $Reader.create(reader);
-            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.redchannel.Control();
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.redchannel.AgentConfig();
             while (reader.pos < end) {
                 var tag = reader.uint32();
                 switch (tag >>> 3) {
+                case 1: {
+                        message.c2Domain = reader.string();
+                        break;
+                    }
+                case 2: {
+                        message.c2Password = reader.string();
+                        break;
+                    }
+                case 3: {
+                        message.resolver = reader.string();
+                        break;
+                    }
+                case 4: {
+                        message.c2IntervalMs = reader.uint32();
+                        break;
+                    }
+                case 5: {
+                        message.useWebChannel = reader.bool();
+                        break;
+                    }
+                case 6: {
+                        message.webUrl = reader.string();
+                        break;
+                    }
+                case 7: {
+                        message.webKey = reader.string();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -108,477 +259,151 @@ $root.redchannel = (function() {
         };
 
         /**
-         * Decodes a Control message from the specified reader or buffer, length delimited.
+         * Decodes an AgentConfig message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
-         * @memberof redchannel.Control
+         * @memberof redchannel.AgentConfig
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {redchannel.Control} Control
+         * @returns {redchannel.AgentConfig} AgentConfig
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        Control.decodeDelimited = function decodeDelimited(reader) {
+        AgentConfig.decodeDelimited = function decodeDelimited(reader) {
             if (!(reader instanceof $Reader))
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
 
         /**
-         * Verifies a Control message.
+         * Verifies an AgentConfig message.
          * @function verify
-         * @memberof redchannel.Control
+         * @memberof redchannel.AgentConfig
          * @static
          * @param {Object.<string,*>} message Plain object to verify
          * @returns {string|null} `null` if valid, otherwise the reason why it is not
          */
-        Control.verify = function verify(message) {
+        AgentConfig.verify = function verify(message) {
             if (typeof message !== "object" || message === null)
                 return "object expected";
+            if (message.c2Domain != null && message.hasOwnProperty("c2Domain"))
+                if (!$util.isString(message.c2Domain))
+                    return "c2Domain: string expected";
+            if (message.c2Password != null && message.hasOwnProperty("c2Password"))
+                if (!$util.isString(message.c2Password))
+                    return "c2Password: string expected";
+            if (message.resolver != null && message.hasOwnProperty("resolver"))
+                if (!$util.isString(message.resolver))
+                    return "resolver: string expected";
+            if (message.c2IntervalMs != null && message.hasOwnProperty("c2IntervalMs"))
+                if (!$util.isInteger(message.c2IntervalMs))
+                    return "c2IntervalMs: integer expected";
+            if (message.useWebChannel != null && message.hasOwnProperty("useWebChannel"))
+                if (typeof message.useWebChannel !== "boolean")
+                    return "useWebChannel: boolean expected";
+            if (message.webUrl != null && message.hasOwnProperty("webUrl"))
+                if (!$util.isString(message.webUrl))
+                    return "webUrl: string expected";
+            if (message.webKey != null && message.hasOwnProperty("webKey"))
+                if (!$util.isString(message.webKey))
+                    return "webKey: string expected";
             return null;
         };
 
         /**
-         * Creates a Control message from a plain object. Also converts values to their respective internal types.
+         * Creates an AgentConfig message from a plain object. Also converts values to their respective internal types.
          * @function fromObject
-         * @memberof redchannel.Control
+         * @memberof redchannel.AgentConfig
          * @static
          * @param {Object.<string,*>} object Plain object
-         * @returns {redchannel.Control} Control
+         * @returns {redchannel.AgentConfig} AgentConfig
          */
-        Control.fromObject = function fromObject(object) {
-            if (object instanceof $root.redchannel.Control)
+        AgentConfig.fromObject = function fromObject(object) {
+            if (object instanceof $root.redchannel.AgentConfig)
                 return object;
-            return new $root.redchannel.Control();
+            var message = new $root.redchannel.AgentConfig();
+            if (object.c2Domain != null)
+                message.c2Domain = String(object.c2Domain);
+            if (object.c2Password != null)
+                message.c2Password = String(object.c2Password);
+            if (object.resolver != null)
+                message.resolver = String(object.resolver);
+            if (object.c2IntervalMs != null)
+                message.c2IntervalMs = object.c2IntervalMs >>> 0;
+            if (object.useWebChannel != null)
+                message.useWebChannel = Boolean(object.useWebChannel);
+            if (object.webUrl != null)
+                message.webUrl = String(object.webUrl);
+            if (object.webKey != null)
+                message.webKey = String(object.webKey);
+            return message;
         };
 
         /**
-         * Creates a plain object from a Control message. Also converts values to other types if specified.
+         * Creates a plain object from an AgentConfig message. Also converts values to other types if specified.
          * @function toObject
-         * @memberof redchannel.Control
+         * @memberof redchannel.AgentConfig
          * @static
-         * @param {redchannel.Control} message Control
+         * @param {redchannel.AgentConfig} message AgentConfig
          * @param {$protobuf.IConversionOptions} [options] Conversion options
          * @returns {Object.<string,*>} Plain object
          */
-        Control.toObject = function toObject() {
-            return {};
+        AgentConfig.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults) {
+                object.c2Domain = "";
+                object.c2Password = "";
+                object.resolver = "";
+                object.c2IntervalMs = 0;
+                object.useWebChannel = false;
+                object.webUrl = "";
+                object.webKey = "";
+            }
+            if (message.c2Domain != null && message.hasOwnProperty("c2Domain"))
+                object.c2Domain = message.c2Domain;
+            if (message.c2Password != null && message.hasOwnProperty("c2Password"))
+                object.c2Password = message.c2Password;
+            if (message.resolver != null && message.hasOwnProperty("resolver"))
+                object.resolver = message.resolver;
+            if (message.c2IntervalMs != null && message.hasOwnProperty("c2IntervalMs"))
+                object.c2IntervalMs = message.c2IntervalMs;
+            if (message.useWebChannel != null && message.hasOwnProperty("useWebChannel"))
+                object.useWebChannel = message.useWebChannel;
+            if (message.webUrl != null && message.hasOwnProperty("webUrl"))
+                object.webUrl = message.webUrl;
+            if (message.webKey != null && message.hasOwnProperty("webKey"))
+                object.webKey = message.webKey;
+            return object;
         };
 
         /**
-         * Converts this Control to JSON.
+         * Converts this AgentConfig to JSON.
          * @function toJSON
-         * @memberof redchannel.Control
+         * @memberof redchannel.AgentConfig
          * @instance
          * @returns {Object.<string,*>} JSON object
          */
-        Control.prototype.toJSON = function toJSON() {
+        AgentConfig.prototype.toJSON = function toJSON() {
             return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
         };
 
         /**
-         * Gets the default type url for Control
+         * Gets the default type url for AgentConfig
          * @function getTypeUrl
-         * @memberof redchannel.Control
+         * @memberof redchannel.AgentConfig
          * @static
          * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
          * @returns {string} The default type url
          */
-        Control.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+        AgentConfig.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
             if (typeUrlPrefix === undefined) {
                 typeUrlPrefix = "type.googleapis.com";
             }
-            return typeUrlPrefix + "/redchannel.Control";
+            return typeUrlPrefix + "/redchannel.AgentConfig";
         };
 
-        /**
-         * AgentCommands enum.
-         * @name redchannel.Control.AgentCommands
-         * @enum {number}
-         * @property {number} AGENT_UNSPECIFIED=0 AGENT_UNSPECIFIED value
-         * @property {number} AGENT_CHECKIN=1 AGENT_CHECKIN value
-         * @property {number} AGENT_SYSINFO=2 AGENT_SYSINFO value
-         * @property {number} AGENT_EXECUTE=3 AGENT_EXECUTE value
-         * @property {number} AGENT_EXECUTE_SHELLCODE=4 AGENT_EXECUTE_SHELLCODE value
-         * @property {number} AGENT_MESSAGE=5 AGENT_MESSAGE value
-         * @property {number} AGENT_SHUTDOWN=6 AGENT_SHUTDOWN value
-         * @property {number} AGENT_KEYX=7 AGENT_KEYX value
-         * @property {number} AGENT_SET_CONFIG=8 AGENT_SET_CONFIG value
-         * @property {number} AGENT_IGNORE=9 AGENT_IGNORE value
-         */
-        Control.AgentCommands = (function() {
-            var valuesById = {}, values = Object.create(valuesById);
-            values[valuesById[0] = "AGENT_UNSPECIFIED"] = 0;
-            values[valuesById[1] = "AGENT_CHECKIN"] = 1;
-            values[valuesById[2] = "AGENT_SYSINFO"] = 2;
-            values[valuesById[3] = "AGENT_EXECUTE"] = 3;
-            values[valuesById[4] = "AGENT_EXECUTE_SHELLCODE"] = 4;
-            values[valuesById[5] = "AGENT_MESSAGE"] = 5;
-            values[valuesById[6] = "AGENT_SHUTDOWN"] = 6;
-            values[valuesById[7] = "AGENT_KEYX"] = 7;
-            values[valuesById[8] = "AGENT_SET_CONFIG"] = 8;
-            values[valuesById[9] = "AGENT_IGNORE"] = 9;
-            return values;
-        })();
-
-        Control.AgentConfig = (function() {
-
-            /**
-             * Properties of an AgentConfig.
-             * @memberof redchannel.Control
-             * @interface IAgentConfig
-             * @property {string|null} [c2Domain] AgentConfig c2Domain
-             * @property {string|null} [c2Password] AgentConfig c2Password
-             * @property {string|null} [resolver] AgentConfig resolver
-             * @property {number|null} [c2IntervalMs] AgentConfig c2IntervalMs
-             * @property {boolean|null} [useWebChannel] AgentConfig useWebChannel
-             * @property {string|null} [webUrl] AgentConfig webUrl
-             * @property {string|null} [webKey] AgentConfig webKey
-             */
-
-            /**
-             * Constructs a new AgentConfig.
-             * @memberof redchannel.Control
-             * @classdesc Represents an AgentConfig.
-             * @implements IAgentConfig
-             * @constructor
-             * @param {redchannel.Control.IAgentConfig=} [properties] Properties to set
-             */
-            function AgentConfig(properties) {
-                if (properties)
-                    for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
-                        if (properties[keys[i]] != null)
-                            this[keys[i]] = properties[keys[i]];
-            }
-
-            /**
-             * AgentConfig c2Domain.
-             * @member {string} c2Domain
-             * @memberof redchannel.Control.AgentConfig
-             * @instance
-             */
-            AgentConfig.prototype.c2Domain = "";
-
-            /**
-             * AgentConfig c2Password.
-             * @member {string} c2Password
-             * @memberof redchannel.Control.AgentConfig
-             * @instance
-             */
-            AgentConfig.prototype.c2Password = "";
-
-            /**
-             * AgentConfig resolver.
-             * @member {string} resolver
-             * @memberof redchannel.Control.AgentConfig
-             * @instance
-             */
-            AgentConfig.prototype.resolver = "";
-
-            /**
-             * AgentConfig c2IntervalMs.
-             * @member {number} c2IntervalMs
-             * @memberof redchannel.Control.AgentConfig
-             * @instance
-             */
-            AgentConfig.prototype.c2IntervalMs = 0;
-
-            /**
-             * AgentConfig useWebChannel.
-             * @member {boolean} useWebChannel
-             * @memberof redchannel.Control.AgentConfig
-             * @instance
-             */
-            AgentConfig.prototype.useWebChannel = false;
-
-            /**
-             * AgentConfig webUrl.
-             * @member {string} webUrl
-             * @memberof redchannel.Control.AgentConfig
-             * @instance
-             */
-            AgentConfig.prototype.webUrl = "";
-
-            /**
-             * AgentConfig webKey.
-             * @member {string} webKey
-             * @memberof redchannel.Control.AgentConfig
-             * @instance
-             */
-            AgentConfig.prototype.webKey = "";
-
-            /**
-             * Creates a new AgentConfig instance using the specified properties.
-             * @function create
-             * @memberof redchannel.Control.AgentConfig
-             * @static
-             * @param {redchannel.Control.IAgentConfig=} [properties] Properties to set
-             * @returns {redchannel.Control.AgentConfig} AgentConfig instance
-             */
-            AgentConfig.create = function create(properties) {
-                return new AgentConfig(properties);
-            };
-
-            /**
-             * Encodes the specified AgentConfig message. Does not implicitly {@link redchannel.Control.AgentConfig.verify|verify} messages.
-             * @function encode
-             * @memberof redchannel.Control.AgentConfig
-             * @static
-             * @param {redchannel.Control.IAgentConfig} message AgentConfig message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            AgentConfig.encode = function encode(message, writer) {
-                if (!writer)
-                    writer = $Writer.create();
-                if (message.c2Domain != null && Object.hasOwnProperty.call(message, "c2Domain"))
-                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.c2Domain);
-                if (message.c2Password != null && Object.hasOwnProperty.call(message, "c2Password"))
-                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.c2Password);
-                if (message.resolver != null && Object.hasOwnProperty.call(message, "resolver"))
-                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.resolver);
-                if (message.c2IntervalMs != null && Object.hasOwnProperty.call(message, "c2IntervalMs"))
-                    writer.uint32(/* id 4, wireType 0 =*/32).uint32(message.c2IntervalMs);
-                if (message.useWebChannel != null && Object.hasOwnProperty.call(message, "useWebChannel"))
-                    writer.uint32(/* id 5, wireType 0 =*/40).bool(message.useWebChannel);
-                if (message.webUrl != null && Object.hasOwnProperty.call(message, "webUrl"))
-                    writer.uint32(/* id 6, wireType 2 =*/50).string(message.webUrl);
-                if (message.webKey != null && Object.hasOwnProperty.call(message, "webKey"))
-                    writer.uint32(/* id 7, wireType 2 =*/58).string(message.webKey);
-                return writer;
-            };
-
-            /**
-             * Encodes the specified AgentConfig message, length delimited. Does not implicitly {@link redchannel.Control.AgentConfig.verify|verify} messages.
-             * @function encodeDelimited
-             * @memberof redchannel.Control.AgentConfig
-             * @static
-             * @param {redchannel.Control.IAgentConfig} message AgentConfig message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            AgentConfig.encodeDelimited = function encodeDelimited(message, writer) {
-                return this.encode(message, writer).ldelim();
-            };
-
-            /**
-             * Decodes an AgentConfig message from the specified reader or buffer.
-             * @function decode
-             * @memberof redchannel.Control.AgentConfig
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @param {number} [length] Message length if known beforehand
-             * @returns {redchannel.Control.AgentConfig} AgentConfig
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            AgentConfig.decode = function decode(reader, length) {
-                if (!(reader instanceof $Reader))
-                    reader = $Reader.create(reader);
-                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.redchannel.Control.AgentConfig();
-                while (reader.pos < end) {
-                    var tag = reader.uint32();
-                    switch (tag >>> 3) {
-                    case 1: {
-                            message.c2Domain = reader.string();
-                            break;
-                        }
-                    case 2: {
-                            message.c2Password = reader.string();
-                            break;
-                        }
-                    case 3: {
-                            message.resolver = reader.string();
-                            break;
-                        }
-                    case 4: {
-                            message.c2IntervalMs = reader.uint32();
-                            break;
-                        }
-                    case 5: {
-                            message.useWebChannel = reader.bool();
-                            break;
-                        }
-                    case 6: {
-                            message.webUrl = reader.string();
-                            break;
-                        }
-                    case 7: {
-                            message.webKey = reader.string();
-                            break;
-                        }
-                    default:
-                        reader.skipType(tag & 7);
-                        break;
-                    }
-                }
-                return message;
-            };
-
-            /**
-             * Decodes an AgentConfig message from the specified reader or buffer, length delimited.
-             * @function decodeDelimited
-             * @memberof redchannel.Control.AgentConfig
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @returns {redchannel.Control.AgentConfig} AgentConfig
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            AgentConfig.decodeDelimited = function decodeDelimited(reader) {
-                if (!(reader instanceof $Reader))
-                    reader = new $Reader(reader);
-                return this.decode(reader, reader.uint32());
-            };
-
-            /**
-             * Verifies an AgentConfig message.
-             * @function verify
-             * @memberof redchannel.Control.AgentConfig
-             * @static
-             * @param {Object.<string,*>} message Plain object to verify
-             * @returns {string|null} `null` if valid, otherwise the reason why it is not
-             */
-            AgentConfig.verify = function verify(message) {
-                if (typeof message !== "object" || message === null)
-                    return "object expected";
-                if (message.c2Domain != null && message.hasOwnProperty("c2Domain"))
-                    if (!$util.isString(message.c2Domain))
-                        return "c2Domain: string expected";
-                if (message.c2Password != null && message.hasOwnProperty("c2Password"))
-                    if (!$util.isString(message.c2Password))
-                        return "c2Password: string expected";
-                if (message.resolver != null && message.hasOwnProperty("resolver"))
-                    if (!$util.isString(message.resolver))
-                        return "resolver: string expected";
-                if (message.c2IntervalMs != null && message.hasOwnProperty("c2IntervalMs"))
-                    if (!$util.isInteger(message.c2IntervalMs))
-                        return "c2IntervalMs: integer expected";
-                if (message.useWebChannel != null && message.hasOwnProperty("useWebChannel"))
-                    if (typeof message.useWebChannel !== "boolean")
-                        return "useWebChannel: boolean expected";
-                if (message.webUrl != null && message.hasOwnProperty("webUrl"))
-                    if (!$util.isString(message.webUrl))
-                        return "webUrl: string expected";
-                if (message.webKey != null && message.hasOwnProperty("webKey"))
-                    if (!$util.isString(message.webKey))
-                        return "webKey: string expected";
-                return null;
-            };
-
-            /**
-             * Creates an AgentConfig message from a plain object. Also converts values to their respective internal types.
-             * @function fromObject
-             * @memberof redchannel.Control.AgentConfig
-             * @static
-             * @param {Object.<string,*>} object Plain object
-             * @returns {redchannel.Control.AgentConfig} AgentConfig
-             */
-            AgentConfig.fromObject = function fromObject(object) {
-                if (object instanceof $root.redchannel.Control.AgentConfig)
-                    return object;
-                var message = new $root.redchannel.Control.AgentConfig();
-                if (object.c2Domain != null)
-                    message.c2Domain = String(object.c2Domain);
-                if (object.c2Password != null)
-                    message.c2Password = String(object.c2Password);
-                if (object.resolver != null)
-                    message.resolver = String(object.resolver);
-                if (object.c2IntervalMs != null)
-                    message.c2IntervalMs = object.c2IntervalMs >>> 0;
-                if (object.useWebChannel != null)
-                    message.useWebChannel = Boolean(object.useWebChannel);
-                if (object.webUrl != null)
-                    message.webUrl = String(object.webUrl);
-                if (object.webKey != null)
-                    message.webKey = String(object.webKey);
-                return message;
-            };
-
-            /**
-             * Creates a plain object from an AgentConfig message. Also converts values to other types if specified.
-             * @function toObject
-             * @memberof redchannel.Control.AgentConfig
-             * @static
-             * @param {redchannel.Control.AgentConfig} message AgentConfig
-             * @param {$protobuf.IConversionOptions} [options] Conversion options
-             * @returns {Object.<string,*>} Plain object
-             */
-            AgentConfig.toObject = function toObject(message, options) {
-                if (!options)
-                    options = {};
-                var object = {};
-                if (options.defaults) {
-                    object.c2Domain = "";
-                    object.c2Password = "";
-                    object.resolver = "";
-                    object.c2IntervalMs = 0;
-                    object.useWebChannel = false;
-                    object.webUrl = "";
-                    object.webKey = "";
-                }
-                if (message.c2Domain != null && message.hasOwnProperty("c2Domain"))
-                    object.c2Domain = message.c2Domain;
-                if (message.c2Password != null && message.hasOwnProperty("c2Password"))
-                    object.c2Password = message.c2Password;
-                if (message.resolver != null && message.hasOwnProperty("resolver"))
-                    object.resolver = message.resolver;
-                if (message.c2IntervalMs != null && message.hasOwnProperty("c2IntervalMs"))
-                    object.c2IntervalMs = message.c2IntervalMs;
-                if (message.useWebChannel != null && message.hasOwnProperty("useWebChannel"))
-                    object.useWebChannel = message.useWebChannel;
-                if (message.webUrl != null && message.hasOwnProperty("webUrl"))
-                    object.webUrl = message.webUrl;
-                if (message.webKey != null && message.hasOwnProperty("webKey"))
-                    object.webKey = message.webKey;
-                return object;
-            };
-
-            /**
-             * Converts this AgentConfig to JSON.
-             * @function toJSON
-             * @memberof redchannel.Control.AgentConfig
-             * @instance
-             * @returns {Object.<string,*>} JSON object
-             */
-            AgentConfig.prototype.toJSON = function toJSON() {
-                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-            };
-
-            /**
-             * Gets the default type url for AgentConfig
-             * @function getTypeUrl
-             * @memberof redchannel.Control.AgentConfig
-             * @static
-             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
-             * @returns {string} The default type url
-             */
-            AgentConfig.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
-                if (typeUrlPrefix === undefined) {
-                    typeUrlPrefix = "type.googleapis.com";
-                }
-                return typeUrlPrefix + "/redchannel.Control.AgentConfig";
-            };
-
-            return AgentConfig;
-        })();
-
-        /**
-         * AgentCommandStatus enum.
-         * @name redchannel.Control.AgentCommandStatus
-         * @enum {number}
-         * @property {number} STATUS_UNSPECIFIED=0 STATUS_UNSPECIFIED value
-         * @property {number} STATUS_SUCCESS=1 STATUS_SUCCESS value
-         * @property {number} STATUS_ERROR=2 STATUS_ERROR value
-         */
-        Control.AgentCommandStatus = (function() {
-            var valuesById = {}, values = Object.create(valuesById);
-            values[valuesById[0] = "STATUS_UNSPECIFIED"] = 0;
-            values[valuesById[1] = "STATUS_SUCCESS"] = 1;
-            values[valuesById[2] = "STATUS_ERROR"] = 2;
-            return values;
-        })();
-
-        return Control;
+        return AgentConfig;
     })();
 
     redchannel.Command = (function() {
@@ -759,9 +584,9 @@ $root.redchannel = (function() {
              * Properties of a Request.
              * @memberof redchannel.Command
              * @interface IRequest
-             * @property {redchannel.Control.AgentCommands|null} [command] Request command
+             * @property {redchannel.AgentCommand|null} [command] Request command
              * @property {string|null} [input] Request input
-             * @property {redchannel.Control.IAgentConfig|null} [config] Request config
+             * @property {redchannel.IAgentConfig|null} [config] Request config
              */
 
             /**
@@ -781,7 +606,7 @@ $root.redchannel = (function() {
 
             /**
              * Request command.
-             * @member {redchannel.Control.AgentCommands} command
+             * @member {redchannel.AgentCommand} command
              * @memberof redchannel.Command.Request
              * @instance
              */
@@ -797,7 +622,7 @@ $root.redchannel = (function() {
 
             /**
              * Request config.
-             * @member {redchannel.Control.IAgentConfig|null|undefined} config
+             * @member {redchannel.IAgentConfig|null|undefined} config
              * @memberof redchannel.Command.Request
              * @instance
              */
@@ -832,7 +657,7 @@ $root.redchannel = (function() {
                 if (message.input != null && Object.hasOwnProperty.call(message, "input"))
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.input);
                 if (message.config != null && Object.hasOwnProperty.call(message, "config"))
-                    $root.redchannel.Control.AgentConfig.encode(message.config, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                    $root.redchannel.AgentConfig.encode(message.config, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
                 return writer;
             };
 
@@ -876,7 +701,7 @@ $root.redchannel = (function() {
                             break;
                         }
                     case 3: {
-                            message.config = $root.redchannel.Control.AgentConfig.decode(reader, reader.uint32());
+                            message.config = $root.redchannel.AgentConfig.decode(reader, reader.uint32());
                             break;
                         }
                     default:
@@ -934,7 +759,7 @@ $root.redchannel = (function() {
                     if (!$util.isString(message.input))
                         return "input: string expected";
                 if (message.config != null && message.hasOwnProperty("config")) {
-                    var error = $root.redchannel.Control.AgentConfig.verify(message.config);
+                    var error = $root.redchannel.AgentConfig.verify(message.config);
                     if (error)
                         return "config." + error;
                 }
@@ -1006,7 +831,7 @@ $root.redchannel = (function() {
                 if (object.config != null) {
                     if (typeof object.config !== "object")
                         throw TypeError(".redchannel.Command.Request.config: object expected");
-                    message.config = $root.redchannel.Control.AgentConfig.fromObject(object.config);
+                    message.config = $root.redchannel.AgentConfig.fromObject(object.config);
                 }
                 return message;
             };
@@ -1030,11 +855,11 @@ $root.redchannel = (function() {
                     object.config = null;
                 }
                 if (message.command != null && message.hasOwnProperty("command"))
-                    object.command = options.enums === String ? $root.redchannel.Control.AgentCommands[message.command] === undefined ? message.command : $root.redchannel.Control.AgentCommands[message.command] : message.command;
+                    object.command = options.enums === String ? $root.redchannel.AgentCommand[message.command] === undefined ? message.command : $root.redchannel.AgentCommand[message.command] : message.command;
                 if (message.input != null && message.hasOwnProperty("input"))
                     object.input = message.input;
                 if (message.config != null && message.hasOwnProperty("config"))
-                    object.config = $root.redchannel.Control.AgentConfig.toObject(message.config, options);
+                    object.config = $root.redchannel.AgentConfig.toObject(message.config, options);
                 return object;
             };
 
@@ -1073,9 +898,9 @@ $root.redchannel = (function() {
              * Properties of a Response.
              * @memberof redchannel.Command
              * @interface IResponse
-             * @property {redchannel.Control.AgentCommands|null} [command] Response command
+             * @property {redchannel.AgentCommand|null} [command] Response command
              * @property {string|null} [output] Response output
-             * @property {redchannel.Control.AgentCommandStatus|null} [status] Response status
+             * @property {redchannel.AgentCommandStatus|null} [status] Response status
              */
 
             /**
@@ -1095,7 +920,7 @@ $root.redchannel = (function() {
 
             /**
              * Response command.
-             * @member {redchannel.Control.AgentCommands} command
+             * @member {redchannel.AgentCommand} command
              * @memberof redchannel.Command.Response
              * @instance
              */
@@ -1111,7 +936,7 @@ $root.redchannel = (function() {
 
             /**
              * Response status.
-             * @member {redchannel.Control.AgentCommandStatus} status
+             * @member {redchannel.AgentCommandStatus} status
              * @memberof redchannel.Command.Response
              * @instance
              */
@@ -1363,11 +1188,11 @@ $root.redchannel = (function() {
                     object.status = options.enums === String ? "STATUS_UNSPECIFIED" : 0;
                 }
                 if (message.command != null && message.hasOwnProperty("command"))
-                    object.command = options.enums === String ? $root.redchannel.Control.AgentCommands[message.command] === undefined ? message.command : $root.redchannel.Control.AgentCommands[message.command] : message.command;
+                    object.command = options.enums === String ? $root.redchannel.AgentCommand[message.command] === undefined ? message.command : $root.redchannel.AgentCommand[message.command] : message.command;
                 if (message.output != null && message.hasOwnProperty("output"))
                     object.output = message.output;
                 if (message.status != null && message.hasOwnProperty("status"))
-                    object.status = options.enums === String ? $root.redchannel.Control.AgentCommandStatus[message.status] === undefined ? message.status : $root.redchannel.Control.AgentCommandStatus[message.status] : message.status;
+                    object.status = options.enums === String ? $root.redchannel.AgentCommandStatus[message.status] === undefined ? message.status : $root.redchannel.AgentCommandStatus[message.status] : message.status;
                 return object;
             };
 

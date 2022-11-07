@@ -3,252 +3,158 @@ import Long = require("long");
 /** Namespace redchannel. */
 export namespace redchannel {
 
-    /** Properties of a Control. */
-    interface IControl {
+    /** AgentCommand enum. */
+    enum AgentCommand {
+        AGENT_UNSPECIFIED = 0,
+        AGENT_CHECKIN = 1,
+        AGENT_SYSINFO = 2,
+        AGENT_EXECUTE = 3,
+        AGENT_EXECUTE_SHELLCODE = 4,
+        AGENT_MESSAGE = 5,
+        AGENT_SHUTDOWN = 6,
+        AGENT_KEYX = 7,
+        AGENT_SET_CONFIG = 8,
+        AGENT_IGNORE = 9
     }
 
-    /** Represents a Control. */
-    class Control implements IControl {
+    /** AgentCommandStatus enum. */
+    enum AgentCommandStatus {
+        STATUS_UNSPECIFIED = 0,
+        STATUS_SUCCESS = 1,
+        STATUS_ERROR = 2
+    }
+
+    /** Properties of an AgentConfig. */
+    interface IAgentConfig {
+
+        /** AgentConfig c2Domain */
+        c2Domain?: (string|null);
+
+        /** AgentConfig c2Password */
+        c2Password?: (string|null);
+
+        /** AgentConfig resolver */
+        resolver?: (string|null);
+
+        /** AgentConfig c2IntervalMs */
+        c2IntervalMs?: (number|null);
+
+        /** AgentConfig useWebChannel */
+        useWebChannel?: (boolean|null);
+
+        /** AgentConfig webUrl */
+        webUrl?: (string|null);
+
+        /** AgentConfig webKey */
+        webKey?: (string|null);
+    }
+
+    /** Represents an AgentConfig. */
+    class AgentConfig implements IAgentConfig {
 
         /**
-         * Constructs a new Control.
+         * Constructs a new AgentConfig.
          * @param [properties] Properties to set
          */
-        constructor(properties?: redchannel.IControl);
+        constructor(properties?: redchannel.IAgentConfig);
+
+        /** AgentConfig c2Domain. */
+        public c2Domain: string;
+
+        /** AgentConfig c2Password. */
+        public c2Password: string;
+
+        /** AgentConfig resolver. */
+        public resolver: string;
+
+        /** AgentConfig c2IntervalMs. */
+        public c2IntervalMs: number;
+
+        /** AgentConfig useWebChannel. */
+        public useWebChannel: boolean;
+
+        /** AgentConfig webUrl. */
+        public webUrl: string;
+
+        /** AgentConfig webKey. */
+        public webKey: string;
 
         /**
-         * Creates a new Control instance using the specified properties.
+         * Creates a new AgentConfig instance using the specified properties.
          * @param [properties] Properties to set
-         * @returns Control instance
+         * @returns AgentConfig instance
          */
-        public static create(properties?: redchannel.IControl): redchannel.Control;
+        public static create(properties?: redchannel.IAgentConfig): redchannel.AgentConfig;
 
         /**
-         * Encodes the specified Control message. Does not implicitly {@link redchannel.Control.verify|verify} messages.
-         * @param message Control message or plain object to encode
+         * Encodes the specified AgentConfig message. Does not implicitly {@link redchannel.AgentConfig.verify|verify} messages.
+         * @param message AgentConfig message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encode(message: redchannel.IControl, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encode(message: redchannel.IAgentConfig, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Encodes the specified Control message, length delimited. Does not implicitly {@link redchannel.Control.verify|verify} messages.
-         * @param message Control message or plain object to encode
+         * Encodes the specified AgentConfig message, length delimited. Does not implicitly {@link redchannel.AgentConfig.verify|verify} messages.
+         * @param message AgentConfig message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encodeDelimited(message: redchannel.IControl, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encodeDelimited(message: redchannel.IAgentConfig, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Decodes a Control message from the specified reader or buffer.
+         * Decodes an AgentConfig message from the specified reader or buffer.
          * @param reader Reader or buffer to decode from
          * @param [length] Message length if known beforehand
-         * @returns Control
+         * @returns AgentConfig
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): redchannel.Control;
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): redchannel.AgentConfig;
 
         /**
-         * Decodes a Control message from the specified reader or buffer, length delimited.
+         * Decodes an AgentConfig message from the specified reader or buffer, length delimited.
          * @param reader Reader or buffer to decode from
-         * @returns Control
+         * @returns AgentConfig
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): redchannel.Control;
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): redchannel.AgentConfig;
 
         /**
-         * Verifies a Control message.
+         * Verifies an AgentConfig message.
          * @param message Plain object to verify
          * @returns `null` if valid, otherwise the reason why it is not
          */
         public static verify(message: { [k: string]: any }): (string|null);
 
         /**
-         * Creates a Control message from a plain object. Also converts values to their respective internal types.
+         * Creates an AgentConfig message from a plain object. Also converts values to their respective internal types.
          * @param object Plain object
-         * @returns Control
+         * @returns AgentConfig
          */
-        public static fromObject(object: { [k: string]: any }): redchannel.Control;
+        public static fromObject(object: { [k: string]: any }): redchannel.AgentConfig;
 
         /**
-         * Creates a plain object from a Control message. Also converts values to other types if specified.
-         * @param message Control
+         * Creates a plain object from an AgentConfig message. Also converts values to other types if specified.
+         * @param message AgentConfig
          * @param [options] Conversion options
          * @returns Plain object
          */
-        public static toObject(message: redchannel.Control, options?: $protobuf.IConversionOptions): { [k: string]: any };
+        public static toObject(message: redchannel.AgentConfig, options?: $protobuf.IConversionOptions): { [k: string]: any };
 
         /**
-         * Converts this Control to JSON.
+         * Converts this AgentConfig to JSON.
          * @returns JSON object
          */
         public toJSON(): { [k: string]: any };
 
         /**
-         * Gets the default type url for Control
+         * Gets the default type url for AgentConfig
          * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
          * @returns The default type url
          */
         public static getTypeUrl(typeUrlPrefix?: string): string;
-    }
-
-    namespace Control {
-
-        /** AgentCommands enum. */
-        enum AgentCommands {
-            AGENT_UNSPECIFIED = 0,
-            AGENT_CHECKIN = 1,
-            AGENT_SYSINFO = 2,
-            AGENT_EXECUTE = 3,
-            AGENT_EXECUTE_SHELLCODE = 4,
-            AGENT_MESSAGE = 5,
-            AGENT_SHUTDOWN = 6,
-            AGENT_KEYX = 7,
-            AGENT_SET_CONFIG = 8,
-            AGENT_IGNORE = 9
-        }
-
-        /** Properties of an AgentConfig. */
-        interface IAgentConfig {
-
-            /** AgentConfig c2Domain */
-            c2Domain?: (string|null);
-
-            /** AgentConfig c2Password */
-            c2Password?: (string|null);
-
-            /** AgentConfig resolver */
-            resolver?: (string|null);
-
-            /** AgentConfig c2IntervalMs */
-            c2IntervalMs?: (number|null);
-
-            /** AgentConfig useWebChannel */
-            useWebChannel?: (boolean|null);
-
-            /** AgentConfig webUrl */
-            webUrl?: (string|null);
-
-            /** AgentConfig webKey */
-            webKey?: (string|null);
-        }
-
-        /** Represents an AgentConfig. */
-        class AgentConfig implements IAgentConfig {
-
-            /**
-             * Constructs a new AgentConfig.
-             * @param [properties] Properties to set
-             */
-            constructor(properties?: redchannel.Control.IAgentConfig);
-
-            /** AgentConfig c2Domain. */
-            public c2Domain: string;
-
-            /** AgentConfig c2Password. */
-            public c2Password: string;
-
-            /** AgentConfig resolver. */
-            public resolver: string;
-
-            /** AgentConfig c2IntervalMs. */
-            public c2IntervalMs: number;
-
-            /** AgentConfig useWebChannel. */
-            public useWebChannel: boolean;
-
-            /** AgentConfig webUrl. */
-            public webUrl: string;
-
-            /** AgentConfig webKey. */
-            public webKey: string;
-
-            /**
-             * Creates a new AgentConfig instance using the specified properties.
-             * @param [properties] Properties to set
-             * @returns AgentConfig instance
-             */
-            public static create(properties?: redchannel.Control.IAgentConfig): redchannel.Control.AgentConfig;
-
-            /**
-             * Encodes the specified AgentConfig message. Does not implicitly {@link redchannel.Control.AgentConfig.verify|verify} messages.
-             * @param message AgentConfig message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encode(message: redchannel.Control.IAgentConfig, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Encodes the specified AgentConfig message, length delimited. Does not implicitly {@link redchannel.Control.AgentConfig.verify|verify} messages.
-             * @param message AgentConfig message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encodeDelimited(message: redchannel.Control.IAgentConfig, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Decodes an AgentConfig message from the specified reader or buffer.
-             * @param reader Reader or buffer to decode from
-             * @param [length] Message length if known beforehand
-             * @returns AgentConfig
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): redchannel.Control.AgentConfig;
-
-            /**
-             * Decodes an AgentConfig message from the specified reader or buffer, length delimited.
-             * @param reader Reader or buffer to decode from
-             * @returns AgentConfig
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): redchannel.Control.AgentConfig;
-
-            /**
-             * Verifies an AgentConfig message.
-             * @param message Plain object to verify
-             * @returns `null` if valid, otherwise the reason why it is not
-             */
-            public static verify(message: { [k: string]: any }): (string|null);
-
-            /**
-             * Creates an AgentConfig message from a plain object. Also converts values to their respective internal types.
-             * @param object Plain object
-             * @returns AgentConfig
-             */
-            public static fromObject(object: { [k: string]: any }): redchannel.Control.AgentConfig;
-
-            /**
-             * Creates a plain object from an AgentConfig message. Also converts values to other types if specified.
-             * @param message AgentConfig
-             * @param [options] Conversion options
-             * @returns Plain object
-             */
-            public static toObject(message: redchannel.Control.AgentConfig, options?: $protobuf.IConversionOptions): { [k: string]: any };
-
-            /**
-             * Converts this AgentConfig to JSON.
-             * @returns JSON object
-             */
-            public toJSON(): { [k: string]: any };
-
-            /**
-             * Gets the default type url for AgentConfig
-             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
-             * @returns The default type url
-             */
-            public static getTypeUrl(typeUrlPrefix?: string): string;
-        }
-
-        /** AgentCommandStatus enum. */
-        enum AgentCommandStatus {
-            STATUS_UNSPECIFIED = 0,
-            STATUS_SUCCESS = 1,
-            STATUS_ERROR = 2
-        }
     }
 
     /** Properties of a Command. */
@@ -348,13 +254,13 @@ export namespace redchannel {
         interface IRequest {
 
             /** Request command */
-            command?: (redchannel.Control.AgentCommands|null);
+            command?: (redchannel.AgentCommand|null);
 
             /** Request input */
             input?: (string|null);
 
             /** Request config */
-            config?: (redchannel.Control.IAgentConfig|null);
+            config?: (redchannel.IAgentConfig|null);
         }
 
         /** Represents a Request. */
@@ -367,13 +273,13 @@ export namespace redchannel {
             constructor(properties?: redchannel.Command.IRequest);
 
             /** Request command. */
-            public command: redchannel.Control.AgentCommands;
+            public command: redchannel.AgentCommand;
 
             /** Request input. */
             public input: string;
 
             /** Request config. */
-            public config?: (redchannel.Control.IAgentConfig|null);
+            public config?: (redchannel.IAgentConfig|null);
 
             /**
              * Creates a new Request instance using the specified properties.
@@ -457,13 +363,13 @@ export namespace redchannel {
         interface IResponse {
 
             /** Response command */
-            command?: (redchannel.Control.AgentCommands|null);
+            command?: (redchannel.AgentCommand|null);
 
             /** Response output */
             output?: (string|null);
 
             /** Response status */
-            status?: (redchannel.Control.AgentCommandStatus|null);
+            status?: (redchannel.AgentCommandStatus|null);
         }
 
         /** Represents a Response. */
@@ -476,13 +382,13 @@ export namespace redchannel {
             constructor(properties?: redchannel.Command.IResponse);
 
             /** Response command. */
-            public command: redchannel.Control.AgentCommands;
+            public command: redchannel.AgentCommand;
 
             /** Response output. */
             public output: string;
 
             /** Response status. */
-            public status: redchannel.Control.AgentCommandStatus;
+            public status: redchannel.AgentCommandStatus;
 
             /**
              * Creates a new Response instance using the specified properties.
