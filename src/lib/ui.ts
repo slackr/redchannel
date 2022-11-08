@@ -37,7 +37,7 @@ class UserInterface extends Logger {
         const rows: any[] = [];
         for (const id of this.redchannel.agents.keys()) {
             const agent = this.redchannel.agents.get(id)!;
-            const agentSecret = agent.secret != null ? agent.secret.toString("hex") : "n/a";
+            const agentSecret = this.hasSecret(agent) ? agent.secret.toString("hex") : "n/a";
             // prettier-ignore
             rows.push([
                 chalk.blue(agent.id),
@@ -301,7 +301,7 @@ class UserInterface extends Logger {
                 this.showHelp(this.redchannel.modules.agent);
                 break;
             case "sysinfo":
-                if (!this.interact.secret) {
+                if (!this.hasSecret(this.interact)) {
                     this.error(`cannot send sysinfo to ${chalk.blue(this.interact.id)}, start 'keyx' first`);
                     break;
                 }
@@ -333,7 +333,7 @@ class UserInterface extends Logger {
                 this.showAgents();
                 break;
             case "shutdown":
-                if (!this.interact.secret) {
+                if (!this.hasSecret(this.interact)) {
                     this.error("cannot send shutdown to " + chalk.blue(this.interact.id) + ", start 'keyx' first");
                     break;
                 }
@@ -354,7 +354,7 @@ class UserInterface extends Logger {
                 break;
             case "shell":
             case "exec_cmd":
-                if (!this.interact.secret) {
+                if (!this.hasSecret(this.interact)) {
                     this.error("cannot send command to " + chalk.blue(this.interact.id) + ", start 'keyx' first");
                     break;
                 }
@@ -374,7 +374,7 @@ class UserInterface extends Logger {
                 }
                 break;
             case "set":
-                if (!this.interact.secret) {
+                if (!this.hasSecret(this.interact)) {
                     this.error("cannot send config to " + chalk.blue(this.interact.id) + ", start 'keyx' first");
                     break;
                 }
@@ -446,7 +446,7 @@ class UserInterface extends Logger {
                 }
                 break;
             case "msg":
-                if (!this.interact.secret) {
+                if (!this.hasSecret(this.interact)) {
                     this.error("cannot send msg to " + chalk.blue(this.interact.id) + ", start 'keyx' first");
                     break;
                 }
@@ -464,6 +464,10 @@ class UserInterface extends Logger {
                 this.error(`invalid command: ${command}, see 'help'`);
                 break;
         }
+    }
+
+    hasSecret(agent: AgentModel) {
+        return agent.secret && agent.secret.length > 0;
     }
 
     error(msg) {

