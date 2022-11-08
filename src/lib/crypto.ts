@@ -97,24 +97,24 @@ class Crypto {
     }
 
     // exports our public key to an uncompressed format (hex string) or pem
-    exportPublicKey(format: KeyExportType) {
-        if (!this.privateKey) return "";
+    exportPublicKey(format: KeyExportType): Buffer {
+        if (!this.privateKey) throw new Error("no private key available, please generate keypair");
 
-        let pubkey = "";
+        let publicKey: Buffer;
         try {
             switch (format) {
                 case KeyExportType.PEM:
-                    pubkey = this.privateKey.asPublicECKey().toString("pem");
+                    publicKey = this.privateKey.asPublicECKey(); //.toString("pem");
                     break;
                 case KeyExportType.UNCOMPRESSED:
-                default:
-                    pubkey = this.privateKey.publicCodePoint.toString("hex");
+                default: // .toString("hex");
+                    publicKey = this.privateKey.publicCodePoint;
                     break;
             }
         } catch (ex) {
             throw new Error(`failed to export pubkey to ${format}: ${emsg(ex)}`);
         }
-        return pubkey;
+        return publicKey;
     }
 }
 

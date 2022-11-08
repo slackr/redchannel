@@ -455,7 +455,7 @@ class UserInterface extends Logger {
                 this.warn("sending message to " + chalk.blue(this.interact.id) + "");
 
                 try {
-                    this.redchannel.queueData(this.interact.id, implant.AgentCommand.AGENT_MESSAGE, message);
+                    this.redchannel.queueData(this.interact.id, implant.AgentCommand.AGENT_MESSAGE, Buffer.from(message));
                 } catch (ex) {
                     this.error(emsg(ex));
                 }

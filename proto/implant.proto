@@ -32,6 +32,7 @@ message AgentConfig {
   string web_url = 6;
   string web_key = 7;
 }
+
 // c2 and agent communicate via Command messages
 // Request message comes from the c2 and instructs the agent what to do
 // (command) with the input, along with any additional data, such as config in
