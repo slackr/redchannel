@@ -406,6 +406,319 @@ $root.implant = (function() {
         return AgentConfig;
     })();
 
+    implant.SysInfoData = (function() {
+
+        /**
+         * Properties of a SysInfoData.
+         * @memberof implant
+         * @interface ISysInfoData
+         * @property {string|null} [hostname] SysInfoData hostname
+         * @property {Array.<string>|null} [ip] SysInfoData ip
+         * @property {string|null} [user] SysInfoData user
+         * @property {string|null} [uid] SysInfoData uid
+         * @property {string|null} [gid] SysInfoData gid
+         */
+
+        /**
+         * Constructs a new SysInfoData.
+         * @memberof implant
+         * @classdesc Represents a SysInfoData.
+         * @implements ISysInfoData
+         * @constructor
+         * @param {implant.ISysInfoData=} [properties] Properties to set
+         */
+        function SysInfoData(properties) {
+            this.ip = [];
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * SysInfoData hostname.
+         * @member {string} hostname
+         * @memberof implant.SysInfoData
+         * @instance
+         */
+        SysInfoData.prototype.hostname = "";
+
+        /**
+         * SysInfoData ip.
+         * @member {Array.<string>} ip
+         * @memberof implant.SysInfoData
+         * @instance
+         */
+        SysInfoData.prototype.ip = $util.emptyArray;
+
+        /**
+         * SysInfoData user.
+         * @member {string} user
+         * @memberof implant.SysInfoData
+         * @instance
+         */
+        SysInfoData.prototype.user = "";
+
+        /**
+         * SysInfoData uid.
+         * @member {string} uid
+         * @memberof implant.SysInfoData
+         * @instance
+         */
+        SysInfoData.prototype.uid = "";
+
+        /**
+         * SysInfoData gid.
+         * @member {string} gid
+         * @memberof implant.SysInfoData
+         * @instance
+         */
+        SysInfoData.prototype.gid = "";
+
+        /**
+         * Creates a new SysInfoData instance using the specified properties.
+         * @function create
+         * @memberof implant.SysInfoData
+         * @static
+         * @param {implant.ISysInfoData=} [properties] Properties to set
+         * @returns {implant.SysInfoData} SysInfoData instance
+         */
+        SysInfoData.create = function create(properties) {
+            return new SysInfoData(properties);
+        };
+
+        /**
+         * Encodes the specified SysInfoData message. Does not implicitly {@link implant.SysInfoData.verify|verify} messages.
+         * @function encode
+         * @memberof implant.SysInfoData
+         * @static
+         * @param {implant.ISysInfoData} message SysInfoData message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        SysInfoData.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.hostname != null && Object.hasOwnProperty.call(message, "hostname"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.hostname);
+            if (message.ip != null && message.ip.length)
+                for (var i = 0; i < message.ip.length; ++i)
+                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.ip[i]);
+            if (message.user != null && Object.hasOwnProperty.call(message, "user"))
+                writer.uint32(/* id 3, wireType 2 =*/26).string(message.user);
+            if (message.uid != null && Object.hasOwnProperty.call(message, "uid"))
+                writer.uint32(/* id 4, wireType 2 =*/34).string(message.uid);
+            if (message.gid != null && Object.hasOwnProperty.call(message, "gid"))
+                writer.uint32(/* id 5, wireType 2 =*/42).string(message.gid);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified SysInfoData message, length delimited. Does not implicitly {@link implant.SysInfoData.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof implant.SysInfoData
+         * @static
+         * @param {implant.ISysInfoData} message SysInfoData message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        SysInfoData.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a SysInfoData message from the specified reader or buffer.
+         * @function decode
+         * @memberof implant.SysInfoData
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {implant.SysInfoData} SysInfoData
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        SysInfoData.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.implant.SysInfoData();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1: {
+                        message.hostname = reader.string();
+                        break;
+                    }
+                case 2: {
+                        if (!(message.ip && message.ip.length))
+                            message.ip = [];
+                        message.ip.push(reader.string());
+                        break;
+                    }
+                case 3: {
+                        message.user = reader.string();
+                        break;
+                    }
+                case 4: {
+                        message.uid = reader.string();
+                        break;
+                    }
+                case 5: {
+                        message.gid = reader.string();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a SysInfoData message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof implant.SysInfoData
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {implant.SysInfoData} SysInfoData
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        SysInfoData.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a SysInfoData message.
+         * @function verify
+         * @memberof implant.SysInfoData
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        SysInfoData.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.hostname != null && message.hasOwnProperty("hostname"))
+                if (!$util.isString(message.hostname))
+                    return "hostname: string expected";
+            if (message.ip != null && message.hasOwnProperty("ip")) {
+                if (!Array.isArray(message.ip))
+                    return "ip: array expected";
+                for (var i = 0; i < message.ip.length; ++i)
+                    if (!$util.isString(message.ip[i]))
+                        return "ip: string[] expected";
+            }
+            if (message.user != null && message.hasOwnProperty("user"))
+                if (!$util.isString(message.user))
+                    return "user: string expected";
+            if (message.uid != null && message.hasOwnProperty("uid"))
+                if (!$util.isString(message.uid))
+                    return "uid: string expected";
+            if (message.gid != null && message.hasOwnProperty("gid"))
+                if (!$util.isString(message.gid))
+                    return "gid: string expected";
+            return null;
+        };
+
+        /**
+         * Creates a SysInfoData message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof implant.SysInfoData
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {implant.SysInfoData} SysInfoData
+         */
+        SysInfoData.fromObject = function fromObject(object) {
+            if (object instanceof $root.implant.SysInfoData)
+                return object;
+            var message = new $root.implant.SysInfoData();
+            if (object.hostname != null)
+                message.hostname = String(object.hostname);
+            if (object.ip) {
+                if (!Array.isArray(object.ip))
+                    throw TypeError(".implant.SysInfoData.ip: array expected");
+                message.ip = [];
+                for (var i = 0; i < object.ip.length; ++i)
+                    message.ip[i] = String(object.ip[i]);
+            }
+            if (object.user != null)
+                message.user = String(object.user);
+            if (object.uid != null)
+                message.uid = String(object.uid);
+            if (object.gid != null)
+                message.gid = String(object.gid);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a SysInfoData message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof implant.SysInfoData
+         * @static
+         * @param {implant.SysInfoData} message SysInfoData
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        SysInfoData.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.arrays || options.defaults)
+                object.ip = [];
+            if (options.defaults) {
+                object.hostname = "";
+                object.user = "";
+                object.uid = "";
+                object.gid = "";
+            }
+            if (message.hostname != null && message.hasOwnProperty("hostname"))
+                object.hostname = message.hostname;
+            if (message.ip && message.ip.length) {
+                object.ip = [];
+                for (var j = 0; j < message.ip.length; ++j)
+                    object.ip[j] = message.ip[j];
+            }
+            if (message.user != null && message.hasOwnProperty("user"))
+                object.user = message.user;
+            if (message.uid != null && message.hasOwnProperty("uid"))
+                object.uid = message.uid;
+            if (message.gid != null && message.hasOwnProperty("gid"))
+                object.gid = message.gid;
+            return object;
+        };
+
+        /**
+         * Converts this SysInfoData to JSON.
+         * @function toJSON
+         * @memberof implant.SysInfoData
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        SysInfoData.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for SysInfoData
+         * @function getTypeUrl
+         * @memberof implant.SysInfoData
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        SysInfoData.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/implant.SysInfoData";
+        };
+
+        return SysInfoData;
+    })();
+
     implant.Command = (function() {
 
         /**
@@ -909,6 +1222,7 @@ $root.implant = (function() {
              * @interface IResponse
              * @property {implant.AgentCommand|null} [command] Response command
              * @property {Uint8Array|null} [output] Response output
+             * @property {implant.ISysInfoData|null} [sysinfo] Response sysinfo
              * @property {implant.AgentCommandStatus|null} [status] Response status
              */
 
@@ -942,6 +1256,14 @@ $root.implant = (function() {
              * @instance
              */
             Response.prototype.output = $util.newBuffer([]);
+
+            /**
+             * Response sysinfo.
+             * @member {implant.ISysInfoData|null|undefined} sysinfo
+             * @memberof implant.Command.Response
+             * @instance
+             */
+            Response.prototype.sysinfo = null;
 
             /**
              * Response status.
@@ -979,6 +1301,8 @@ $root.implant = (function() {
                     writer.uint32(/* id 1, wireType 0 =*/8).int32(message.command);
                 if (message.output != null && Object.hasOwnProperty.call(message, "output"))
                     writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.output);
+                if (message.sysinfo != null && Object.hasOwnProperty.call(message, "sysinfo"))
+                    $root.implant.SysInfoData.encode(message.sysinfo, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
                 if (message.status != null && Object.hasOwnProperty.call(message, "status"))
                     writer.uint32(/* id 4, wireType 0 =*/32).int32(message.status);
                 return writer;
@@ -1021,6 +1345,10 @@ $root.implant = (function() {
                         }
                     case 2: {
                             message.output = reader.bytes();
+                            break;
+                        }
+                    case 3: {
+                            message.sysinfo = $root.implant.SysInfoData.decode(reader, reader.uint32());
                             break;
                         }
                     case 4: {
@@ -1081,6 +1409,11 @@ $root.implant = (function() {
                 if (message.output != null && message.hasOwnProperty("output"))
                     if (!(message.output && typeof message.output.length === "number" || $util.isString(message.output)))
                         return "output: buffer expected";
+                if (message.sysinfo != null && message.hasOwnProperty("sysinfo")) {
+                    var error = $root.implant.SysInfoData.verify(message.sysinfo);
+                    if (error)
+                        return "sysinfo." + error;
+                }
                 if (message.status != null && message.hasOwnProperty("status"))
                     switch (message.status) {
                     default:
@@ -1158,6 +1491,11 @@ $root.implant = (function() {
                         $util.base64.decode(object.output, message.output = $util.newBuffer($util.base64.length(object.output)), 0);
                     else if (object.output.length >= 0)
                         message.output = object.output;
+                if (object.sysinfo != null) {
+                    if (typeof object.sysinfo !== "object")
+                        throw TypeError(".implant.Command.Response.sysinfo: object expected");
+                    message.sysinfo = $root.implant.SysInfoData.fromObject(object.sysinfo);
+                }
                 switch (object.status) {
                 default:
                     if (typeof object.status === "number") {
@@ -1203,12 +1541,15 @@ $root.implant = (function() {
                         if (options.bytes !== Array)
                             object.output = $util.newBuffer(object.output);
                     }
+                    object.sysinfo = null;
                     object.status = options.enums === String ? "STATUS_UNSPECIFIED" : 0;
                 }
                 if (message.command != null && message.hasOwnProperty("command"))
                     object.command = options.enums === String ? $root.implant.AgentCommand[message.command] === undefined ? message.command : $root.implant.AgentCommand[message.command] : message.command;
                 if (message.output != null && message.hasOwnProperty("output"))
                     object.output = options.bytes === String ? $util.base64.encode(message.output, 0, message.output.length) : options.bytes === Array ? Array.prototype.slice.call(message.output) : message.output;
+                if (message.sysinfo != null && message.hasOwnProperty("sysinfo"))
+                    object.sysinfo = $root.implant.SysInfoData.toObject(message.sysinfo, options);
                 if (message.status != null && message.hasOwnProperty("status"))
                     object.status = options.enums === String ? $root.implant.AgentCommandStatus[message.status] === undefined ? message.status : $root.implant.AgentCommandStatus[message.status] : message.status;
                 return object;

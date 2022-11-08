@@ -3,7 +3,7 @@ import * as path from "path";
 import ECKey from "ec-key";
 import merge from "lodash.merge";
 
-import { Config, Constants, emsg } from "../utils/utils";
+import { Config, Constants, emsg, padTail, padZero } from "../utils/utils";
 import Crypto, { CipherModel, KeyExportType } from "./crypto";
 import Logger from "./logger";
 import SkimmerModule from "../modules/skimmer";
@@ -276,7 +276,7 @@ export default class RedChannel {
             // pad the last block with trailing Fs
             const lastAddedBlock = blocksPerIp.slice(-1)[0];
             paddedBytes = 4 - lastAddedBlock.length;
-            blocksPerIp[blocksPerIp.length - 1] = this.padTail(lastAddedBlock, 4);
+            blocksPerIp[blocksPerIp.length - 1] = padTail(lastAddedBlock, 4);
             if (blocksPerIp.length < Config.MAX_DATA_BLOCKS_PER_IP) {
                 const blocksNeeded = Config.MAX_DATA_BLOCKS_PER_IP - blocksPerIp.length;
                 for (let j = 0; j < blocksNeeded; j++) {
@@ -292,7 +292,7 @@ export default class RedChannel {
             records.push(
                 Config.RECORD_DATA_PREFIX +
                 ":" +
-                this.padZero(recordNum.toString(16), 4) +
+                padZero(recordNum.toString(16), 4) +
                 ":" +
                 blocksPerIp.join(":")
             );
@@ -305,10 +305,10 @@ export default class RedChannel {
                     ":" +
                     dataId +
                     ":" +
-                    this.padZero(command.toString(16), 2) +
-                    this.padZero(paddedBytes.toString(16), 2) +
+                    padZero(command.toString(16), 2) +
+                    padZero(paddedBytes.toString(16), 2) +
                     ":" +
-                    this.padZero(totalRecords.toString(16), 4) +
+                    padZero(totalRecords.toString(16), 4) +
                     ":" +
                     "0000:0000:0000:0001"
                 );
@@ -324,10 +324,10 @@ export default class RedChannel {
                 ":" +
                 dataId +
                 ":" +
-                this.padZero(command.toString(16), 2) +
-                this.padZero(paddedBytes.toString(16), 2) +
+                padZero(command.toString(16), 2) +
+                padZero(paddedBytes.toString(16), 2) +
                 ":" +
-                this.padZero(totalRecords.toString(16), 4) +
+                padZero(totalRecords.toString(16), 4) +
                 ":" +
                 "0000:0000:0000:0001"
             );
@@ -349,13 +349,6 @@ export default class RedChannel {
         this.log.debug(`records: ${JSON.stringify(records, null, 2)}`);
     }
 
-    padZero(proxyData, max_len) {
-        return "0".repeat(max_len - proxyData.length) + proxyData;
-    }
-    padTail(proxyData, max_len) {
-        return proxyData + Config.DATA_PAD_CHAR.repeat(max_len - proxyData.length);
-    }
-
     isCommandInSendQ(agentId, command) {
         const agent = this.agents.get(agentId);
         if (!agent) {
@@ -363,7 +356,7 @@ export default class RedChannel {
             return;
         }
 
-        const findCommand = this.padZero(command.toString(16), 2);
+        const findCommand = padZero(command.toString(16), 2);
         let is = false;
         agent.sendq?.forEach((queue) => {
             if (queue[0].substring(0, 4) == Config.RECORD_HEADER_PREFIX) {
@@ -377,7 +370,7 @@ export default class RedChannel {
     }
 
     makeIpString(last_byte) {
-        return `${Config.RECORD_HEADER_PREFIX}:0000:${this.padZero(implant.AgentCommand.AGENT_IGNORE.toString(16), 2)}01:0000:0000:dead:c0de:00${last_byte}`;
+        return `${Config.RECORD_HEADER_PREFIX}:0000:${padZero(implant.AgentCommand.AGENT_IGNORE.toString(16), 2)}01:0000:0000:dead:c0de:00${last_byte}`;
     }
 
     /**

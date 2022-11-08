@@ -1,21 +1,3 @@
-export const log = {
-    error: (...msg) => {
-        console.error(new Date().toISOString(), ...msg);
-    },
-    info: (...msg) => {
-        console.info(new Date().toISOString(), ...msg);
-    },
-    warn: (...msg) => {
-        console.warn(new Date().toISOString(), ...msg);
-    },
-};
-
-export const emsg = (e: any) => {
-    let message = e instanceof Error ? e.message : "unknown error";
-    if (e.code) message = `${message} - ${e.code}`;
-    return message;
-};
-
 export const Constants = {
     VERSION: "1.0",
     VALID_CLASS_ID_REGEX: /^-?[\s_a-zA-Z,]+[\s_a-zA-Z0-9-,]*$/,
@@ -49,3 +31,28 @@ export const Banner = `
 ██║  ██║███████╗██████╔╝╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
 ╚═╝  ╚═╝╚══════╝╚═════╝  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
 `;
+
+export const log = {
+    error: (...msg) => {
+        console.error(new Date().toISOString(), ...msg);
+    },
+    info: (...msg) => {
+        console.info(new Date().toISOString(), ...msg);
+    },
+    warn: (...msg) => {
+        console.warn(new Date().toISOString(), ...msg);
+    },
+};
+
+export const emsg = (e: any) => {
+    let message = e instanceof Error ? e.message : "unknown error";
+    if (e.code) message = `${message} - ${e.code}`;
+    return message;
+};
+
+export const padZero = (proxyData, maxLength) => {
+    return "0".repeat(maxLength - proxyData.length) + proxyData;
+};
+export const padTail = (proxyData, maxLength) => {
+    return proxyData + Config.DATA_PAD_CHAR.repeat(maxLength - proxyData.length);
+};
