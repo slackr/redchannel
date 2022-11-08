@@ -13,12 +13,13 @@ export const Constants = {
 };
 
 export const Config = {
+    C2_ANSWER_TTL_SECS: 300,
     DEFAULT_CONFIG_FILE: "conf/redchannel.conf",
     DATA_PAD_CHAR: "f",
-    RECORD_DATA_PREFIX: "2001",
-    RECORD_HEADER_PREFIX: "ff00",
+    IP_DATA_PREFIX: "2001",
+    IP_HEADER_PREFIX: "ff00",
     MAX_DATA_BLOCKS_PER_IP: 6,
-    MAX_RECORDS_PER_COMMAND: 15, // first record is ip header, rest is data
+    MAX_IPS_PER_COMMAND: 15, // first record is ip header, rest is data
     FLOOD_PROTECTION_TIMEOUT_MS: 10,
     EXPECTED_DATA_SEGMENTS: 5,
 };
