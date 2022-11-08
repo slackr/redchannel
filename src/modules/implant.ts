@@ -207,6 +207,8 @@ export default class ImplantModule extends BaseModule {
         configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.redChannel.modules.proxy.config.enabled}`);
         configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*\".*\".*$/im, `c.ProxyUrl = "${this.redChannel.modules.proxy.config.url}"`);
         configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*\".*\".*$/im, `c.ProxyKey = "${this.redChannel.modules.proxy.config.key}"`);
+        // if we are in debug mode, don't throttle sendq
+        configData = configData.replace(/^\s*c\.ThrottleSendQ\s*=.*$/im, `c.ThrottleSendQ = ${!this.config.debug}`);
 
         try {
             fs.writeFileSync(agentConfigPath, configData, { flag: "w" });
