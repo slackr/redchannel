@@ -68,7 +68,7 @@ export default class ImplantModule extends BaseModule {
                 description: "set the target os for the build (GOOS)",
                 validateRegex: Constants.VALID_BUILD_TARGET_OS,
                 execute: (params: string) => {
-                    this.config.os = params[0];
+                    this.config.os = params;
                 },
             },
             "set arch": {
@@ -76,7 +76,7 @@ export default class ImplantModule extends BaseModule {
                 description: "set the target arch for the build (GOARCH)",
                 validateRegex: Constants.VALID_BUILD_TARGET_ARCH,
                 execute: (params: string) => {
-                    this.config.arch = params[0];
+                    this.config.arch = params;
                 },
             },
             "set interval": {
@@ -84,7 +84,7 @@ export default class ImplantModule extends BaseModule {
                 description: "set implant c2 query interval",
                 validateRegex: /^[0-9]+$/,
                 execute: (params: string) => {
-                    this.config.interval = Number(params[0]) || this.config.interval;
+                    this.config.interval = Number(params) || this.config.interval;
                 },
             },
             "set resolver": {
@@ -92,14 +92,14 @@ export default class ImplantModule extends BaseModule {
                 description: "set implant resolver ip:port (8.8.8.8:53)",
                 validateRegex: Constants.VALID_IMPLANT_RESOLVER,
                 execute: (params: string) => {
-                    this.config.resolver = params[0];
+                    this.config.resolver = params;
                 },
             },
             "set debug": {
                 arguments: ["<1|0>"],
                 description: "build debug version of the implant",
                 execute: (params: string) => {
-                    this.config.debug = params[0] != "0" && params[0] != "false" ? true : false;
+                    this.config.debug = params != "0" && params != "false" ? true : false;
                 },
             },
         });

@@ -57,7 +57,7 @@ export default class ProxyModule extends BaseModule {
             key: crypto.randomBytes(6).toString("hex"),
             interval: 2000,
             obfuscate_payload: false,
-            url: "http://10.0.5.79/",
+            url: "http://127.0.0.1/",
         };
         this.config = this.loadConfig() as ProxyConfig;
 
