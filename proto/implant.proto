@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package implant;
 
+import "google/protobuf/wrappers.proto";
+
 option go_package = './implant';
 
 enum AgentCommand {
@@ -26,11 +28,11 @@ enum AgentCommandStatus {
 message AgentConfig {
   string c2_domain = 1;
   string c2_password = 2;
-  string resolver = 3;
-  uint32 c2_interval_ms = 4;
-  bool use_web_channel = 5;
-  string web_url = 6;
-  string web_key = 7;
+  .google.protobuf.StringValue resolver = 3;
+  .google.protobuf.UInt32Value c2_interval_ms = 4;
+  .google.protobuf.BoolValue use_web_channel = 5;
+  .google.protobuf.StringValue web_url = 6;
+  .google.protobuf.StringValue web_key = 7;
 }
 
 message SysInfoData {
