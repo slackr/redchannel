@@ -14,7 +14,7 @@ export default class StaticDnsModule extends BaseModule {
 
         this.description = MODULE_DESCRIPTION;
 
-        this.config = new Map<StaticDnsHost, StaticDnsIp>(Object.entries(this.loadConfig()));
+        this.config = new Map<StaticDnsHost, StaticDnsIp>(Object.entries(this.getConfigFromFile()));
 
         this.defineCommands({
             add: {

@@ -59,7 +59,7 @@ export default class ProxyModule extends BaseModule {
             obfuscate_payload: false,
             url: "http://127.0.0.1/",
         };
-        this.config = this.loadConfig() as ProxyConfig;
+        this.config = this.getConfigFromFile() as ProxyConfig;
 
         this.defineCommands({
             fetch: {

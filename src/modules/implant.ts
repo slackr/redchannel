@@ -20,12 +20,12 @@ export type ImplantConfig = {
     arch: string;
     resolver: string;
     interval: number;
-    output_file: string;
     debug: boolean;
 };
 
 export default class ImplantModule extends BaseModule {
     config: ImplantConfig;
+    outputFile: string;
     log: Logger;
 
     /**
@@ -44,10 +44,11 @@ export default class ImplantModule extends BaseModule {
             arch: "amd64",
             interval: 5000,
             resolver: "8.8.8.8:53",
-            output_file: "",
             debug: false,
         };
-        this.config = this.loadConfig();
+        this.config = this.getConfigFromFile();
+
+        this.outputFile = "";
 
         this.defineCommands({
             build: {
@@ -168,7 +169,7 @@ export default class ImplantModule extends BaseModule {
             throw new Error(`failed to write log file: ${emsg(ex)}`);
         }
 
-        this.config.output_file = outputFile;
+        this.outputFile = outputFile;
 
         const binaryUrl = this.redChannel.modules.c2.config.web_url + this.redChannel.modules.c2.config.binary_route;
 

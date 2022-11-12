@@ -99,7 +99,7 @@ export default class BaseModule {
         }
     }
 
-    loadConfig() {
+    getConfigFromFile() {
         return this.resetConfig();
     }
     resetConfig() {

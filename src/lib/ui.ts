@@ -108,19 +108,21 @@ class UserInterface extends Logger {
         }
 
         const inputParams = input.split(" ");
+
+        const command = inputParams.shift();
+        if (!command) return;
+
         if (this.interact) {
-            this.processInputParamsInteract(inputParams);
+            this.processInputParamsInteract(command, inputParams);
         } else {
-            this.processInputParamsModule(inputParams);
+            this.processInputParamsModule(command, inputParams);
         }
         this.resetPrompt();
     }
 
-    processInputParamsModule(inputParams: string[]) {
+    processInputParamsModule(command: string, inputParams: string[]) {
+        // when not using a module explicitly, set it to default: c2
         if (!this.usingModule) this.usingModule = "c2";
-
-        const command = inputParams.shift();
-        if (!command) return;
 
         const usingModule = this.redchannel.modules[this.usingModule] as BaseModule;
         switch (command) {
@@ -188,7 +190,7 @@ class UserInterface extends Logger {
             case "interact":
                 const interactAgentId = inputParams.shift();
 
-                if (typeof interactAgentId == "undefined" || interactAgentId.length == 0) {
+                if (!interactAgentId) {
                     this.error("please specify an agent id, see 'agents'");
                     break;
                 }
@@ -196,9 +198,10 @@ class UserInterface extends Logger {
                 this.interact = this.redchannel.getAgent(interactAgentId);
                 if (!this.interact) {
                     this.error("agent " + chalk.blue(interactAgentId) + " not found");
-                } else {
-                    this.info("interacting with " + chalk.blue(this.interact.id) + "");
+                    break;
                 }
+                this.usingModule = "agent";
+                this.info("interacting with " + chalk.blue(this.interact.id) + "");
                 break;
             case "reload":
             case "reset":
@@ -242,7 +245,7 @@ class UserInterface extends Logger {
 
                 const setCommand = usingModule.commands.get(`set ${settingName}`) as Command;
 
-                if (setCommand.validateRegex && !setCommand.validateRegex.test(settingValue)) {
+                if (setCommand.validateRegex && !setCommand.validateRegex?.test(settingValue)) {
                     this.error(`invalid '${settingName}' value, see 'help'`);
                     break;
                 }
@@ -282,11 +285,9 @@ class UserInterface extends Logger {
         }
     }
 
-    processInputParamsInteract(param: string[]) {
+    processInputParamsInteract(command: string, inputParams: string[]) {
         if (!this.interact) return;
-
-        const command = param.shift();
-        if (!command) return;
+        const usingModule = this.redchannel.modules.agent as BaseModule;
 
         switch (command) {
             case "debug":
@@ -315,7 +316,7 @@ class UserInterface extends Logger {
                 }
                 break;
             case "interact":
-                const agentId = param.shift();
+                const agentId = inputParams.shift();
                 if (!agentId) {
                     this.error("please specify an agent id, see 'agents'");
                     break;
@@ -323,9 +324,9 @@ class UserInterface extends Logger {
 
                 this.interact = this.redchannel.getAgent(agentId);
                 if (!this.interact) {
-                    this.error("agent '" + chalk.blue(this.interact ? agentId : "") + "' not found");
+                    this.error(`agent '${chalk.blue(agentId)}' not found`);
                 } else {
-                    this.warn("interacting with " + chalk.blue(this.interact.id));
+                    this.warn(`interacting with ${chalk.blue(this.interact.id)}`);
                     this.resetPrompt();
                 }
                 break;
@@ -338,7 +339,7 @@ class UserInterface extends Logger {
                     break;
                 }
 
-                const agentToShutdown = param.shift();
+                const agentToShutdown = inputParams.shift();
                 if (agentToShutdown !== this.interact.id) {
                     this.warn("please confirm shutdown by entering the agent id, see 'help'");
                     break;
@@ -358,80 +359,16 @@ class UserInterface extends Logger {
                     this.error("cannot send command to " + chalk.blue(this.interact.id) + ", start 'keyx' first");
                     break;
                 }
-
-                const executeCommand = param.join(" ");
-                if (executeCommand.length == 0) {
-                    this.error("command failed, insufficient parameters, see 'help'");
+                if (inputParams.length == 0) {
+                    this.error("insufficient parameters, see 'help'");
                     break;
                 }
 
-                this.warn("sending shell command to " + chalk.blue(this.interact.id) + "");
+                const executeCommand = inputParams.join(" ");
+                this.warn(`sending shell command to ${chalk.blue(this.interact.id)}`);
 
                 try {
                     this.redchannel.sendCommandShell(this.interact.id, executeCommand);
-                } catch (ex) {
-                    this.error(emsg(ex));
-                }
-                break;
-            case "set":
-                if (!this.hasSecret(this.interact)) {
-                    this.error("cannot send config to " + chalk.blue(this.interact.id) + ", start 'keyx' first");
-                    break;
-                }
-
-                const setting = param.shift();
-                if (!setting) {
-                    this.error("please specify a setting, see 'help'");
-                    break;
-                }
-
-                const agentSettings = {
-                    // domain: this.redchannel.modules.c2.config.c2.domain, // cannot set these dynamically
-                    // password: this.redchannel.modules.c2.config.c2.password, // cannot set these dynamically
-                    interval: this.redchannel.modules.c2.config.interval,
-                    proxy_enabled: this.redchannel.modules.proxy.config.enabled,
-                    proxy_url: this.redchannel.modules.proxy.config.url,
-                    proxy_key: this.redchannel.modules.proxy.config.key,
-                };
-
-                const agentConfigToProxyMap = {
-                    domain: "d",
-                    interval: "i",
-                    password: "p",
-                    proxy_enabled: "pe",
-                    proxy_url: "pu",
-                    proxy_key: "pk",
-                };
-
-                if (!Object.keys(agentSettings).includes(setting)) {
-                    this.error("invalid config setting, see 'help'");
-                    break;
-                }
-
-                let configValue = param.join(" ");
-                if (configValue.length === 0) {
-                    this.error("please specify config setting value, see 'help'");
-                    break;
-                }
-
-                // TODO: regex validate value
-                const settingType = typeof agentSettings[setting];
-                switch (settingType) {
-                    case "boolean":
-                        configValue = ["off", "0", "false", "no"].includes(configValue) ? "false" : "true";
-                        break;
-                    default:
-                        // numbers, strings, etc
-                        break;
-                }
-
-                const setConfigData = agentConfigToProxyMap[setting] + "=" + configValue;
-
-                // if changing the c2 password, issue keyx again
-                this.success("setting '" + agentConfigToProxyMap[setting] + "' to value '" + configValue + "' on agent: " + this.interact.id);
-
-                try {
-                    this.redchannel.sendCommandSetConfig(this.interact.id, setConfigData);
                 } catch (ex) {
                     this.error(emsg(ex));
                 }
@@ -445,13 +382,50 @@ class UserInterface extends Logger {
                     this.error(emsg(ex));
                 }
                 break;
+            case "send_config":
+                this.warn(`sending config changes to ${chalk.blue(this.interact.id)}`);
+
+                try {
+                    this.redchannel.sendConfigChanges(this.interact.id);
+                } catch (ex) {
+                    this.error(emsg(ex));
+                }
+                break;
+            case "set":
+                const settingName = inputParams.shift();
+                if (!settingName) {
+                    this.error("please specify a setting name, see 'help'");
+                    break;
+                }
+                const settingValue = inputParams.join(" ");
+                if (!settingValue) {
+                    this.error("please specify a setting value, see 'help'");
+                    break;
+                }
+
+                const setCommand = usingModule.commands.get(`set ${settingName}`) as Command;
+
+                if (setCommand.validateRegex && !setCommand.validateRegex?.test(settingValue)) {
+                    this.error(`invalid '${settingName}' value, see 'help'`);
+                    break;
+                }
+
+                let callback: ExecuteCallbackFunction = () => {};
+                if (setCommand.executeCallbackAvailable) {
+                    callback = (result: ExecuteCallbackResult) => {
+                        this.info(result.message);
+                    };
+                }
+                if (setCommand.execute) setCommand.execute?.bind(usingModule)(settingValue, callback.bind(this));
+                this.info("set " + settingName + " = '" + usingModule.config[settingName] + "'");
+                break;
             case "msg":
                 if (!this.hasSecret(this.interact)) {
                     this.error("cannot send msg to " + chalk.blue(this.interact.id) + ", start 'keyx' first");
                     break;
                 }
 
-                const message = param.join(" ");
+                const message = inputParams.join(" ");
                 this.warn("sending message to " + chalk.blue(this.interact.id) + "");
 
                 try {
@@ -461,7 +435,7 @@ class UserInterface extends Logger {
                 }
                 break;
             default:
-                this.error(`invalid command: ${command}, see 'help'`);
+                this.processInputParamsModule(command, inputParams);
                 break;
         }
     }

