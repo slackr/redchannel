@@ -49,18 +49,56 @@ $root.implant = (function() {
     })();
 
     /**
+     * C2ResponseStatus enum.
+     * @name implant.C2ResponseStatus
+     * @enum {number}
+     * @property {number} C2_STATUS_UNSPECIFIED=0 C2_STATUS_UNSPECIFIED value
+     * @property {number} NEED_MORE_DATA=1 NEED_MORE_DATA value
+     * @property {number} DATA_RECEIVED=2 DATA_RECEIVED value
+     * @property {number} NO_DATA=3 NO_DATA value
+     * @property {number} ERROR_IMPORTING_KEY=4 ERROR_IMPORTING_KEY value
+     * @property {number} ERROR_DERIVING_SECRET=5 ERROR_DERIVING_SECRET value
+     * @property {number} ERROR_DECRYPTING_MESSAGE=6 ERROR_DECRYPTING_MESSAGE value
+     * @property {number} ERROR_GENERATING_KEYS=7 ERROR_GENERATING_KEYS value
+     * @property {number} ERROR_INVALID_MESSAGE=8 ERROR_INVALID_MESSAGE value
+     * @property {number} ERROR_AGENT_UNKNOWN=9 ERROR_AGENT_UNKNOWN value
+     * @property {number} ERROR_CHECKING_IN=10 ERROR_CHECKING_IN value
+     * @property {number} ERROR_KEYX_NOT_ALLOWED=11 ERROR_KEYX_NOT_ALLOWED value
+     * @property {number} ERROR_INVALID_SYSINFO=12 ERROR_INVALID_SYSINFO value
+     * @property {number} ERROR_FAILED=13 ERROR_FAILED value
+     */
+    implant.C2ResponseStatus = (function() {
+        var valuesById = {}, values = Object.create(valuesById);
+        values[valuesById[0] = "C2_STATUS_UNSPECIFIED"] = 0;
+        values[valuesById[1] = "NEED_MORE_DATA"] = 1;
+        values[valuesById[2] = "DATA_RECEIVED"] = 2;
+        values[valuesById[3] = "NO_DATA"] = 3;
+        values[valuesById[4] = "ERROR_IMPORTING_KEY"] = 4;
+        values[valuesById[5] = "ERROR_DERIVING_SECRET"] = 5;
+        values[valuesById[6] = "ERROR_DECRYPTING_MESSAGE"] = 6;
+        values[valuesById[7] = "ERROR_GENERATING_KEYS"] = 7;
+        values[valuesById[8] = "ERROR_INVALID_MESSAGE"] = 8;
+        values[valuesById[9] = "ERROR_AGENT_UNKNOWN"] = 9;
+        values[valuesById[10] = "ERROR_CHECKING_IN"] = 10;
+        values[valuesById[11] = "ERROR_KEYX_NOT_ALLOWED"] = 11;
+        values[valuesById[12] = "ERROR_INVALID_SYSINFO"] = 12;
+        values[valuesById[13] = "ERROR_FAILED"] = 13;
+        return values;
+    })();
+
+    /**
      * AgentCommandStatus enum.
      * @name implant.AgentCommandStatus
      * @enum {number}
-     * @property {number} STATUS_UNSPECIFIED=0 STATUS_UNSPECIFIED value
-     * @property {number} STATUS_SUCCESS=1 STATUS_SUCCESS value
-     * @property {number} STATUS_ERROR=2 STATUS_ERROR value
+     * @property {number} COMMAND_STATUS_UNSPECIFIED=0 COMMAND_STATUS_UNSPECIFIED value
+     * @property {number} COMMAND_STATUS_SUCCESS=1 COMMAND_STATUS_SUCCESS value
+     * @property {number} COMMAND_STATUS_ERROR=2 COMMAND_STATUS_ERROR value
      */
     implant.AgentCommandStatus = (function() {
         var valuesById = {}, values = Object.create(valuesById);
-        values[valuesById[0] = "STATUS_UNSPECIFIED"] = 0;
-        values[valuesById[1] = "STATUS_SUCCESS"] = 1;
-        values[valuesById[2] = "STATUS_ERROR"] = 2;
+        values[valuesById[0] = "COMMAND_STATUS_UNSPECIFIED"] = 0;
+        values[valuesById[1] = "COMMAND_STATUS_SUCCESS"] = 1;
+        values[valuesById[2] = "COMMAND_STATUS_ERROR"] = 2;
         return values;
     })();
 
@@ -77,6 +115,7 @@ $root.implant = (function() {
          * @property {google.protobuf.IBoolValue|null} [useWebChannel] AgentConfig useWebChannel
          * @property {google.protobuf.IStringValue|null} [webUrl] AgentConfig webUrl
          * @property {google.protobuf.IStringValue|null} [webKey] AgentConfig webKey
+         * @property {google.protobuf.IBoolValue|null} [throttleSendq] AgentConfig throttleSendq
          */
 
         /**
@@ -151,6 +190,14 @@ $root.implant = (function() {
         AgentConfig.prototype.webKey = null;
 
         /**
+         * AgentConfig throttleSendq.
+         * @member {google.protobuf.IBoolValue|null|undefined} throttleSendq
+         * @memberof implant.AgentConfig
+         * @instance
+         */
+        AgentConfig.prototype.throttleSendq = null;
+
+        /**
          * Creates a new AgentConfig instance using the specified properties.
          * @function create
          * @memberof implant.AgentConfig
@@ -188,6 +235,8 @@ $root.implant = (function() {
                 $root.google.protobuf.StringValue.encode(message.webUrl, writer.uint32(/* id 6, wireType 2 =*/50).fork()).ldelim();
             if (message.webKey != null && Object.hasOwnProperty.call(message, "webKey"))
                 $root.google.protobuf.StringValue.encode(message.webKey, writer.uint32(/* id 7, wireType 2 =*/58).fork()).ldelim();
+            if (message.throttleSendq != null && Object.hasOwnProperty.call(message, "throttleSendq"))
+                $root.google.protobuf.BoolValue.encode(message.throttleSendq, writer.uint32(/* id 8, wireType 2 =*/66).fork()).ldelim();
             return writer;
         };
 
@@ -248,6 +297,10 @@ $root.implant = (function() {
                     }
                 case 7: {
                         message.webKey = $root.google.protobuf.StringValue.decode(reader, reader.uint32());
+                        break;
+                    }
+                case 8: {
+                        message.throttleSendq = $root.google.protobuf.BoolValue.decode(reader, reader.uint32());
                         break;
                     }
                 default:
@@ -316,6 +369,11 @@ $root.implant = (function() {
                 if (error)
                     return "webKey." + error;
             }
+            if (message.throttleSendq != null && message.hasOwnProperty("throttleSendq")) {
+                var error = $root.google.protobuf.BoolValue.verify(message.throttleSendq);
+                if (error)
+                    return "throttleSendq." + error;
+            }
             return null;
         };
 
@@ -360,6 +418,11 @@ $root.implant = (function() {
                     throw TypeError(".implant.AgentConfig.webKey: object expected");
                 message.webKey = $root.google.protobuf.StringValue.fromObject(object.webKey);
             }
+            if (object.throttleSendq != null) {
+                if (typeof object.throttleSendq !== "object")
+                    throw TypeError(".implant.AgentConfig.throttleSendq: object expected");
+                message.throttleSendq = $root.google.protobuf.BoolValue.fromObject(object.throttleSendq);
+            }
             return message;
         };
 
@@ -384,6 +447,7 @@ $root.implant = (function() {
                 object.useWebChannel = null;
                 object.webUrl = null;
                 object.webKey = null;
+                object.throttleSendq = null;
             }
             if (message.c2Domain != null && message.hasOwnProperty("c2Domain"))
                 object.c2Domain = message.c2Domain;
@@ -399,6 +463,8 @@ $root.implant = (function() {
                 object.webUrl = $root.google.protobuf.StringValue.toObject(message.webUrl, options);
             if (message.webKey != null && message.hasOwnProperty("webKey"))
                 object.webKey = $root.google.protobuf.StringValue.toObject(message.webKey, options);
+            if (message.throttleSendq != null && message.hasOwnProperty("throttleSendq"))
+                object.throttleSendq = $root.google.protobuf.BoolValue.toObject(message.throttleSendq, options);
             return object;
         };
 
@@ -1528,15 +1594,15 @@ $root.implant = (function() {
                         break;
                     }
                     break;
-                case "STATUS_UNSPECIFIED":
+                case "COMMAND_STATUS_UNSPECIFIED":
                 case 0:
                     message.status = 0;
                     break;
-                case "STATUS_SUCCESS":
+                case "COMMAND_STATUS_SUCCESS":
                 case 1:
                     message.status = 1;
                     break;
-                case "STATUS_ERROR":
+                case "COMMAND_STATUS_ERROR":
                 case 2:
                     message.status = 2;
                     break;
@@ -1567,7 +1633,7 @@ $root.implant = (function() {
                             object.output = $util.newBuffer(object.output);
                     }
                     object.sysinfo = null;
-                    object.status = options.enums === String ? "STATUS_UNSPECIFIED" : 0;
+                    object.status = options.enums === String ? "COMMAND_STATUS_UNSPECIFIED" : 0;
                 }
                 if (message.command != null && message.hasOwnProperty("command"))
                     object.command = options.enums === String ? $root.implant.AgentCommand[message.command] === undefined ? message.command : $root.implant.AgentCommand[message.command] : message.command;

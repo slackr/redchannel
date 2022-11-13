@@ -19,20 +19,40 @@ enum AgentCommand {
   AGENT_IGNORE = 9;
 }
 
+enum C2ResponseStatus {
+  C2_STATUS_UNSPECIFIED = 0;
+  NEED_MORE_DATA = 1;
+  DATA_RECEIVED = 2;
+  NO_DATA = 3;
+  ERROR_IMPORTING_KEY = 4;
+  ERROR_DERIVING_SECRET = 5;
+  ERROR_DECRYPTING_MESSAGE = 6;
+  ERROR_GENERATING_KEYS = 7;
+  ERROR_INVALID_MESSAGE = 8;
+  ERROR_AGENT_UNKNOWN = 9;
+  ERROR_CHECKING_IN = 10;
+  ERROR_KEYX_NOT_ALLOWED = 11;
+  ERROR_INVALID_SYSINFO = 12;
+  ERROR_FAILED = 13;
+}
+
 enum AgentCommandStatus {
-  STATUS_UNSPECIFIED = 0;
-  STATUS_SUCCESS = 1;
-  STATUS_ERROR = 2;
+  COMMAND_STATUS_UNSPECIFIED = 0;
+  COMMAND_STATUS_SUCCESS = 1;
+  COMMAND_STATUS_ERROR = 2;
 }
 
 message AgentConfig {
   string c2_domain = 1;
   string c2_password = 2;
+  // google's proto wrappers allow us to check if the field exists, so we don't
+  // accidentally use the default proto3 values for optional fields
   .google.protobuf.StringValue resolver = 3;
   .google.protobuf.UInt32Value c2_interval_ms = 4;
   .google.protobuf.BoolValue use_web_channel = 5;
   .google.protobuf.StringValue web_url = 6;
   .google.protobuf.StringValue web_key = 7;
+  .google.protobuf.BoolValue throttle_sendq = 8;
 }
 
 message SysInfoData {

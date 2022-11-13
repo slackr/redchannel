@@ -17,11 +17,29 @@ export namespace implant {
         AGENT_IGNORE = 9
     }
 
+    /** C2ResponseStatus enum. */
+    enum C2ResponseStatus {
+        C2_STATUS_UNSPECIFIED = 0,
+        NEED_MORE_DATA = 1,
+        DATA_RECEIVED = 2,
+        NO_DATA = 3,
+        ERROR_IMPORTING_KEY = 4,
+        ERROR_DERIVING_SECRET = 5,
+        ERROR_DECRYPTING_MESSAGE = 6,
+        ERROR_GENERATING_KEYS = 7,
+        ERROR_INVALID_MESSAGE = 8,
+        ERROR_AGENT_UNKNOWN = 9,
+        ERROR_CHECKING_IN = 10,
+        ERROR_KEYX_NOT_ALLOWED = 11,
+        ERROR_INVALID_SYSINFO = 12,
+        ERROR_FAILED = 13
+    }
+
     /** AgentCommandStatus enum. */
     enum AgentCommandStatus {
-        STATUS_UNSPECIFIED = 0,
-        STATUS_SUCCESS = 1,
-        STATUS_ERROR = 2
+        COMMAND_STATUS_UNSPECIFIED = 0,
+        COMMAND_STATUS_SUCCESS = 1,
+        COMMAND_STATUS_ERROR = 2
     }
 
     /** Properties of an AgentConfig. */
@@ -47,6 +65,9 @@ export namespace implant {
 
         /** AgentConfig webKey */
         webKey?: (google.protobuf.IStringValue|null);
+
+        /** AgentConfig throttleSendq */
+        throttleSendq?: (google.protobuf.IBoolValue|null);
     }
 
     /** Represents an AgentConfig. */
@@ -78,6 +99,9 @@ export namespace implant {
 
         /** AgentConfig webKey. */
         public webKey?: (google.protobuf.IStringValue|null);
+
+        /** AgentConfig throttleSendq. */
+        public throttleSendq?: (google.protobuf.IBoolValue|null);
 
         /**
          * Creates a new AgentConfig instance using the specified properties.

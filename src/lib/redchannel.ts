@@ -79,23 +79,6 @@ export interface AgentModel {
     recvq: Map<implant.AgentCommand, Map<DataId, DataChunk[]>>;
 }
 
-// agent status hex string value to be appended to DNS response
-export enum AgentStatus {
-    NEED_MORE_DATA = "01",
-    DATA_RECEIVED = "02",
-    NO_DATA = "03",
-    ERROR_IMPORTING_KEY = "04",
-    ERROR_DERIVING_SECRET = "05",
-    ERROR_DECRYPTING_MESSAGE = "06",
-    ERROR_GENERATING_KEYS = "07",
-    ERROR_INVALID_MESSAGE = "08",
-    ERROR_AGENT_UNKNOWN = "09",
-    ERROR_CHECKING_IN = "0a",
-    ERROR_KEYX_NOT_ALLOWED = "0b",
-    ERROR_INVALID_SYSINFO = "0C",
-    ERROR_FAILED = "0f",
-}
-
 export enum AgentChannel {
     DNS = "dns",
     PROXY = "proxy",
@@ -267,14 +250,14 @@ export default class RedChannel {
     }
 
     sendConfigChanges(agentId: string) {
-        const configProto = implant.AgentConfig.create({
-            c2IntervalMs: this.modules.agent.config.interval,
-            webKey: this.modules.agent.config.proxy_key,
-            webUrl: this.modules.agent.config.proxy_url,
-            useWebChannel: this.modules.agent.config.proxy_enabled,
-        });
+        const configProto = implant.AgentConfig.create({});
+        if (this.modules.agent.config.interval) configProto.c2IntervalMs = { value: this.modules.agent.config.interval };
+        if (this.modules.agent.config.throttle_sendq) configProto.throttleSendq = { value: this.modules.agent.config.throttle_sendq };
+        if (this.modules.agent.config.proxy_enabled) configProto.useWebChannel = { value: this.modules.agent.config.proxy_enabled };
+        if (this.modules.agent.config.proxy_key) configProto.webKey = { value: this.modules.agent.config.proxy_key };
+        if (this.modules.agent.config.proxy_url) configProto.webUrl = { value: this.modules.agent.config.proxy_url };
 
-        // no need to send data
+        // no need to send data, just the config proto
         this.queueData(agentId, implant.AgentCommand.AGENT_SET_CONFIG, undefined, configProto).catch((ex) => {
             this.log.error(`error queueing data: ${emsg(ex)}`);
         });
@@ -431,7 +414,8 @@ export default class RedChannel {
         return is;
     }
 
-    makeIpString(lastByte: string) {
+    makeIpString(status: implant.C2ResponseStatus) {
+        const lastByte = padZero(status.toString(16), 2);
         return `${Config.IP_HEADER_PREFIX}:0000:${padZero(implant.AgentCommand.AGENT_IGNORE.toString(16), 2)}01:0000:0000:dead:c0de:00${lastByte}`;
     }
 
@@ -595,7 +579,7 @@ export default class RedChannel {
         res.answer.push({
             name: hostname,
             type: C2AnswerType.TYPE_AAAA,
-            data: this.makeIpString(AgentStatus.NEED_MORE_DATA),
+            data: this.makeIpString(implant.C2ResponseStatus.NEED_MORE_DATA),
             ttl: Config.C2_ANSWER_TTL_SECS,
         });
 
@@ -651,7 +635,7 @@ export default class RedChannel {
                 {
                     name: hostname,
                     type: C2AnswerType.TYPE_AAAA,
-                    data: this.makeIpString(AgentStatus.NO_DATA),
+                    data: this.makeIpString(implant.C2ResponseStatus.NO_DATA),
                     ttl: Config.C2_ANSWER_TTL_SECS,
                 },
             ];
@@ -688,7 +672,7 @@ export default class RedChannel {
                 {
                     name: hostname,
                     type: C2AnswerType.TYPE_AAAA,
-                    data: this.makeIpString(AgentStatus.ERROR_AGENT_UNKNOWN),
+                    data: this.makeIpString(implant.C2ResponseStatus.ERROR_AGENT_UNKNOWN),
                     ttl: Config.C2_ANSWER_TTL_SECS,
                 },
             ];
@@ -701,12 +685,12 @@ export default class RedChannel {
                 try {
                     checkInAnswers = this.checkInAgent(agent, hostname, data);
                 } catch (ex) {
-                    this.log.error(`failed to checkin agent: ${emsg(ex)}`);
+                    this.log.error(emsg(ex));
                     return [
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(AgentStatus.ERROR_CHECKING_IN),
+                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_CHECKING_IN),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -716,7 +700,7 @@ export default class RedChannel {
                     {
                         name: hostname,
                         type: C2AnswerType.TYPE_AAAA,
-                        data: this.makeIpString(AgentStatus.NO_DATA),
+                        data: this.makeIpString(implant.C2ResponseStatus.NO_DATA),
                         ttl: Config.C2_ANSWER_TTL_SECS,
                     },
                 ];
@@ -728,7 +712,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(AgentStatus.ERROR_KEYX_NOT_ALLOWED),
+                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_KEYX_NOT_ALLOWED),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -743,7 +727,7 @@ export default class RedChannel {
                             {
                                 name: hostname,
                                 type: C2AnswerType.TYPE_AAAA,
-                                data: this.makeIpString(AgentStatus.ERROR_GENERATING_KEYS),
+                                data: this.makeIpString(implant.C2ResponseStatus.ERROR_GENERATING_KEYS),
                                 ttl: Config.C2_ANSWER_TTL_SECS,
                             },
                         ];
@@ -759,7 +743,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(AgentStatus.ERROR_IMPORTING_KEY),
+                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_IMPORTING_KEY),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -774,7 +758,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(AgentStatus.ERROR_DERIVING_SECRET),
+                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_DERIVING_SECRET),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -795,7 +779,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(AgentStatus.ERROR_DECRYPTING_MESSAGE),
+                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_DECRYPTING_MESSAGE),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -815,7 +799,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(AgentStatus.ERROR_DECRYPTING_MESSAGE),
+                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_DECRYPTING_MESSAGE),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -826,7 +810,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(AgentStatus.ERROR_INVALID_SYSINFO),
+                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_INVALID_SYSINFO),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -848,7 +832,7 @@ export default class RedChannel {
             {
                 name: hostname,
                 type: C2AnswerType.TYPE_AAAA,
-                data: this.makeIpString(AgentStatus.DATA_RECEIVED),
+                data: this.makeIpString(implant.C2ResponseStatus.DATA_RECEIVED),
                 ttl: Config.C2_ANSWER_TTL_SECS,
             },
         ];
