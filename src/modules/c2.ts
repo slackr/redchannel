@@ -1,8 +1,11 @@
+import _merge from "lodash.merge";
+
+import RedChannel from "../lib/redchannel";
 import BaseModule from "./base";
 
 const MODULE_DESCRIPTION = "handles redchannel c2 management";
 
-export type C2Config = {
+export type C2ModuleConfig = {
     domain: string;
     dns_ip: string;
     dns_port: number;
@@ -11,26 +14,28 @@ export type C2Config = {
     interval: number;
     binary_route: string;
     web_url: string;
+    debug: boolean;
 };
 
 export default class C2Module extends BaseModule {
-    constructor(domain: string, debug: boolean, protected configFile) {
-        super("c2", configFile);
+    config: C2ModuleConfig;
+
+    constructor(protected redChannel: RedChannel, mergeConfig: Partial<C2ModuleConfig>) {
+        super("c2", redChannel.configFile, mergeConfig);
 
         this.description = MODULE_DESCRIPTION;
 
-        this.config = {
-            domain: domain ?? "c2.redchannel.tld",
+        this.config = this.resetConfig({
+            domain: "c2.redchannel.tld",
             dns_ip: "127.0.0.1",
             dns_port: 53,
             web_ip: "127.0.0.1",
             web_port: 4321,
             interval: 5000,
             binary_route: "/agent",
-            debug: debug,
+            debug: true,
             web_url: "",
-        };
-        this.config = this.getConfigFromFile() as C2Config;
+        });
 
         this.defineCommands({});
     }

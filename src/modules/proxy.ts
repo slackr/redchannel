@@ -5,7 +5,7 @@ import * as crypto from "crypto";
 import { Constants, emsg } from "../utils/utils";
 import BaseModule, { ExecuteReturn, ExecuteCallbackFunction } from "./base";
 import Logger from "../lib/logger";
-import RedChannel from "../lib/redchannel";
+import RedChannel, { C2AnswerType, C2MessageRequest, C2MessageResponse } from "../lib/redchannel";
 
 const MODULE_DESCRIPTION = "manage the proxy configuration";
 
@@ -24,7 +24,7 @@ export enum ProxyStatus {
     OK_NO_DATA = "OK ND",
 }
 
-export type ProxyConfig = {
+export type ProxyModuleConfig = {
     enabled: boolean;
     url: string;
     key: string;
@@ -36,15 +36,15 @@ export default class ProxyModule extends BaseModule {
     fetchTimer: NodeJS.Timeout | null;
     log: Logger;
     payload: string;
+    config: ProxyModuleConfig;
 
     constructor(
-        protected configFile: string,
         protected redChannel: RedChannel,
-        protected c2MessageHandler: Function,
+        mergeConfig: Partial<ProxyModuleConfig>,
         protected proxyOnSuccessCallback?: ExecuteCallbackFunction,
         protected proxyOnErrorCallback?: ExecuteCallbackFunction
     ) {
-        super("proxy", configFile);
+        super("proxy", redChannel.configFile, mergeConfig);
         this.log = new Logger();
 
         this.description = MODULE_DESCRIPTION;
@@ -52,14 +52,13 @@ export default class ProxyModule extends BaseModule {
         this.fetchTimer = null;
         this.payload = "";
 
-        this.config = {
+        this.config = this.resetConfig({
             enabled: true,
             key: crypto.randomBytes(6).toString("hex"),
             interval: 2000,
             obfuscate_payload: false,
             url: "http://127.0.0.1/",
-        };
-        this.config = this.getConfigFromFile() as ProxyConfig;
+        });
 
         this.defineCommands({
             fetch: {
@@ -148,7 +147,7 @@ export default class ProxyModule extends BaseModule {
         const proxyErrorKeys = Object.keys(ProxyStatus);
         for (const keyIndex in proxyErrorKeys) {
             const re = new RegExp(`\\[${proxyErrorKeys[keyIndex]}\\]`, "g");
-            proxyPhp = proxyPhp.replace(re, ProxyStatus[proxyErrorKeys[keyIndex]]);
+            proxyPhp = proxyPhp.replace(re, (ProxyStatus as any)[proxyErrorKeys[keyIndex]]);
         }
         proxyPhp = proxyPhp.replace(/\[PROXY_KEY\]/, this.config.key);
         proxyPhp = proxyPhp.replace(/\/\/.+/g, "");
@@ -238,23 +237,23 @@ export default class ProxyModule extends BaseModule {
         // grab proxy response and build mock dns queries
         let data = proxyData.replace(/;$/, "").split(";");
         data.forEach((q) => {
-            let req = {
+            let req: C2MessageRequest = {
                 connection: {
                     remoteAddress: this.config.url,
-                    type: "PROXY",
+                    type: C2AnswerType.TYPE_PROXY,
                 },
             };
-            let res = {
+            let res: C2MessageResponse = {
                 question: [
                     {
-                        type: "PROXY",
+                        type: C2AnswerType.TYPE_PROXY,
                         name: `${q}.${this.redChannel.modules.c2.config.domain}`,
                     },
                 ],
                 answer: [],
                 end: () => {},
             };
-            this.c2MessageHandler(req, res);
+            this.redChannel.c2MessageHandler.bind(this.redChannel)(req, res);
         });
     }
 

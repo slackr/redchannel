@@ -1,3 +1,4 @@
+import RedChannel from "../lib/redchannel";
 import { Constants } from "../utils/utils";
 import BaseModule from "./base";
 
@@ -6,15 +7,17 @@ const MODULE_DESCRIPTION = "add or remove static dns records for the dns c2";
 export type StaticDnsHost = string;
 export type StaticDnsIp = string;
 
+export type StaticDnsModuleConfig = Map<StaticDnsHost, StaticDnsIp>;
+
 export default class StaticDnsModule extends BaseModule {
     config: Map<StaticDnsHost, StaticDnsIp>;
 
-    constructor(protected configFile) {
-        super("static_dns", configFile);
+    constructor(protected redChannel: RedChannel, mergeConfig: Partial<StaticDnsModuleConfig>) {
+        super("static_dns", redChannel.configFile, mergeConfig);
 
         this.description = MODULE_DESCRIPTION;
 
-        this.config = new Map<StaticDnsHost, StaticDnsIp>(Object.entries(this.getConfigFromFile()));
+        this.config = new Map<StaticDnsHost, StaticDnsIp>(Object.entries(this.resetConfig({})));
 
         this.defineCommands({
             add: {
@@ -36,12 +39,12 @@ export default class StaticDnsModule extends BaseModule {
 
     run() {}
 
-    add(host, ip) {
+    add(host: string, ip: string) {
         if (!host || !ip) throw new Error(`please enter a host and ip, see 'help'"`);
         if (!Constants.VALID_HOST_REGEX.test(host)) throw new Error(`invalid host value, see 'help'`);
         if (!Constants.VALID_IP_REGEX.test(ip)) throw new Error(`invalid ip value, see 'help'`);
 
-        this.config[host] = ip;
+        this.config.set(host, ip);
         return { message: `added static dns record ${host} = ${ip}` };
     }
 

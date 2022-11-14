@@ -1,4 +1,5 @@
 import Logger from "../lib/logger";
+import RedChannel from "../lib/redchannel";
 import { Constants } from "../utils/utils";
 import BaseModule from "./base";
 
@@ -8,17 +9,19 @@ export interface AgentModuleConfig {
     proxy_enabled?: boolean;
     proxy_key?: string;
     interval?: number;
+    throttle_sendq?: boolean;
 }
 
 export default class AgentModule extends BaseModule {
     log: Logger;
+    config: AgentModuleConfig;
 
-    constructor(protected configFile) {
-        super("agent", configFile);
+    constructor(protected redChannel: RedChannel, mergeConfig: any) {
+        super("agent", redChannel.configFile, mergeConfig);
         this.log = new Logger();
         this.description = MODULE_DESCRIPTION;
 
-        this.config = this.getConfigFromFile() as AgentModuleConfig;
+        this.config = this.resetConfig({});
 
         this.defineCommands({
             sysinfo: {

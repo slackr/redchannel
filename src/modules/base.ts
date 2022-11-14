@@ -1,5 +1,6 @@
 import * as fs from "fs";
-import merge from "lodash.merge";
+import _merge from "lodash.merge";
+import { ModulesConfig } from "../lib/redchannel";
 import { emsg } from "../utils/utils";
 
 export interface Command {
@@ -23,28 +24,32 @@ export interface ExecuteReturn {
     message: string;
 }
 
+export interface BaseModuleConfig {}
+
 export default class BaseModule {
     description: string = "";
     commands: Commands;
-    config: any;
     name: string;
+    config: BaseModuleConfig;
 
     /**
      *
      * @param name The module name
      * @param configFile The redchannel configuration file path relative to the app root (conf/redchannel.conf)
      */
-    constructor(name: string, protected configFile: string) {
+    constructor(name: string, protected configFile: string, protected mergeConfig: Partial<BaseModuleConfig>) {
         this.name = name;
         this.commands = new Map<CommandName, Command>();
+
+        this.config = {};
 
         // define common module commands
         this.defineCommands({
             reset: {
                 arguments: [],
-                description: "reset config to .conf values",
+                description: "reset config to initial values (default << conf << cli)",
                 execute: () => {
-                    this.config = this.resetConfig();
+                    this.config = this.resetConfig({});
                 },
             },
             config: {
@@ -99,19 +104,21 @@ export default class BaseModule {
         }
     }
 
-    getConfigFromFile() {
-        return this.resetConfig();
-    }
-    resetConfig() {
-        if (!this.configFile) return;
+    resetConfig(initialConfig: any) {
+        let config: any = initialConfig;
 
-        let config: any;
-        try {
-            config = JSON.parse(fs.readFileSync(this.configFile).toString());
-        } catch (ex) {
-            throw new Error(`error parsing config file: ${emsg(ex)}`);
+        if (this.configFile) {
+            let fullConfig: ModulesConfig;
+            try {
+                fullConfig = JSON.parse(fs.readFileSync(this.configFile).toString()) as ModulesConfig;
+            } catch (ex) {
+                throw new Error(`error parsing config file: ${emsg(ex)}`);
+            }
+            config = _merge(config, (fullConfig as any)[this.name]);
         }
-        return merge(this.config, config[this.name]);
+        // mergeConfig (from cli) will trump file config
+        if (this.mergeConfig) config = _merge(config, this.mergeConfig);
+        return config;
     }
 
     run(params?: string[]): ExecuteReturn | void {}
