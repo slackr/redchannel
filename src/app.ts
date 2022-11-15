@@ -14,15 +14,15 @@ cli.version(Constants.VERSION, "-v, --version")
     .usage("[options]")
     .option("-c, --config <path/to/rc.conf>", "specify a redchannel config file", Config.DEFAULT_CONFIG_FILE)
     .option("-p, --password <password>", "specify the password or set via env:RC_PASSWORD")
-    .option("-c, --domain <domain>", "specify the c2 domain", "")
-    .option("-B, --ip [ip]", "bind dns c2 to ip", "")
-    .option("-P, --port [port]", "listen for dns on a specific port", "")
-    .option("-W, --web-ip [ip]", "bind web server to ip", "")
-    .option("-Y, --web-port [port]", "listen for web on a specific port", "")
-    .option("-I, --agent-interval [ms]", "checkin interval for the agent", "")
-    .option("-R, --agent-resolver [ip:port]", "set the resolver to use for the agent", "")
+    .option("-c, --domain <domain>", "specify the c2 domain")
+    .option("-B, --ip [ip]", "bind dns c2 to ip")
+    .option("-P, --port [port]", "listen for dns on a specific port")
+    .option("-W, --web-ip [ip]", "bind web server to ip")
+    .option("-Y, --web-port [port]", "listen for web on a specific port")
+    .option("-I, --agent-interval [ms]", "checkin interval for the agent")
+    .option("-R, --agent-resolver [ip:port]", "set the resolver to use for the agent")
     .option("-d, --debug", "enable debug", false)
-    .parse(process.argv);
+    .parse();
 
 // env password takes priority over commandline
 const cliPassword = (process.env.RC_PASSWORD as string) ?? (cli.getOptionValue("password") as string);
@@ -31,26 +31,26 @@ if (!cliPassword) {
     process.exit(1);
 }
 
-const cliConfigFilePath = cli.getOptionValue("config");
-cli.opts;
 const cliConfig: ModulesConfig = {
     c2: {
-        domain: cli.getOptionValue("domain") || undefined,
-        dns_ip: cli.getOptionValue("ip") || undefined,
-        dns_port: Number(cli.getOptionValue("port")) || undefined,
-        web_ip: cli.getOptionValue("webIp") || undefined,
-        web_port: cli.getOptionValue("webPort") || undefined,
-        interval: cli.getOptionValue("agentInterval") || undefined,
-        debug: cli.getOptionValue("debug") || undefined,
+        domain: cli.getOptionValue("domain"),
+        dns_ip: cli.getOptionValue("ip"),
+        dns_port: cli.getOptionValue("port"),
+        web_ip: cli.getOptionValue("webIp"),
+        web_port: cli.getOptionValue("webPort"),
+        interval: cli.getOptionValue("agentInterval"),
+        debug: cli.getOptionValue("debug"),
     },
     implant: {
-        resolver: cli.getOptionValue("agentResolver") || undefined,
+        resolver: cli.getOptionValue("agentResolver"),
     },
     proxy: {},
     agent: {},
     skimmer: {},
     static_dns: {},
 };
+
+const cliConfigFilePath = cli.getOptionValue("config");
 
 let redchannel: RedChannel;
 try {
