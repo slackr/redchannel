@@ -4,6 +4,8 @@ import { Constants } from "../utils/utils";
 import BaseModule from "./base";
 
 const MODULE_DESCRIPTION = "manage active agents";
+const DEFAULT_CONFIG: AgentModuleConfig = {};
+
 export interface AgentModuleConfig {
     proxy_url?: string;
     proxy_enabled?: boolean;
@@ -21,7 +23,7 @@ export default class AgentModule extends BaseModule {
         this.log = new Logger();
         this.description = MODULE_DESCRIPTION;
 
-        this.config = this.resetConfig({});
+        this.config = this.resetConfig(DEFAULT_CONFIG);
 
         this.defineCommands({
             sysinfo: {

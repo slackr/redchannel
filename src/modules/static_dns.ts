@@ -4,6 +4,8 @@ import BaseModule from "./base";
 
 const MODULE_DESCRIPTION = "add or remove static dns records for the dns c2";
 
+const DEFAULT_CONFIG = {};
+
 export type StaticDnsHost = string;
 export type StaticDnsIp = string;
 
@@ -17,7 +19,7 @@ export default class StaticDnsModule extends BaseModule {
 
         this.description = MODULE_DESCRIPTION;
 
-        this.config = new Map<StaticDnsHost, StaticDnsIp>(Object.entries(this.resetConfig({})));
+        this.config = new Map<StaticDnsHost, StaticDnsIp>(Object.entries(this.resetConfig(DEFAULT_CONFIG)));
 
         this.defineCommands({
             add: {

@@ -3,6 +3,8 @@ import _merge from "lodash.merge";
 import { ModulesConfig } from "../lib/redchannel";
 import { emsg } from "../utils/utils";
 
+const DEFAULT_CONFIG: BaseModuleConfig = {};
+
 export interface Command {
     arguments: string[];
     description: string;
@@ -41,7 +43,7 @@ export default class BaseModule {
         this.name = name;
         this.commands = new Map<CommandName, Command>();
 
-        this.config = {};
+        this.config = DEFAULT_CONFIG;
 
         // define common module commands
         this.defineCommands({

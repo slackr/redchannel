@@ -11,6 +11,15 @@ const MODULE_DESCRIPTION = "manage the skimmer configuration";
 
 const SKIMMER_PAYLOAD_TEMPLATE_PATH = "payloads/skimmer.js";
 
+const DEFAULT_CONFIG: SkimmerModuleConfig = {
+    payload_route: "/jquery.min.js",
+    data_route: "/stats",
+    url: "",
+    target_classes: [],
+    target_ids: [],
+    obfuscate_payload: true,
+};
+
 export type SkimmerModuleConfig = {
     payload_route: string;
     data_route: string;
@@ -29,14 +38,7 @@ export default class SkimmerModule extends BaseModule {
 
         this.description = MODULE_DESCRIPTION;
 
-        this.config = this.resetConfig({
-            payload_route: "/jquery.min.js",
-            data_route: "/stats",
-            url: "",
-            target_classes: [],
-            target_ids: [],
-            obfuscate_payload: true,
-        });
+        this.config = this.resetConfig(DEFAULT_CONFIG);
 
         this.defineCommands({
             generate: {

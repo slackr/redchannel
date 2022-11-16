@@ -11,6 +11,14 @@ const MODULE_DESCRIPTION = "manage the proxy configuration";
 
 const PROXY_PAYLOAD_PATH = "payloads/proxy.php";
 
+const DEFAULT_CONFIG: ProxyModuleConfig = {
+    enabled: true,
+    key: crypto.randomBytes(6).toString("hex"),
+    interval: 2000,
+    obfuscate_payload: false,
+    url: "http://127.0.0.1/",
+};
+
 export enum ProxyStatus {
     ERROR_KEY_MISMATCH = "ERR 1",
     ERROR_KEY_MISSING = "ERR 2",
@@ -52,13 +60,7 @@ export default class ProxyModule extends BaseModule {
         this.fetchTimer = null;
         this.payload = "";
 
-        this.config = this.resetConfig({
-            enabled: true,
-            key: crypto.randomBytes(6).toString("hex"),
-            interval: 2000,
-            obfuscate_payload: false,
-            url: "http://127.0.0.1/",
-        });
+        this.config = this.resetConfig(DEFAULT_CONFIG);
 
         this.defineCommands({
             fetch: {
