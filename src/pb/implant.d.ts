@@ -401,11 +401,8 @@ export namespace implant {
             /** Request command */
             command?: (implant.AgentCommand|null);
 
-            /** Request input */
-            input?: (Uint8Array|null);
-
-            /** Request config */
-            config?: (implant.IAgentConfig|null);
+            /** Request data */
+            data?: (Uint8Array|null);
         }
 
         /** Represents a Request. */
@@ -420,11 +417,8 @@ export namespace implant {
             /** Request command. */
             public command: implant.AgentCommand;
 
-            /** Request input. */
-            public input: Uint8Array;
-
-            /** Request config. */
-            public config?: (implant.IAgentConfig|null);
+            /** Request data. */
+            public data: Uint8Array;
 
             /**
              * Creates a new Request instance using the specified properties.
@@ -510,11 +504,8 @@ export namespace implant {
             /** Response command */
             command?: (implant.AgentCommand|null);
 
-            /** Response output */
-            output?: (Uint8Array|null);
-
-            /** Response sysinfo */
-            sysinfo?: (implant.ISysInfoData|null);
+            /** Response data */
+            data?: (Uint8Array|null);
 
             /** Response status */
             status?: (implant.AgentCommandStatus|null);
@@ -532,11 +523,8 @@ export namespace implant {
             /** Response command. */
             public command: implant.AgentCommand;
 
-            /** Response output. */
-            public output: Uint8Array;
-
-            /** Response sysinfo. */
-            public sysinfo?: (implant.ISysInfoData|null);
+            /** Response data. */
+            public data: Uint8Array;
 
             /** Response status. */
             public status: implant.AgentCommandStatus;

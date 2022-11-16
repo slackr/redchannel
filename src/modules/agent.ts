@@ -93,6 +93,13 @@ export default class AgentModule extends BaseModule {
                 arguments: [""],
                 description: "send the config changes to the agent",
             },
+            reset_config: {
+                arguments: [""],
+                description: "reset the config changes for the agent",
+                execute: (params: string) => {
+                    this.config = this.resetConfig({});
+                },
+            },
         });
     }
 

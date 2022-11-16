@@ -70,13 +70,11 @@ message SysInfoData {
 message Command {
   message Request {
     AgentCommand command = 1;
-    bytes input = 2;
-    AgentConfig config = 3;
+    bytes data = 2;
   }
   message Response {
     AgentCommand command = 1;
-    bytes output = 2;
-    SysInfoData sysinfo = 3;
+    bytes data = 2;
     AgentCommandStatus status = 4;
   }
 }

@@ -989,8 +989,7 @@ $root.implant = (function() {
              * @memberof implant.Command
              * @interface IRequest
              * @property {implant.AgentCommand|null} [command] Request command
-             * @property {Uint8Array|null} [input] Request input
-             * @property {implant.IAgentConfig|null} [config] Request config
+             * @property {Uint8Array|null} [data] Request data
              */
 
             /**
@@ -1017,20 +1016,12 @@ $root.implant = (function() {
             Request.prototype.command = 0;
 
             /**
-             * Request input.
-             * @member {Uint8Array} input
+             * Request data.
+             * @member {Uint8Array} data
              * @memberof implant.Command.Request
              * @instance
              */
-            Request.prototype.input = $util.newBuffer([]);
-
-            /**
-             * Request config.
-             * @member {implant.IAgentConfig|null|undefined} config
-             * @memberof implant.Command.Request
-             * @instance
-             */
-            Request.prototype.config = null;
+            Request.prototype.data = $util.newBuffer([]);
 
             /**
              * Creates a new Request instance using the specified properties.
@@ -1058,10 +1049,8 @@ $root.implant = (function() {
                     writer = $Writer.create();
                 if (message.command != null && Object.hasOwnProperty.call(message, "command"))
                     writer.uint32(/* id 1, wireType 0 =*/8).int32(message.command);
-                if (message.input != null && Object.hasOwnProperty.call(message, "input"))
-                    writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.input);
-                if (message.config != null && Object.hasOwnProperty.call(message, "config"))
-                    $root.implant.AgentConfig.encode(message.config, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                if (message.data != null && Object.hasOwnProperty.call(message, "data"))
+                    writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.data);
                 return writer;
             };
 
@@ -1101,11 +1090,7 @@ $root.implant = (function() {
                             break;
                         }
                     case 2: {
-                            message.input = reader.bytes();
-                            break;
-                        }
-                    case 3: {
-                            message.config = $root.implant.AgentConfig.decode(reader, reader.uint32());
+                            message.data = reader.bytes();
                             break;
                         }
                     default:
@@ -1159,14 +1144,9 @@ $root.implant = (function() {
                     case 9:
                         break;
                     }
-                if (message.input != null && message.hasOwnProperty("input"))
-                    if (!(message.input && typeof message.input.length === "number" || $util.isString(message.input)))
-                        return "input: buffer expected";
-                if (message.config != null && message.hasOwnProperty("config")) {
-                    var error = $root.implant.AgentConfig.verify(message.config);
-                    if (error)
-                        return "config." + error;
-                }
+                if (message.data != null && message.hasOwnProperty("data"))
+                    if (!(message.data && typeof message.data.length === "number" || $util.isString(message.data)))
+                        return "data: buffer expected";
                 return null;
             };
 
@@ -1230,16 +1210,11 @@ $root.implant = (function() {
                     message.command = 9;
                     break;
                 }
-                if (object.input != null)
-                    if (typeof object.input === "string")
-                        $util.base64.decode(object.input, message.input = $util.newBuffer($util.base64.length(object.input)), 0);
-                    else if (object.input.length >= 0)
-                        message.input = object.input;
-                if (object.config != null) {
-                    if (typeof object.config !== "object")
-                        throw TypeError(".implant.Command.Request.config: object expected");
-                    message.config = $root.implant.AgentConfig.fromObject(object.config);
-                }
+                if (object.data != null)
+                    if (typeof object.data === "string")
+                        $util.base64.decode(object.data, message.data = $util.newBuffer($util.base64.length(object.data)), 0);
+                    else if (object.data.length >= 0)
+                        message.data = object.data;
                 return message;
             };
 
@@ -1259,20 +1234,17 @@ $root.implant = (function() {
                 if (options.defaults) {
                     object.command = options.enums === String ? "AGENT_UNSPECIFIED" : 0;
                     if (options.bytes === String)
-                        object.input = "";
+                        object.data = "";
                     else {
-                        object.input = [];
+                        object.data = [];
                         if (options.bytes !== Array)
-                            object.input = $util.newBuffer(object.input);
+                            object.data = $util.newBuffer(object.data);
                     }
-                    object.config = null;
                 }
                 if (message.command != null && message.hasOwnProperty("command"))
                     object.command = options.enums === String ? $root.implant.AgentCommand[message.command] === undefined ? message.command : $root.implant.AgentCommand[message.command] : message.command;
-                if (message.input != null && message.hasOwnProperty("input"))
-                    object.input = options.bytes === String ? $util.base64.encode(message.input, 0, message.input.length) : options.bytes === Array ? Array.prototype.slice.call(message.input) : message.input;
-                if (message.config != null && message.hasOwnProperty("config"))
-                    object.config = $root.implant.AgentConfig.toObject(message.config, options);
+                if (message.data != null && message.hasOwnProperty("data"))
+                    object.data = options.bytes === String ? $util.base64.encode(message.data, 0, message.data.length) : options.bytes === Array ? Array.prototype.slice.call(message.data) : message.data;
                 return object;
             };
 
@@ -1312,8 +1284,7 @@ $root.implant = (function() {
              * @memberof implant.Command
              * @interface IResponse
              * @property {implant.AgentCommand|null} [command] Response command
-             * @property {Uint8Array|null} [output] Response output
-             * @property {implant.ISysInfoData|null} [sysinfo] Response sysinfo
+             * @property {Uint8Array|null} [data] Response data
              * @property {implant.AgentCommandStatus|null} [status] Response status
              */
 
@@ -1341,20 +1312,12 @@ $root.implant = (function() {
             Response.prototype.command = 0;
 
             /**
-             * Response output.
-             * @member {Uint8Array} output
+             * Response data.
+             * @member {Uint8Array} data
              * @memberof implant.Command.Response
              * @instance
              */
-            Response.prototype.output = $util.newBuffer([]);
-
-            /**
-             * Response sysinfo.
-             * @member {implant.ISysInfoData|null|undefined} sysinfo
-             * @memberof implant.Command.Response
-             * @instance
-             */
-            Response.prototype.sysinfo = null;
+            Response.prototype.data = $util.newBuffer([]);
 
             /**
              * Response status.
@@ -1390,10 +1353,8 @@ $root.implant = (function() {
                     writer = $Writer.create();
                 if (message.command != null && Object.hasOwnProperty.call(message, "command"))
                     writer.uint32(/* id 1, wireType 0 =*/8).int32(message.command);
-                if (message.output != null && Object.hasOwnProperty.call(message, "output"))
-                    writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.output);
-                if (message.sysinfo != null && Object.hasOwnProperty.call(message, "sysinfo"))
-                    $root.implant.SysInfoData.encode(message.sysinfo, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                if (message.data != null && Object.hasOwnProperty.call(message, "data"))
+                    writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.data);
                 if (message.status != null && Object.hasOwnProperty.call(message, "status"))
                     writer.uint32(/* id 4, wireType 0 =*/32).int32(message.status);
                 return writer;
@@ -1435,11 +1396,7 @@ $root.implant = (function() {
                             break;
                         }
                     case 2: {
-                            message.output = reader.bytes();
-                            break;
-                        }
-                    case 3: {
-                            message.sysinfo = $root.implant.SysInfoData.decode(reader, reader.uint32());
+                            message.data = reader.bytes();
                             break;
                         }
                     case 4: {
@@ -1497,14 +1454,9 @@ $root.implant = (function() {
                     case 9:
                         break;
                     }
-                if (message.output != null && message.hasOwnProperty("output"))
-                    if (!(message.output && typeof message.output.length === "number" || $util.isString(message.output)))
-                        return "output: buffer expected";
-                if (message.sysinfo != null && message.hasOwnProperty("sysinfo")) {
-                    var error = $root.implant.SysInfoData.verify(message.sysinfo);
-                    if (error)
-                        return "sysinfo." + error;
-                }
+                if (message.data != null && message.hasOwnProperty("data"))
+                    if (!(message.data && typeof message.data.length === "number" || $util.isString(message.data)))
+                        return "data: buffer expected";
                 if (message.status != null && message.hasOwnProperty("status"))
                     switch (message.status) {
                     default:
@@ -1577,16 +1529,11 @@ $root.implant = (function() {
                     message.command = 9;
                     break;
                 }
-                if (object.output != null)
-                    if (typeof object.output === "string")
-                        $util.base64.decode(object.output, message.output = $util.newBuffer($util.base64.length(object.output)), 0);
-                    else if (object.output.length >= 0)
-                        message.output = object.output;
-                if (object.sysinfo != null) {
-                    if (typeof object.sysinfo !== "object")
-                        throw TypeError(".implant.Command.Response.sysinfo: object expected");
-                    message.sysinfo = $root.implant.SysInfoData.fromObject(object.sysinfo);
-                }
+                if (object.data != null)
+                    if (typeof object.data === "string")
+                        $util.base64.decode(object.data, message.data = $util.newBuffer($util.base64.length(object.data)), 0);
+                    else if (object.data.length >= 0)
+                        message.data = object.data;
                 switch (object.status) {
                 default:
                     if (typeof object.status === "number") {
@@ -1626,21 +1573,18 @@ $root.implant = (function() {
                 if (options.defaults) {
                     object.command = options.enums === String ? "AGENT_UNSPECIFIED" : 0;
                     if (options.bytes === String)
-                        object.output = "";
+                        object.data = "";
                     else {
-                        object.output = [];
+                        object.data = [];
                         if (options.bytes !== Array)
-                            object.output = $util.newBuffer(object.output);
+                            object.data = $util.newBuffer(object.data);
                     }
-                    object.sysinfo = null;
                     object.status = options.enums === String ? "COMMAND_STATUS_UNSPECIFIED" : 0;
                 }
                 if (message.command != null && message.hasOwnProperty("command"))
                     object.command = options.enums === String ? $root.implant.AgentCommand[message.command] === undefined ? message.command : $root.implant.AgentCommand[message.command] : message.command;
-                if (message.output != null && message.hasOwnProperty("output"))
-                    object.output = options.bytes === String ? $util.base64.encode(message.output, 0, message.output.length) : options.bytes === Array ? Array.prototype.slice.call(message.output) : message.output;
-                if (message.sysinfo != null && message.hasOwnProperty("sysinfo"))
-                    object.sysinfo = $root.implant.SysInfoData.toObject(message.sysinfo, options);
+                if (message.data != null && message.hasOwnProperty("data"))
+                    object.data = options.bytes === String ? $util.base64.encode(message.data, 0, message.data.length) : options.bytes === Array ? Array.prototype.slice.call(message.data) : message.data;
                 if (message.status != null && message.hasOwnProperty("status"))
                     object.status = options.enums === String ? $root.implant.AgentCommandStatus[message.status] === undefined ? message.status : $root.implant.AgentCommandStatus[message.status] : message.status;
                 return object;
