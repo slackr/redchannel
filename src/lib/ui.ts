@@ -288,7 +288,7 @@ class UserInterface extends Logger {
                     break;
                 }
 
-                if (this.usingModule === "agent") {
+                if (this.usingModule === "agent" && !this.interact) {
                     this.warn("you must 'interact' with an active agent first, see 'agents'");
                     break;
                 }
