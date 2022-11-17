@@ -18,7 +18,7 @@ export default class AgentModule extends BaseModule {
     log: Logger;
     config: AgentModuleConfig;
 
-    constructor(protected redChannel: RedChannel, mergeConfig: any) {
+    constructor(protected redChannel: RedChannel, mergeConfig: Partial<AgentModuleConfig>) {
         super("agent", redChannel.configFile, mergeConfig);
         this.log = new Logger();
         this.description = MODULE_DESCRIPTION;
@@ -50,7 +50,7 @@ export default class AgentModule extends BaseModule {
                 arguments: ["<1|0>"],
                 description: "throttle c2 communication (enable) or just send it all at once (disable)",
                 execute: (params: string) => {
-                    this.config.throttle_sendq = params != "0" && params != "false" ? true : false;
+                    this.config.throttle_sendq = params !== "0" && params !== "false" ? true : false;
                 },
             },
             "set proxy_url": {
@@ -65,7 +65,7 @@ export default class AgentModule extends BaseModule {
                 arguments: ["<1|0>"],
                 description: "enable or disable proxy communication",
                 execute: (params: string) => {
-                    this.config.proxy_enabled = params != "0" && params != "false" ? true : false;
+                    this.config.proxy_enabled = params !== "0" && params !== "false" ? true : false;
                 },
             },
             "set proxy_key": {
@@ -98,7 +98,7 @@ export default class AgentModule extends BaseModule {
             reset_config: {
                 arguments: [""],
                 description: "reset the config changes for the agent",
-                execute: (params: string) => {
+                execute: () => {
                     this.config = this.resetConfig({});
                 },
             },

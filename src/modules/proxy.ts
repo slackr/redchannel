@@ -3,7 +3,7 @@ import querystring from "querystring";
 import * as fs from "fs";
 import * as crypto from "crypto";
 import { Constants, emsg } from "../utils/utils";
-import BaseModule, { ExecuteReturn, ExecuteCallbackFunction } from "./base";
+import BaseModule, { ExecuteReturn, ExecuteCallbackFunction, BaseModuleConfig } from "./base";
 import Logger from "../lib/logger";
 import RedChannel, { C2AnswerType, C2MessageRequest, C2MessageResponse } from "../lib/redchannel";
 
@@ -32,13 +32,13 @@ export enum ProxyStatus {
     OK_NO_DATA = "OK ND",
 }
 
-export type ProxyModuleConfig = {
+export interface ProxyModuleConfig extends BaseModuleConfig {
     enabled: boolean;
     url: string;
     key: string;
     interval: number;
     obfuscate_payload: boolean;
-};
+}
 
 export default class ProxyModule extends BaseModule {
     fetchTimer: NodeJS.Timeout | null;
@@ -60,7 +60,7 @@ export default class ProxyModule extends BaseModule {
         this.fetchTimer = null;
         this.payload = "";
 
-        this.config = this.resetConfig(DEFAULT_CONFIG);
+        this.config = this.resetConfig(DEFAULT_CONFIG) as ProxyModuleConfig;
 
         this.defineCommands({
             fetch: {
@@ -107,14 +107,14 @@ export default class ProxyModule extends BaseModule {
                 arguments: ["<1|0>"],
                 description: "enable or disable proxy communication channel, remember to 'start' after enabling",
                 execute: (params: string) => {
-                    this.config.enabled = params != "0" && params != "false" ? true : false;
+                    this.config.enabled = params !== "0" && params !== "false" ? true : false;
                 },
             },
             "set obfuscate_payload": {
                 arguments: ["<1|0>"],
                 description: "enable or disable payload obfuscation",
                 execute: (params: string) => {
-                    this.config.obfuscate_payload = params != "0" && params != "false" ? true : false;
+                    this.config.obfuscate_payload = params !== "0" && params !== "false" ? true : false;
                 },
             },
             "set key": {
@@ -135,7 +135,7 @@ export default class ProxyModule extends BaseModule {
     }
 
     run(): ExecuteReturn {
-        if (!this.config.key) throw new Error(`proxy key is required, see 'help'`);
+        if (!this.config.key) throw new Error("proxy key is required, see 'help'");
 
         let data: Buffer;
         let proxyPhp = "";
@@ -149,7 +149,7 @@ export default class ProxyModule extends BaseModule {
         const proxyErrorKeys = Object.keys(ProxyStatus);
         for (const keyIndex in proxyErrorKeys) {
             const re = new RegExp(`\\[${proxyErrorKeys[keyIndex]}\\]`, "g");
-            proxyPhp = proxyPhp.replace(re, (ProxyStatus as any)[proxyErrorKeys[keyIndex]]);
+            proxyPhp = proxyPhp.replace(re, ProxyStatus[proxyErrorKeys[keyIndex]]);
         }
         proxyPhp = proxyPhp.replace(/\[PROXY_KEY\]/, this.config.key);
         proxyPhp = proxyPhp.replace(/\/\/.+/g, "");
@@ -192,16 +192,16 @@ export default class ProxyModule extends BaseModule {
 
     getFromProxy() {
         if (!this.config.enabled) {
-            this.log.error(`proxy is not enabled: try 'set enabled 1'`);
+            this.log.error("proxy is not enabled: try 'set enabled 1'");
             return;
         }
 
         if (!this.config.url) {
-            this.log.error(`proxy config is missing the url: see 'help'`);
+            this.log.error("proxy config is missing the url: see 'help'");
             return;
         }
         if (!this.config.key) {
-            this.log.error(`proxy config is missing a key: see 'help'`);
+            this.log.error("proxy config is missing a key: see 'help'");
             return;
         }
 
@@ -237,15 +237,15 @@ export default class ProxyModule extends BaseModule {
         }
 
         // grab proxy response and build mock dns queries
-        let data = proxyData.replace(/;$/, "").split(";");
+        const data = proxyData.replace(/;$/, "").split(";");
         data.forEach((q) => {
-            let req: C2MessageRequest = {
+            const req: C2MessageRequest = {
                 connection: {
                     remoteAddress: this.config.url,
                     type: C2AnswerType.TYPE_PROXY,
                 },
             };
-            let res: C2MessageResponse = {
+            const res: C2MessageResponse = {
                 question: [
                     {
                         type: C2AnswerType.TYPE_PROXY,
@@ -265,7 +265,7 @@ export default class ProxyModule extends BaseModule {
     }
 
     proxyEnable() {
-        const message = this.config.enabled ? `starting proxy checkin at interval: ${this.config.interval}ms` : `stopping proxy checkin`;
+        const message = this.config.enabled ? `starting proxy checkin at interval: ${this.config.interval}ms` : "stopping proxy checkin";
 
         this.proxyFetchLoop();
         return { message: message };
@@ -276,10 +276,10 @@ export default class ProxyModule extends BaseModule {
         if (!this.config.enabled) return { message: "proxy is not enabled" };
 
         if (!this.config.url) {
-            throw new Error(`proxy config is missing the url: see 'help'`);
+            throw new Error("proxy config is missing the url: see 'help'");
         }
         if (!this.config.key) {
-            throw new Error(`proxy config is missing a key: see 'help'`);
+            throw new Error("proxy config is missing a key: see 'help'");
         }
 
         this.getFromProxy()?.finally(() => {

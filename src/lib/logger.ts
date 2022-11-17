@@ -17,7 +17,7 @@ export default class Logger {
     echo(msg) {
         console.log(msg);
     }
-    msg(msg, level = "info") {
+    msg(msg) {
         console.log(msg);
     }
     displayTable(columns: string[], rows: Array<string[]>) {

@@ -1,7 +1,5 @@
-import _merge from "lodash.merge";
-
 import RedChannel from "../lib/redchannel";
-import BaseModule from "./base";
+import BaseModule, { BaseModuleConfig } from "./base";
 
 const MODULE_DESCRIPTION = "handles redchannel c2 management";
 
@@ -17,7 +15,7 @@ const DEFAULT_CONFIG: C2ModuleConfig = {
     web_url: "",
 };
 
-export type C2ModuleConfig = {
+export interface C2ModuleConfig extends BaseModuleConfig {
     domain: string;
     dns_ip: string;
     dns_port: number;
@@ -27,7 +25,7 @@ export type C2ModuleConfig = {
     binary_route: string;
     web_url: string;
     debug: boolean;
-};
+}
 
 export default class C2Module extends BaseModule {
     config: C2ModuleConfig;
@@ -37,7 +35,7 @@ export default class C2Module extends BaseModule {
 
         this.description = MODULE_DESCRIPTION;
 
-        this.config = this.resetConfig(DEFAULT_CONFIG);
+        this.config = this.resetConfig(DEFAULT_CONFIG) as C2ModuleConfig;
 
         this.defineCommands({});
     }

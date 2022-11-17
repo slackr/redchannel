@@ -2,12 +2,13 @@ import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
 import { spawn, ChildProcessWithoutNullStreams } from "child_process";
+import { Request, Response } from "express";
+import { Application as ExpressApplication } from "express-serve-static-core";
 
 import Logger from "../lib/logger";
 import { Constants, emsg } from "../utils/utils";
-import BaseModule, { ExecuteCallbackFunction, ExecuteCallbackResult, ExecuteReturn } from "./base";
+import BaseModule, { BaseModuleConfig, ExecuteCallbackFunction, ExecuteCallbackResult, ExecuteReturn } from "./base";
 import RedChannel from "../lib/redchannel";
-import { Request, Response } from "express";
 
 const MODULE_DESCRIPTION = "build implants for operations";
 
@@ -16,7 +17,19 @@ const AGENT_CONFIG_PATH = `${AGENT_PATH}/config/config.go`;
 const AGENT_BUILD_SCRIPT = `${AGENT_PATH}/tools/build.py`;
 const AGENT_BUILD_LOG_PATH = `${AGENT_PATH}/build/build.log`;
 
-export type ImplantModuleConfig = {
+const DEFAULT_CONFIG: ImplantModuleConfig = {
+    os: "windows",
+    arch: "amd64",
+    interval: 5000,
+    resolver: "8.8.8.8:53",
+    proxy_enabled: false,
+    proxy_key: "redchannel",
+    proxy_url: "",
+    throttle_sendq: true,
+    debug: false,
+};
+
+export interface ImplantModuleConfig extends BaseModuleConfig {
     os: string;
     arch: string;
     resolver: string;
@@ -26,7 +39,7 @@ export type ImplantModuleConfig = {
     proxy_enabled: boolean;
     proxy_key: string;
     throttle_sendq: boolean;
-};
+}
 
 export default class ImplantModule extends BaseModule {
     config: ImplantModuleConfig;
@@ -44,19 +57,7 @@ export default class ImplantModule extends BaseModule {
 
         this.log = new Logger();
 
-        const defaultConfig: ImplantModuleConfig = {
-            os: "windows",
-            arch: "amd64",
-            interval: 5000,
-            resolver: "8.8.8.8:53",
-            proxy_enabled: false,
-            proxy_key: "redchannel",
-            proxy_url: "",
-            throttle_sendq: true,
-            debug: false,
-        };
-
-        this.config = this.resetConfig(defaultConfig);
+        this.config = this.resetConfig(DEFAULT_CONFIG) as ImplantModuleConfig;
 
         this.outputFile = "";
 
@@ -118,7 +119,7 @@ export default class ImplantModule extends BaseModule {
                 arguments: ["<1|0>"],
                 description: "throttle c2 communication (enable) or just send it all at once (disable)",
                 execute: (params: string) => {
-                    this.config.throttle_sendq = params != "0" && params != "false" ? true : false;
+                    this.config.throttle_sendq = params !== "0" && params !== "false" ? true : false;
                 },
             },
             "set proxy_url": {
@@ -133,7 +134,7 @@ export default class ImplantModule extends BaseModule {
                 arguments: ["<1|0>"],
                 description: "enable or disable proxy communication (web channel)",
                 execute: (params: string) => {
-                    this.config.proxy_enabled = params != "0" && params != "false" ? true : false;
+                    this.config.proxy_enabled = params !== "0" && params !== "false" ? true : false;
                 },
             },
             "set proxy_key": {
@@ -147,7 +148,7 @@ export default class ImplantModule extends BaseModule {
                 arguments: ["<1|0>"],
                 description: "build debug version of the implant",
                 execute: (params: string) => {
-                    this.config.debug = params != "0" && params != "false" ? true : false;
+                    this.config.debug = params !== "0" && params !== "false" ? true : false;
                 },
             },
         });
@@ -158,8 +159,8 @@ export default class ImplantModule extends BaseModule {
         const targetArch = params[1] ?? this.config.arch;
         const debug = this.config.debug;
 
-        if (!Constants.VALID_BUILD_TARGET_OS.test(targetOs)) throw new Error(`invalid os value, must be supported by Go (GOOS)`);
-        if (!Constants.VALID_BUILD_TARGET_ARCH.test(targetArch)) throw new Error(`invalid arch value, must be supported by Go (GOARCH)`);
+        if (!Constants.VALID_BUILD_TARGET_OS.test(targetOs)) throw new Error("invalid os value, must be supported by Go (GOOS)");
+        if (!Constants.VALID_BUILD_TARGET_ARCH.test(targetArch)) throw new Error("invalid arch value, must be supported by Go (GOARCH)");
 
         try {
             this.generateConfig();
@@ -237,12 +238,12 @@ export default class ImplantModule extends BaseModule {
         return { message: logData };
     }
 
-    setupRoutes(webServer: any, logger: Logger): void {
+    setupRoutes(webServer: ExpressApplication, logger: Logger): void {
         webServer.get(this.redChannel.modules.c2.config.binary_route, (request: Request, response: Response) => {
             const ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
             logger.warn(`incoming request for agent binary from ${ip}`);
             try {
-                if (!fs.existsSync(this.outputFile)) throw new Error(`agent binary not found on disk, did you generate an implant?`);
+                if (!fs.existsSync(this.outputFile)) throw new Error("agent binary not found on disk, did you generate an implant?");
                 response.sendFile(this.outputFile);
                 logger.warn(`agent binary sent to ${ip}`);
             } catch (ex) {
@@ -255,7 +256,7 @@ export default class ImplantModule extends BaseModule {
     private generateConfig() {
         let data: Buffer;
         let configData = "";
-        let agentConfigPath = AGENT_CONFIG_PATH;
+        const agentConfigPath = AGENT_CONFIG_PATH;
         try {
             data = fs.readFileSync(`${agentConfigPath}.sample`);
             configData = data.toString();
@@ -263,13 +264,13 @@ export default class ImplantModule extends BaseModule {
             throw new Error(`failed to read agent config file template '${agentConfigPath}.sample': ${emsg(ex)}`);
         }
 
-        configData = configData.replace(/^\s*c\.C2Domain\s*=\s*\".*\".*$/im, `c.C2Domain = "${this.redChannel.modules.c2.config.domain}"`);
-        configData = configData.replace(/^\s*c\.C2Password\s*=\s*\".*\".*$/im, `c.C2Password = "${this.redChannel.plaintextPassword}"`);
-        configData = configData.replace(/^\s*c\.Resolver\s*=\s*\".*\".*$/im, `c.Resolver = "${this.config.resolver}"`);
+        configData = configData.replace(/^\s*c\.C2Domain\s*=\s*".*".*$/im, `c.C2Domain = "${this.redChannel.modules.c2.config.domain}"`);
+        configData = configData.replace(/^\s*c\.C2Password\s*=\s*".*".*$/im, `c.C2Password = "${this.redChannel.plaintextPassword}"`);
+        configData = configData.replace(/^\s*c\.Resolver\s*=\s*".*".*$/im, `c.Resolver = "${this.config.resolver}"`);
         configData = configData.replace(/^\s*c\.C2Interval\s*=.*$/im, `c.C2Interval = ${this.config.interval}`);
         configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.config.proxy_enabled}`);
-        configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*\".*\".*$/im, `c.ProxyUrl = "${this.config.proxy_url}"`);
-        configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*\".*\".*$/im, `c.ProxyKey = "${this.config.proxy_key}"`);
+        configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*".*".*$/im, `c.ProxyUrl = "${this.config.proxy_url}"`);
+        configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*".*".*$/im, `c.ProxyKey = "${this.config.proxy_key}"`);
         configData = configData.replace(/^\s*c\.ThrottleSendQ\s*=.*$/im, `c.ThrottleSendQ = ${!this.config.throttle_sendq}`);
 
         try {

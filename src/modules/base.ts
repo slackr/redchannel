@@ -11,11 +11,11 @@ export type Command = {
     validateRegex?: RegExp;
     execute?: Function;
     executeCallbackAvailable?: boolean;
-}
+};
 export type ExecuteCallbackResult = {
     message: string;
     code?: number | null;
-}
+};
 
 export type ExecuteCallbackFunction = (result: ExecuteCallbackResult) => void;
 
@@ -24,12 +24,12 @@ export type Commands = Map<CommandName, Command>;
 
 export type ExecuteReturn = {
     message: string;
-}
+};
 
-export interface BaseModuleConfig {}
+export type BaseModuleConfig = {};
 
-export default class BaseModule {
-    description: string = "";
+export default abstract class BaseModule {
+    description: string;
     commands: Commands;
     name: string;
     config: BaseModuleConfig;
@@ -43,6 +43,7 @@ export default class BaseModule {
         this.name = name;
         this.commands = new Map<CommandName, Command>();
 
+        this.description = "";
         this.config = DEFAULT_CONFIG;
 
         // define common module commands
@@ -106,8 +107,8 @@ export default class BaseModule {
         }
     }
 
-    resetConfig(initialConfig: any) {
-        let config: any = initialConfig;
+    resetConfig(initialConfig: BaseModuleConfig) {
+        let config = initialConfig;
 
         if (this.configFile) {
             let fullConfig: ModulesConfig;
@@ -116,12 +117,12 @@ export default class BaseModule {
             } catch (ex) {
                 throw new Error(`error parsing config file: ${emsg(ex)}`);
             }
-            config = _merge(config, (fullConfig as any)[this.name]);
+            config = _merge(config, fullConfig[this.name]);
         }
         // mergeConfig (from cli) will trump file config
         if (this.mergeConfig) config = _merge(config, this.mergeConfig);
         return config;
     }
 
-    run(params?: string[]): ExecuteReturn | void {}
+    abstract run(params?: string[], callback?: ExecuteCallbackFunction): ExecuteReturn | void;
 }

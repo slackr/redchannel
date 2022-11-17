@@ -34,7 +34,7 @@ class Crypto {
     }
 
     aesEncrypt(buffer: Buffer, key: crypto.CipherKey): CipherModel {
-        let iv = crypto.randomBytes(this.BLOCK_LENGTH);
+        const iv = crypto.randomBytes(this.BLOCK_LENGTH);
         let ciphertext: Buffer;
         try {
             const cipher = crypto.createCipheriv(this.AES_ALGO, key, iv);
@@ -50,7 +50,7 @@ class Crypto {
     aesDecrypt(buffer: Buffer, key: crypto.CipherKey, iv: Buffer) {
         let result: Buffer;
         try {
-            let plaintext = crypto.createDecipheriv(this.AES_ALGO, key, iv);
+            const plaintext = crypto.createDecipheriv(this.AES_ALGO, key, iv);
             //plaintext.setAutoPadding(true);
             result = Buffer.concat([plaintext.update(buffer), plaintext.final()]);
         } catch (ex) {

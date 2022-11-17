@@ -1,8 +1,8 @@
 const Crypto = require("./crypto");
 
 describe("Crypto - BAU", () => {
-    let alice = new Crypto();
-    let bob = new Crypto();
+    const alice = new Crypto();
+    const bob = new Crypto();
 
     test("should generate keys", () => {
         alice.generate_keys();
@@ -46,7 +46,7 @@ describe("Crypto - BAU", () => {
         expect(alice_secret).toEqual(bob_secret);
     });
 
-    let plaintext = Buffer.from("secret");
+    const plaintext = Buffer.from('secret');
     let alice_result;
     test("should encrypt buffer with aes_encrypt()", () => {
         alice_result = alice.aes_encrypt(plaintext, alice_secret);
@@ -62,8 +62,8 @@ describe("Crypto - BAU", () => {
 });
 
 describe("Crypto - Unexpected Values", () => {
-    let alice = new Crypto();
-    let bob = new Crypto();
+    const alice = new Crypto();
+    const bob = new Crypto();
 
     // no keys have been generated
     test("should fail to export pubkeys uncompressed", () => {

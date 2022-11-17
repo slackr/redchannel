@@ -27,8 +27,7 @@ cli.version(Constants.VERSION, "-v, --version")
 // env password takes priority over commandline
 const cliPassword = (process.env.RC_PASSWORD as string) ?? (cli.getOptionValue("password") as string);
 if (!cliPassword) {
-    new Logger().error("please specify a master c2 password via command-lie or environment variable, see '--help'");
-    process.exit(1);
+    throw new Error("please specify a master c2 password via command-lie or environment variable, see '--help'");
 }
 
 const cliConfig: ModulesConfig = {
@@ -57,8 +56,7 @@ try {
     redchannel = new RedChannel(cliPassword, cliConfig, cliConfigFilePath);
 } catch (ex) {
     new Logger().error(`Error instantiating RedChannel: ${emsg(ex)}`);
-    console.error(ex);
-    process.exit(1);
+    throw ex;
 }
 
 const ui = new UserInterface(redchannel);
@@ -88,21 +86,21 @@ webServer.listen(c2Config.web_port, c2Config.web_ip, () => {
  */
 const dnsServer = dnsd.createServer(redchannel.c2MessageHandler.bind(redchannel));
 
-dnsServer.on("error", (ex: any, err: any) => {
-    ui.error(`dns server error: ${emsg(ex)}, msg: ${emsg(err)}`);
+dnsServer.on("error", (ex: Error, msg: Error) => {
+    ui.error(`dns server error: ${emsg(ex)}, msg: ${emsg(msg)}`);
 });
 
 // prettier-ignore
 dnsServer
     .zone(
         c2Config.domain,
-        "ns1." + c2Config.domain,
-        "root@" + c2Config.domain,
-        "now",
-        "2h",
-        "30m",
-        "2w",
-        "10m"
+        'ns1.' + c2Config.domain,
+        'root@' + c2Config.domain,
+        'now',
+        '2h',
+        '30m',
+        '2w',
+        '10m'
     )
     .listen(c2Config.dns_port, c2Config.dns_ip);
 
@@ -113,5 +111,5 @@ if (proxyModule.config.enabled) {
     ui.info(`c2-proxy enabled, checkin at interval: ${proxyModule.config.interval}ms`);
     proxyModule.proxyFetchLoop();
 } else {
-    ui.info(`c2-proxy is disabled, see 'use proxy' -> 'help'`);
+    ui.info("c2-proxy is disabled, see 'use proxy' -> 'help'");
 }

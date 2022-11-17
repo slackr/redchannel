@@ -79,6 +79,7 @@ export type AgentModel = {
 };
 
 export enum AgentChannel {
+    UNKNOWN = "unknown",
     DNS = "dns",
     PROXY = "proxy",
 }
@@ -150,7 +151,7 @@ export default class RedChannel {
         };
 
         if (!this.modules.c2.config.domain) {
-            throw new Error(`Please specify the c2 domain via cli or config file, see '--help'`);
+            throw new Error("Please specify the c2 domain via cli or config file, see '--help'");
         }
 
         this.plaintextPassword = c2Password;
@@ -209,7 +210,7 @@ export default class RedChannel {
                     this.log.error(`error queueing data for agent ${id}: ${emsg(ex)}`);
                 });
             }
-            this.log.info(`broadcasting keyx`);
+            this.log.info("broadcasting keyx");
             return;
         }
 
@@ -294,7 +295,7 @@ export default class RedChannel {
         }
 
         const dataBlocks = commandProtoBuffer.toString("hex").match(/[a-f0-9]{1,4}/g);
-        if (!dataBlocks) throw new Error(`invalid encrypted payload`);
+        if (!dataBlocks) throw new Error("invalid encrypted payload");
 
         // prettier-ignore
         const totalIps =
@@ -331,54 +332,54 @@ export default class RedChannel {
             // prettier-ignore
             ips.push(
                 Config.IP_DATA_PREFIX +
-                ":" +
+                ':' +
                 padZero(ipNum.toString(16), 4) +
-                ":" +
-                blocksPerIp.join(":")
+                ':' +
+                blocksPerIp.join(':')
             );
 
             // add the header record to the top of the array
-            if (totalCommands > 1 && (ips.length == Config.MAX_IPS_PER_COMMAND - 1 || ipNum == totalIps - 1)) {
+            if (totalCommands > 1 && (ips.length === Config.MAX_IPS_PER_COMMAND - 1 || ipNum === totalIps - 1)) {
                 // prettier-ignore
                 ips.unshift(
                     Config.IP_HEADER_PREFIX +
-                    ":" +
+                    ':' +
                     dataId +
-                    ":" +
+                    ':' +
                     padZero(command.toString(16), 2) +
                     padZero(paddedBytes.toString(16), 2) +
-                    ":" +
+                    ':' +
                     padZero(totalIps.toString(16), 4) +
-                    ":" +
-                    "0000:0000:0000:0001"
+                    ':' +
+                    '0000:0000:0000:0001'
                 );
 
                 agent.sendq.push(ips);
                 ips = [];
             }
         }
-        if (totalCommands == 1) {
+        if (totalCommands === 1) {
             // prettier-ignore
             ips.unshift(
                 Config.IP_HEADER_PREFIX +
-                ":" +
+                ':' +
                 dataId +
-                ":" +
+                ':' +
                 padZero(command.toString(16), 2) +
                 padZero(paddedBytes.toString(16), 2) +
-                ":" +
+                ':' +
                 padZero(totalIps.toString(16), 4) +
-                ":" +
-                "0000:0000:0000:0001"
+                ':' +
+                '0000:0000:0000:0001'
             );
         }
 
         // set to false after keyx is received and there are no more keyx in sendq
-        if (command == implant.AgentCommand.AGENT_KEYX) agent.allowKeyx = true;
+        if (command === implant.AgentCommand.AGENT_KEYX) agent.allowKeyx = true;
 
         if (ips.length > 0) {
             agent.sendq?.push(ips);
-            if (this.modules.proxy.config.enabled && agent.channel == AgentChannel.PROXY) {
+            if (this.modules.proxy.config.enabled && agent.channel === AgentChannel.PROXY) {
                 await this.modules.proxy.sendToProxy(agent.id, ips);
 
                 // cleanup sendq if proxying to agent
@@ -399,8 +400,8 @@ export default class RedChannel {
         const findCommand = padZero(command.toString(16), 2);
         let is = false;
         agent.sendq?.forEach((queue) => {
-            if (queue[0].substring(0, 4) == Config.IP_HEADER_PREFIX) {
-                if (queue[0].substring(12, 14) == findCommand) {
+            if (queue[0].substring(0, 4) === Config.IP_HEADER_PREFIX) {
+                if (queue[0].substring(12, 14) === findCommand) {
                     is = true;
                     return;
                 }
@@ -562,7 +563,7 @@ export default class RedChannel {
 
         // count all data array entries, excluding undefined
         // since data is not sent in sequence, array may be [undefined, undefined, 123, undefined, 321]
-        if (this.countDataChunks(recvqDataId) == totalChunks) {
+        if (this.countDataChunks(recvqDataId) === totalChunks) {
             const dataChunks = recvqDataId.join("");
 
             // process data, return answer records to send back
@@ -624,7 +625,7 @@ export default class RedChannel {
             throw new Error(`checkin payload is invalid for ${agentId}`);
         }
 
-        if (agent.sendq?.length == 0) {
+        if (agent.sendq?.length === 0) {
             this.log.debug(`agent ${agentId} checking in, no data to send`);
             return [
                 {
@@ -675,7 +676,7 @@ export default class RedChannel {
 
         switch (command) {
             // checkin should be authenticated (decrypt dummy data) or rogue agents can drain the queue for legitimate ones
-            case implant.AgentCommand.AGENT_CHECKIN:
+            case implant.AgentCommand.AGENT_CHECKIN: {
                 let checkInAnswers: C2Answer[] | void = [];
                 try {
                     checkInAnswers = this.checkInAgent(agent, hostname, data);
@@ -700,7 +701,8 @@ export default class RedChannel {
                     },
                 ];
                 break;
-            case implant.AgentCommand.AGENT_KEYX:
+            }
+            case implant.AgentCommand.AGENT_KEYX: {
                 if (!agent.allowKeyx) {
                     this.log.error(`incoming keyx from ${agentId} not allowed, initiate keyx first`);
                     return [
@@ -763,7 +765,8 @@ export default class RedChannel {
                 // if there are no more queued up keyx's, ignore further keyxs from agent
                 if (!this.isCommandInSendQ(agentId, implant.AgentCommand.AGENT_KEYX)) agent.allowKeyx = false;
                 break;
-            case implant.AgentCommand.AGENT_MESSAGE:
+            }
+            case implant.AgentCommand.AGENT_MESSAGE: {
                 let agentMessage = "";
                 try {
                     const agentCommandResponseProto = this.decryptAgentData(agentId, data);
@@ -781,7 +784,8 @@ export default class RedChannel {
                 }
                 this.log.success(`agent(${agentId}) output>\n ${agentMessage}`);
                 break;
-            case implant.AgentCommand.AGENT_SYSINFO:
+            }
+            case implant.AgentCommand.AGENT_SYSINFO: {
                 let sysInfo: implant.SysInfoData = implant.SysInfoData.create({});
                 try {
                     const agentCommandResponseProto = this.decryptAgentData(agentId, data);
@@ -822,6 +826,7 @@ export default class RedChannel {
                 this.log.success(`agent(${agentId}) sysinfo>`);
                 this.log.displayTable([], displayRows);
                 break;
+            }
         }
         return [
             {
