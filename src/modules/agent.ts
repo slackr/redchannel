@@ -6,13 +6,13 @@ import BaseModule from "./base";
 const MODULE_DESCRIPTION = "manage active agents";
 const DEFAULT_CONFIG: AgentModuleConfig = {};
 
-export interface AgentModuleConfig {
+export type AgentModuleConfig = {
     proxy_url?: string;
     proxy_enabled?: boolean;
     proxy_key?: string;
     interval?: number;
     throttle_sendq?: boolean;
-}
+};
 
 export default class AgentModule extends BaseModule {
     log: Logger;

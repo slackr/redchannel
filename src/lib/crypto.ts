@@ -3,10 +3,10 @@ import * as crypto from "crypto";
 import { emsg } from "../utils/utils";
 import { ECKeyWithPublicPoint } from "../utils/defs";
 
-export interface CipherModel {
+export type CipherModel = {
     iv: Buffer;
     data: Buffer;
-}
+};
 
 export enum KeyExportType {
     PEM = "pem",

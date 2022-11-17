@@ -5,14 +5,14 @@ import { emsg } from "../utils/utils";
 
 const DEFAULT_CONFIG: BaseModuleConfig = {};
 
-export interface Command {
+export type Command = {
     arguments: string[];
     description: string;
     validateRegex?: RegExp;
     execute?: Function;
     executeCallbackAvailable?: boolean;
 }
-export interface ExecuteCallbackResult {
+export type ExecuteCallbackResult = {
     message: string;
     code?: number | null;
 }
@@ -22,7 +22,7 @@ export type ExecuteCallbackFunction = (result: ExecuteCallbackResult) => void;
 export type CommandName = string;
 export type Commands = Map<CommandName, Command>;
 
-export interface ExecuteReturn {
+export type ExecuteReturn = {
     message: string;
 }
 

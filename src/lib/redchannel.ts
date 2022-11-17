@@ -35,28 +35,28 @@ export enum C2AnswerType {
     TYPE_AAAA = "AAAA",
     TYPE_PROXY = "PROXY",
 }
-export interface C2Answer {
+export type C2Answer = {
     name: string;
     type: C2AnswerType;
     data: string;
     ttl: number;
-}
-export interface C2RequestConnection {
+};
+export type C2RequestConnection = {
     remoteAddress: string;
     type: C2AnswerType;
-}
-export interface C2ResponseQuestion {
+};
+export type C2ResponseQuestion = {
     name: string;
     type: C2AnswerType;
-}
-export interface C2MessageRequest {
+};
+export type C2MessageRequest = {
     connection: C2RequestConnection;
-}
-export interface C2MessageResponse {
+};
+export type C2MessageResponse = {
     question: C2ResponseQuestion[];
     answer: C2Answer[];
     end: Function;
-}
+};
 
 // to clarify the Map()s
 export type DataId = string;
@@ -65,7 +65,7 @@ export type SendQEntry = string[];
 export type AgentId = string;
 export type AgentIdRandId = string;
 
-export interface AgentModel {
+export type AgentModel = {
     id: string;
     secret: Buffer;
     keyx?: ECKey;
@@ -76,32 +76,32 @@ export interface AgentModel {
     sendq: SendQEntry[];
     // each agent command has a map of dataId => chunks[]
     recvq: Map<implant.AgentCommand, Map<DataId, DataChunk[]>>;
-}
+};
 
 export enum AgentChannel {
     DNS = "dns",
     PROXY = "proxy",
 }
 
-export interface Modules {
+export type Modules = {
     c2: C2Module;
     agent: AgentModule;
     skimmer: SkimmerModule;
     static_dns: StaticDnsModule;
     proxy: ProxyModule;
     implant: ImplantModule;
-}
+};
 // the config values for each module are made optional
 // as we don't need to define all of these for the config
 // to _merge in BaseModule
-export interface ModulesConfig {
+export type ModulesConfig = {
     c2: Partial<C2ModuleConfig>;
     agent: Partial<AgentModuleConfig>;
     skimmer: Partial<SkimmerModuleConfig>;
     static_dns: Partial<StaticDnsModuleConfig>;
     proxy: Partial<ProxyModuleConfig>;
     implant: Partial<ImplantModuleConfig>;
-}
+};
 
 export default class RedChannel {
     version = Constants.VERSION;
