@@ -15,11 +15,16 @@ export const Constants = {
 export const Config = {
     C2_ANSWER_TTL_SECS: 300,
     DEFAULT_CONFIG_FILE: "conf/redchannel.conf",
-    DATA_PAD_CHAR: "f",
+    DATA_PAD_HEXBYTE: "ff",
     IP_DATA_PREFIX: "2001",
     IP_HEADER_PREFIX: "ff00",
+    DATA_BLOCK_STRING_LENGTH: 4,
     MAX_DATA_BLOCKS_PER_IP: 6,
-    MAX_IPS_PER_COMMAND: 15, // first record is ip header, rest is data
+    // we need to make sure the total response fits in 512 bytes (UDP data limit)
+    // each IPv6 is 28 bytes
+    // first record is ip header, rest is data
+    // total IPs sent per response (sendq entry) is MAX_IPS_PER_SENDQ_ENTRY+HEADER
+    MAX_DATA_IPS_PER_SENDQ_ENTRY: 10,
     FLOOD_PROTECTION_TIMEOUT_MS: 10,
     EXPECTED_DATA_SEGMENTS: 5,
 };
@@ -54,5 +59,16 @@ export const padZero = (proxyData, maxLength) => {
     return "0".repeat(maxLength - proxyData.length) + proxyData;
 };
 export const padTail = (proxyData, maxLength) => {
-    return proxyData + Config.DATA_PAD_CHAR.repeat(maxLength - proxyData.length);
+    return proxyData + Config.DATA_PAD_HEXBYTE.repeat(maxLength - proxyData.length);
+};
+
+export const chunkString = (dataString: string, chunkSize: number): string[] => {
+    const totalChunks = Math.ceil(dataString.length / chunkSize);
+    const chunks: string[] = new Array(totalChunks);
+
+    for (let chunkIndex = 0, chunkStep = 0; chunkIndex < totalChunks; ++chunkIndex, chunkStep += chunkSize) {
+        chunks[chunkIndex] = dataString.substring(chunkStep, chunkStep + chunkSize);
+    }
+
+    return chunks;
 };

