@@ -1,10 +1,12 @@
 {
     "compilerOptions": {
         "module": "commonjs",
+        "moduleResolution": "Node",
         "noImplicitReturns": true,
         "noImplicitAny": false,
         "noUnusedLocals": true,
         "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "lib": ["es2021"],
         "outDir": "dist",

@@ -12,7 +12,6 @@
         "ec-key": "^0.0.4",
         "express": "^4.18.2",
         "javascript-obfuscator": "^4.0.0",
-        "jest": "^26.6.3",
         "lodash.merge": "^4.6.2"
     },
     "devDependencies": {
@@ -26,25 +25,16 @@
         "eslint-plugin-import": "^2.26.0",
         "eslint-plugin-n": "^15.5.1",
         "eslint-plugin-promise": "^6.1.1",
-        "gts": "^3.1.1",
         "protobufjs": "^7.1.2",
         "protobufjs-cli": "^1.0.2",
         "typescript": "^4.9.3"
     },
     "scripts": {
         "build": "npm run clean && npx tsc",
-        "build:watch": "npm run clean && npx tsc --watch",
         "clean": "npx tsc --build --clean",
-        "start": "npm run build && node dist/app.js --",
-        "debug": "node dist/app.js -- --debug",
-        "dev": "concurrently -P --kill-others \"npm run build:watch\" \"npm run debug\"",
-        "test": "jest"
-    },
-    "jest": {
-        "collectCoverage": true,
-        "coverageReporters": [
-            "html"
-        ]
+        "start": "npx ts-node src/app.ts",
+        "debug": "npx ts-node src/app.ts -- --debug",
+        "dev": "npm run debug"
     },
     "author": "",
     "license": "ISC"

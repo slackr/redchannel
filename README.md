@@ -57,7 +57,7 @@ Command-line switches are available to overwrite configuration values.
 $ git clone --recurse-submodules https://github.com/slackr/redchannel
 $ cd redchannel
 $ cp ./conf/redchannel.conf.sample ./conf/redchannel.conf
-$ npm run start --help
+$ RC_PASSWORD=redchannel npm run dev --help
 ...
 ```
 
@@ -99,7 +99,7 @@ Create a `./config/campaigns/contoso.conf` (see `conf/redchannel.conf.sample`)
 ```
 
 Launch the C2:
-`RC_PASSWORD=supersecret node app.js --config ./config/campaigns/contoso.conf`
+`RC_PASSWORD=supersecret npx ts-node src/app.ts --config ./config/campaigns/contoso.conf`
 
 Generate proxy payload and enable proxy communication:
 

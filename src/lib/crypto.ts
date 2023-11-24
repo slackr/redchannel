@@ -104,7 +104,7 @@ class Crypto {
         try {
             switch (format) {
                 case KeyExportType.PEM:
-                    publicKey = this.privateKey.asPublicECKey(); //.toString("pem");
+                    publicKey = this.privateKey.asPublicECKey().toBuffer(); //.toString("pem");
                     break;
                 case KeyExportType.UNCOMPRESSED:
                 default: // .toString("hex");

@@ -417,7 +417,7 @@ export default class RedChannel {
         return this.agents.get(agentId) || null;
     }
 
-    parseAgentMessageSegments(hostname: string): AgentMessageSegments | void {
+    parseAgentMessageSegments(hostname: string): AgentMessageSegments {
         const segmentsArray = hostname.slice(0, hostname.length - this.modules.c2.config.domain.length).split(".");
         if (segmentsArray.length < Config.EXPECTED_DATA_SEGMENTS) {
             throw new Error(`invalid message, not enough data segments (${segmentsArray.length}, expected ${Config.EXPECTED_DATA_SEGMENTS}): ${hostname}`);
@@ -502,7 +502,7 @@ export default class RedChannel {
             return res.end();
         }
 
-        let segments: AgentMessageSegments | void;
+        let segments: AgentMessageSegments | null = null;
         try {
             segments = this.parseAgentMessageSegments(hostname);
         } catch (ex) {

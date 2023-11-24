@@ -15,7 +15,8 @@ const MODULE_DESCRIPTION = "build implants for operations";
 const AGENT_PATH = `${process.cwd()}/agent`;
 const AGENT_CONFIG_PATH = `${AGENT_PATH}/config/config.go`;
 const AGENT_BUILD_SCRIPT = `${AGENT_PATH}/tools/build.py`;
-const AGENT_BUILD_LOG_PATH = `${AGENT_PATH}/build/build.log`;
+const AGENT_BUILD_PATH = `${AGENT_PATH}/build`;
+const AGENT_BUILD_LOG_PATH = `${AGENT_BUILD_PATH}/build.log`;
 
 const DEFAULT_CONFIG: ImplantModuleConfig = {
     os: "windows",
@@ -168,26 +169,29 @@ export default class ImplantModule extends BaseModule {
             throw new Error(`error generating build config: ${emsg(ex)}`);
         }
 
-        const buildPath = AGENT_PATH;
-        const outputFile = `${buildPath}/build/agent${targetOs === "windows" ? ".exe" : ""}`;
+        const outputFile = `${AGENT_BUILD_PATH}/agent${targetOs === "windows" ? ".exe" : ""}`;
 
         // prettier-ignore
         const commandArguments = [
             `${AGENT_BUILD_SCRIPT}`,
-            `${buildPath}`,
+            `${AGENT_PATH}`,
             `${outputFile}`,
             targetOs,
             targetArch,
         ];
         if (debug) commandArguments.push("debug");
 
+        const goCachePath = path.join(os.tmpdir(), "rc-build-cache");
+        const goPath = path.join(os.tmpdir(), "rc-build-path");
         const goEnvironment = {
             GOOS: targetOs,
             GOARCH: targetArch,
             GO111MODULE: "auto",
-            GOCACHE: path.join(os.tmpdir(), "rc-build-cache"), // 'go clean -modcache' after build?
-            GOPATH: path.join(os.tmpdir(), "rc-build-path"),
-            PATH: process.env.PATH,
+            GOCACHE: goCachePath, // 'go clean -modcache' after build?
+            GOPATH: goPath,
+            PATH: `${goPath}/bin:${process.env.PATH}`,
+            HOME: `${goPath}/home`,
+            XDG_CACHE_HOME: `${goPath}/xdg-home`,
         };
 
         const spawnBinary = "python";
@@ -196,7 +200,7 @@ export default class ImplantModule extends BaseModule {
             // TODO: do this with docker instead? https://hub.docker.com/_/golang
             childProcess = spawn(spawnBinary, commandArguments, {
                 env: goEnvironment,
-                cwd: buildPath,
+                cwd: AGENT_PATH,
                 windowsVerbatimArguments: true,
             });
             childProcess.on("close", (code) => {
