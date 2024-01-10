@@ -20,10 +20,11 @@ export default class Logger {
     msg(msg) {
         console.log(msg);
     }
+
     displayTable(columns: string[], rows: Array<string[]>) {
-        console.log(columns.join("\t"));
+        this.info(columns.join("\t"));
         for (const row of rows) {
-            console.log(row.join("\t"));
+            this.info(row.join("\t"));
         }
     }
 }

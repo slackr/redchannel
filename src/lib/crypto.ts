@@ -1,6 +1,6 @@
 import ECKey, * as ellipticCurveKey from "ec-key";
 import * as crypto from "crypto";
-import { emsg } from "../utils/utils";
+import { emsg } from "../utils";
 import { ECKeyWithPublicPoint } from "../utils/defs";
 
 export type CipherModel = {
@@ -21,8 +21,6 @@ class Crypto {
     HMAC_SHA = "sha256";
     BLOCK_LENGTH = 16;
     AES_ALGO = "aes-256-cbc";
-
-    constructor() {}
 
     generateKeys() {
         try {

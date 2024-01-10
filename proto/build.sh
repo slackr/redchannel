@@ -1,26 +1,19 @@
 #!/bin/bash
 
-PROTO_NAME=implant
+# which protos to build
 PROTO_DIR=./proto
-PROTO_FILE=$PROTO_DIR/$PROTO_NAME.proto
-# no extension, we will add .d.ts and .js
-PROTO_OUT_FILE=./src/pb/$PROTO_NAME
+
+PROTO_FILES=$PROTO_DIR/*.proto
+
+JS_OUT_DIR=./src/pb
+JS_OUT_FILE_NAME=$JS_OUT_DIR/protos
+echo "[+] generating js/ts code to $JS_OUT_FILE_NAME{.d.ts,.js} in '$JS_OUT_DIR'"
+node ./node_modules/protobufjs-cli/bin/pbjs -t static-module -w commonjs -o $JS_OUT_FILE_NAME.js $PROTO_FILES
+node ./node_modules/protobufjs-cli/bin/pbts -o $JS_OUT_FILE_NAME.d.ts $JS_OUT_FILE_NAME.js
+
 GO_OUT_DIR=./agent
-
-if [ ! -f $PROTO_FILE ]; then
-    if [ -f ../$PROTO_FILE ]; then
-        cd ../
-    else
-        echo "[!] ./proto/*.proto files not found, are you in the root directory?"
-        exit 1
-    fi
-fi
-
-echo "[+] generating js/ts code to $PROTO_OUT_FILE{.d.ts,.js}"
-node ./node_modules/protobufjs-cli/bin/pbjs -t static-module -w commonjs -o $PROTO_OUT_FILE.js $PROTO_FILE
-node ./node_modules/protobufjs-cli/bin/pbts -o $PROTO_OUT_FILE.d.ts $PROTO_OUT_FILE.js
-
-echo "[+] generating go code in $GO_OUT_DIR/$PROTO_NAME/$PROTO_NAME.pb.go"
-protoc --proto_path=$PROTO_DIR/ --go_out=$GO_OUT_DIR/ $PROTO_NAME.proto
+PROTO_GO_FILE_NAME="implant"
+echo "[+] generating go code in $GO_OUT_DIR/implant/$PROTO_GO_FILE_NAME.pb.go"
+protoc --proto_path=$PROTO_DIR/ --go_out=$GO_OUT_DIR/ $PROTO_GO_FILE_NAME.proto
 
 echo "[+] done."

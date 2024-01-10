@@ -9,6 +9,304 @@ var $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.ut
 // Exported root namespace
 var $root = $protobuf.roots["default"] || ($protobuf.roots["default"] = {});
 
+$root.c2 = (function() {
+
+    /**
+     * Namespace c2.
+     * @exports c2
+     * @namespace
+     */
+    var c2 = {};
+
+    c2.SendCommand = (function() {
+
+        /**
+         * Properties of a SendCommand.
+         * @memberof c2
+         * @interface ISendCommand
+         * @property {string|null} [agentId] SendCommand agentId
+         * @property {implant.AgentCommand|null} [command] SendCommand command
+         */
+
+        /**
+         * Constructs a new SendCommand.
+         * @memberof c2
+         * @classdesc Represents a SendCommand.
+         * @implements ISendCommand
+         * @constructor
+         * @param {c2.ISendCommand=} [properties] Properties to set
+         */
+        function SendCommand(properties) {
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * SendCommand agentId.
+         * @member {string} agentId
+         * @memberof c2.SendCommand
+         * @instance
+         */
+        SendCommand.prototype.agentId = "";
+
+        /**
+         * SendCommand command.
+         * @member {implant.AgentCommand} command
+         * @memberof c2.SendCommand
+         * @instance
+         */
+        SendCommand.prototype.command = 0;
+
+        /**
+         * Creates a new SendCommand instance using the specified properties.
+         * @function create
+         * @memberof c2.SendCommand
+         * @static
+         * @param {c2.ISendCommand=} [properties] Properties to set
+         * @returns {c2.SendCommand} SendCommand instance
+         */
+        SendCommand.create = function create(properties) {
+            return new SendCommand(properties);
+        };
+
+        /**
+         * Encodes the specified SendCommand message. Does not implicitly {@link c2.SendCommand.verify|verify} messages.
+         * @function encode
+         * @memberof c2.SendCommand
+         * @static
+         * @param {c2.ISendCommand} message SendCommand message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        SendCommand.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.agentId != null && Object.hasOwnProperty.call(message, "agentId"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.agentId);
+            if (message.command != null && Object.hasOwnProperty.call(message, "command"))
+                writer.uint32(/* id 2, wireType 0 =*/16).int32(message.command);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified SendCommand message, length delimited. Does not implicitly {@link c2.SendCommand.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof c2.SendCommand
+         * @static
+         * @param {c2.ISendCommand} message SendCommand message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        SendCommand.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a SendCommand message from the specified reader or buffer.
+         * @function decode
+         * @memberof c2.SendCommand
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {c2.SendCommand} SendCommand
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        SendCommand.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.c2.SendCommand();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1: {
+                        message.agentId = reader.string();
+                        break;
+                    }
+                case 2: {
+                        message.command = reader.int32();
+                        break;
+                    }
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a SendCommand message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof c2.SendCommand
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {c2.SendCommand} SendCommand
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        SendCommand.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a SendCommand message.
+         * @function verify
+         * @memberof c2.SendCommand
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        SendCommand.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.agentId != null && message.hasOwnProperty("agentId"))
+                if (!$util.isString(message.agentId))
+                    return "agentId: string expected";
+            if (message.command != null && message.hasOwnProperty("command"))
+                switch (message.command) {
+                default:
+                    return "command: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                case 6:
+                case 7:
+                case 8:
+                case 9:
+                    break;
+                }
+            return null;
+        };
+
+        /**
+         * Creates a SendCommand message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof c2.SendCommand
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {c2.SendCommand} SendCommand
+         */
+        SendCommand.fromObject = function fromObject(object) {
+            if (object instanceof $root.c2.SendCommand)
+                return object;
+            var message = new $root.c2.SendCommand();
+            if (object.agentId != null)
+                message.agentId = String(object.agentId);
+            switch (object.command) {
+            default:
+                if (typeof object.command === "number") {
+                    message.command = object.command;
+                    break;
+                }
+                break;
+            case "AGENT_UNSPECIFIED":
+            case 0:
+                message.command = 0;
+                break;
+            case "AGENT_CHECKIN":
+            case 1:
+                message.command = 1;
+                break;
+            case "AGENT_SYSINFO":
+            case 2:
+                message.command = 2;
+                break;
+            case "AGENT_EXECUTE":
+            case 3:
+                message.command = 3;
+                break;
+            case "AGENT_EXECUTE_SHELLCODE":
+            case 4:
+                message.command = 4;
+                break;
+            case "AGENT_MESSAGE":
+            case 5:
+                message.command = 5;
+                break;
+            case "AGENT_SHUTDOWN":
+            case 6:
+                message.command = 6;
+                break;
+            case "AGENT_KEYX":
+            case 7:
+                message.command = 7;
+                break;
+            case "AGENT_SET_CONFIG":
+            case 8:
+                message.command = 8;
+                break;
+            case "AGENT_IGNORE":
+            case 9:
+                message.command = 9;
+                break;
+            }
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a SendCommand message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof c2.SendCommand
+         * @static
+         * @param {c2.SendCommand} message SendCommand
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        SendCommand.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults) {
+                object.agentId = "";
+                object.command = options.enums === String ? "AGENT_UNSPECIFIED" : 0;
+            }
+            if (message.agentId != null && message.hasOwnProperty("agentId"))
+                object.agentId = message.agentId;
+            if (message.command != null && message.hasOwnProperty("command"))
+                object.command = options.enums === String ? $root.implant.AgentCommand[message.command] === undefined ? message.command : $root.implant.AgentCommand[message.command] : message.command;
+            return object;
+        };
+
+        /**
+         * Converts this SendCommand to JSON.
+         * @function toJSON
+         * @memberof c2.SendCommand
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        SendCommand.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * Gets the default type url for SendCommand
+         * @function getTypeUrl
+         * @memberof c2.SendCommand
+         * @static
+         * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+         * @returns {string} The default type url
+         */
+        SendCommand.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+            if (typeUrlPrefix === undefined) {
+                typeUrlPrefix = "type.googleapis.com";
+            }
+            return typeUrlPrefix + "/c2.SendCommand";
+        };
+
+        return SendCommand;
+    })();
+
+    return c2;
+})();
+
 $root.implant = (function() {
 
     /**

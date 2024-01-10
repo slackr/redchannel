@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package c2;
+
+// commands for the c2, broadcast to agents
+enum C2Command {
+  C2_UNSPECIFIED = 0;
+  C2_KEYX = 1;
+  C2_GET_AGENTS = 2;
+  C2_SET_CONFIG = 3;
+}
+
+enum C2CommandStatus {
+  COMMAND_STATUS_UNSPECIFIED = 0;
+  COMMAND_STATUS_SUCCESS = 1;
+  COMMAND_STATUS_ERROR = 2;
+}
+
+enum C2Module {
+  MODULE_UNSPECIFIED = 0;
+  MODULE_C2 = 1;
+  MODULE_PROXY = 2;
+  MODULE_IMPLANT = 3;
+  MODULE_SKIMMER = 4;
+  MODULE_STATIC_DNS = 5;
+}
+
+// agent command route
+message SendAgentCommandRequest {
+  string agent_id = 1;
+  implant.AgentCommand command = 2;
+  bytes parameters = 3;
+}
+message SendAgentCommandResponse {
+  string agent_id = 1;
+  bytes data = 2;
+  implant.AgentCommandStatus status = 3;
+}
+
+// a generic, non-agent broadcast command
+message C2CommandRequest { C2Command command = 1; }
+message C2CommandResponse {
+  C2CommandStatus status = 1;
+  bytes data = 2;
+}

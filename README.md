@@ -8,7 +8,7 @@ The primary means of communication between agents and their C2 is DNS, but proxy
 
 Before any data or commands are received, C2 must initiate a key exchange with new agents.
 
--   C2 generates an EC keypair and forwards it's public key to the Agent
+-   C2 generates an EC keypair and forwards its public key to the Agent
 -   Agent generates its own EC keypair and forwards it to the C2
 -   Using ECDH, both C2 and Agent compute the same shared secret
 -   The shared secret is combined with the campaign password to derive an AES key
@@ -19,7 +19,7 @@ The C2 can at any point re-initiate the key exchange, invalidating keys used to 
 
 ## Proxying Traffic Through HTTP
 
-RedChannel can switch its communication method from DNS to HTTP by using proxy somewhere on the Internet. The benefit of this is primarily speed. DNS communication is very slow, especially if the communication interval is high. Since the proxy payload can be hosted on any third-party server and it is polled by both the implant and the C2, we can effectively tunnel C2 requests through Tor or a VPN, hiding the red team infrastructure.
+RedChannel can switch its communication method from DNS to HTTP by using PHP hop proxy somewhere on the Internet. The benefit of this is primarily speed. DNS communication is very slow, especially if the communication interval is high. Since the proxy payload can be hosted on any third-party server and it is polled by both the implant and the C2, we can effectively tunnel C2 requests through Tor or a VPN, hiding the red team infrastructure.
 
 The key exchange and session encryption still apply, but instead of issuing DNS queries, agents will upload these encrypted blobs to the defined proxy endpoint. The C2 will query this endpoint periodically for data from agents and process it accordingly.
 
@@ -45,7 +45,7 @@ A sample configuration file is available in `./conf/redchannel.conf.sample`. Use
 
 The master password is set either via the `--password` command-line switch or using the environment variable `RC_PASSWORD`. This value is required.
 
-The agent source code must also be available in the `./agent/` subfolder: `git submodule update --recurse`
+The agent source code must also be available in the `./agent/` subfolder: `git submodule update --recursive`
 
 RedChannel will use the `./agent/config/config.go.sample` as a template to build the agent using C2 configuration data (password, c2 domain, etc).
 
@@ -56,45 +56,62 @@ Command-line switches are available to overwrite configuration values.
 ```c
 $ git clone --recurse-submodules https://github.com/slackr/redchannel
 $ cd redchannel
+$ npm i
 $ cp ./conf/redchannel.conf.sample ./conf/redchannel.conf
-$ RC_PASSWORD=redchannel npm run dev --help
+$ RC_PASSWORD=redchannel npm run start --help
 ...
 ```
 
 ### Sample Campaign
 
-> _Target:_ `Contoso`
+> _Target:_ `Company`
 >
-> _Red Team C2 Domain:_ `redteam.int`
+> _Red Team C2 Domain:_ `uber.redchannel.tld`
 >
 > _Proxy URL:_ `https://uber-red-team.azurewebsites.net/proxy.php`
 
--   Create `NS` record for `uber.redteam.int` pointing to `ns1.redteam.int`
--   Create `A` record for `ns1.redteam.int` pointing to the C2 external `ip` or `socat` forwarder
+-   Create `NS` record for `uber.redchannel.tld` pointing to `ns1.redchannel.tld`
+-   Create `A` record for `ns1.redchannel.tld` pointing to the C2 external `ip` or a redirector
 
 Create a `./config/campaigns/contoso.conf` (see `conf/redchannel.conf.sample`)
 
 ```json
 {
     "c2": {
-        "domain": "uber.redteam.int",
-        "dns_ip": "0.0.0.0",
+        "domain": "uber.redchannel.tld",
+        "dns_ip": "127.0.0.1",
         "dns_port": 53,
         "web_ip": "127.0.0.1",
-        "web_port": 4321,
+        "web_port": 8080,
         "binary_route": "/setup.exe",
-        "web_url": "http://uber.redteam.int"
+        "web_url": "http://uber.redchannel.tld",
+        "debug": true
+    },
+    "skimmer": {
+        "payload_route": "/jquery.min.js",
+        "data_route": "/stats",
+        "url": "http://uber.redchannel.tld/stats?id=",
+        "target_classes": [],
+        "target_ids": [],
+        "obfuscate_payload": false
     },
     "proxy": {
-        "enabled": false,
-        "key": "contoso_proxy_key",
+        "enabled": true,
+        "key": "redchannel",
         "interval": 2000,
+        "obfuscate_payload": false,
         "url": "https://uber-red-team.azurewebsites.net/proxy.php"
     },
     "static_dns": {
-        "uber.redteam.int": "172.16.1.1"
+        "test.c2.redchannel.tld": "127.0.0.1"
+    },
+    "implant": {
+        "os": "windows",
+        "arch": "amd64",
+        "debug": true,
+        "interval": 5000,
+        "resolver": "8.8.8.8:53"
     }
-    ...
 }
 ```
 
