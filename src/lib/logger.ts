@@ -1,24 +1,24 @@
 export default class Logger {
-    error(msg) {
-        console.error(msg);
+    error(...msg) {
+        console.error(new Date().toISOString(), ...msg);
     }
     warn(msg) {
-        console.warn(msg);
+        console.warn(new Date().toISOString(), ...msg);
     }
-    info(msg) {
-        this.msg(msg);
+    info(...msg) {
+        this.msg(new Date().toISOString(), ...msg);
     }
-    debug(msg) {
-        console.debug(msg);
+    debug(...msg) {
+        console.debug(new Date().toISOString(), ...msg);
     }
-    success(msg) {
-        console.log(msg);
+    success(...msg) {
+        this.msg(new Date().toISOString(), ...msg);
     }
-    echo(msg) {
-        console.log(msg);
+    echo(...msg) {
+        this.msg(new Date().toISOString(), ...msg);
     }
-    msg(msg) {
-        console.log(msg);
+    msg(...msg) {
+        console.log(new Date().toISOString(), ...msg);
     }
 
     displayTable(columns: string[], rows: Array<string[]>) {
