@@ -4,6 +4,8 @@
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
 import type { ServiceInfo } from "@protobuf-ts/runtime-rpc";
 import { RedChannel } from "./c2";
+import type { BuildImplantResponse } from "./c2";
+import type { BuildImplantRequest } from "./c2";
 import type { KeyxResponse } from "./c2";
 import type { KeyxRequest } from "./c2";
 import { stackIntercept } from "@protobuf-ts/runtime-rpc";
@@ -23,6 +25,10 @@ export interface IRedChannelClient {
      * @generated from protobuf rpc: Keyx(c2.KeyxRequest) returns (c2.KeyxResponse);
      */
     keyx(input: KeyxRequest, options?: RpcOptions): UnaryCall<KeyxRequest, KeyxResponse>;
+    /**
+     * @generated from protobuf rpc: BuildImplant(c2.BuildImplantRequest) returns (c2.BuildImplantResponse);
+     */
+    buildImplant(input: BuildImplantRequest, options?: RpcOptions): UnaryCall<BuildImplantRequest, BuildImplantResponse>;
 }
 /**
  * @generated from protobuf service c2.RedChannel
@@ -46,5 +52,12 @@ export class RedChannelClient implements IRedChannelClient, ServiceInfo {
     keyx(input: KeyxRequest, options?: RpcOptions): UnaryCall<KeyxRequest, KeyxResponse> {
         const method = this.methods[1], opt = this._transport.mergeOptions(options);
         return stackIntercept<KeyxRequest, KeyxResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: BuildImplant(c2.BuildImplantRequest) returns (c2.BuildImplantResponse);
+     */
+    buildImplant(input: BuildImplantRequest, options?: RpcOptions): UnaryCall<BuildImplantRequest, BuildImplantResponse> {
+        const method = this.methods[2], opt = this._transport.mergeOptions(options);
+        return stackIntercept<BuildImplantRequest, BuildImplantResponse>("unary", this._transport, method, opt, input);
     }
 }

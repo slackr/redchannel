@@ -118,6 +118,28 @@ export interface KeyxResponse {
     status: CommandStatus;
 }
 /**
+ * @generated from protobuf message c2.BuildImplantRequest
+ */
+export interface BuildImplantRequest {
+    /**
+     * @generated from protobuf field: string os = 1;
+     */
+    os: string;
+    /**
+     * @generated from protobuf field: string arch = 2;
+     */
+    arch: string;
+}
+/**
+ * @generated from protobuf message c2.BuildImplantResponse
+ */
+export interface BuildImplantResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+}
+/**
  * @generated from protobuf enum c2.C2Command
  */
 export enum C2Command {
@@ -622,10 +644,113 @@ class KeyxResponse$Type extends MessageType<KeyxResponse> {
  * @generated MessageType for protobuf message c2.KeyxResponse
  */
 export const KeyxResponse = new KeyxResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class BuildImplantRequest$Type extends MessageType<BuildImplantRequest> {
+    constructor() {
+        super("c2.BuildImplantRequest", [
+            { no: 1, name: "os", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "arch", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<BuildImplantRequest>): BuildImplantRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.os = "";
+        message.arch = "";
+        if (value !== undefined)
+            reflectionMergePartial<BuildImplantRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: BuildImplantRequest): BuildImplantRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string os */ 1:
+                    message.os = reader.string();
+                    break;
+                case /* string arch */ 2:
+                    message.arch = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: BuildImplantRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string os = 1; */
+        if (message.os !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.os);
+        /* string arch = 2; */
+        if (message.arch !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.arch);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.BuildImplantRequest
+ */
+export const BuildImplantRequest = new BuildImplantRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class BuildImplantResponse$Type extends MessageType<BuildImplantResponse> {
+    constructor() {
+        super("c2.BuildImplantResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] }
+        ]);
+    }
+    create(value?: PartialMessage<BuildImplantResponse>): BuildImplantResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        if (value !== undefined)
+            reflectionMergePartial<BuildImplantResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: BuildImplantResponse): BuildImplantResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: BuildImplantResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.BuildImplantResponse
+ */
+export const BuildImplantResponse = new BuildImplantResponse$Type();
 /**
  * @generated ServiceType for protobuf service c2.RedChannel
  */
 export const RedChannel = new ServiceType("c2.RedChannel", [
     { name: "GetAgents", options: {}, I: GetAgentsRequest, O: GetAgentsResponse },
-    { name: "Keyx", options: {}, I: KeyxRequest, O: KeyxResponse }
+    { name: "Keyx", options: {}, I: KeyxRequest, O: KeyxResponse },
+    { name: "BuildImplant", options: {}, I: BuildImplantRequest, O: BuildImplantResponse }
 ]);

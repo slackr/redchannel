@@ -75,8 +75,14 @@ message KeyxRequest {
 }
 message KeyxResponse { CommandStatus status = 1; }
 
+message BuildImplantRequest {
+  string os = 1;
+  string arch = 2;
+}
+message BuildImplantResponse { CommandStatus status = 1; }
+
 service RedChannel {
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
-  rpc BuildImplant() returns (KeyxResponse);
+  rpc BuildImplant(BuildImplantRequest) returns (BuildImplantResponse);
 }
