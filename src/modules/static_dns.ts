@@ -26,7 +26,8 @@ export default class StaticDnsModule implements Module {
         // });
     }
 
-    run() {
+    execute() {
+        this.log.info(this.config.static_dns);
         return;
     }
 

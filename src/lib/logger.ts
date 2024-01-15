@@ -1,24 +1,33 @@
+export enum LogLevel {
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+}
+
 export default class Logger {
+    level: LogLevel = LogLevel.INFO;
+
     error(...msg) {
         console.error(new Date().toISOString(), ...msg);
     }
     warn(msg) {
-        console.warn(new Date().toISOString(), ...msg);
+        if (this.level >= LogLevel.WARN) console.warn(new Date().toISOString(), ...msg);
     }
     info(...msg) {
-        this.msg(new Date().toISOString(), ...msg);
+        if (this.level >= LogLevel.INFO) this.msg(...msg);
     }
     debug(...msg) {
         console.debug(new Date().toISOString(), ...msg);
     }
     success(...msg) {
-        this.msg(new Date().toISOString(), ...msg);
+        if (this.level >= LogLevel.INFO) this.msg(...msg);
     }
     echo(...msg) {
-        this.msg(new Date().toISOString(), ...msg);
+        this.msg(...msg);
     }
     msg(...msg) {
-        console.log(new Date().toISOString(), ...msg);
+        if (this.level >= LogLevel.INFO) console.log(new Date().toISOString(), ...msg);
     }
 
     displayTable(columns: string[], rows: Array<string[]>) {

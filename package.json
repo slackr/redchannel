@@ -4,6 +4,9 @@
     "description": "redchannel-c2",
     "main": "dist/app.js",
     "dependencies": {
+        "@grpc/grpc-js": "^1.9.13",
+        "@protobuf-ts/plugin": "^2.9.3",
+        "@protobuf-ts/runtime": "^2.9.3",
         "axios": "^1.6.2",
         "chalk": "^4.1.2",
         "cli-table": "^0.3.11",
@@ -14,7 +17,8 @@
         "javascript-obfuscator": "^4.1.0",
         "lodash.merge": "^4.6.2",
         "socket.io": "^4.7.3",
-        "ts-node": "^10.9.2"
+        "ts-node": "^10.9.2",
+        "ts-proto": "^1.166.2"
     },
     "devDependencies": {
         "@types/express": "^4.17.21",

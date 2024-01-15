@@ -105,7 +105,17 @@ export default class ProxyModule implements Module {
         // });
     }
 
-    run(): void {
+    proxyInit() {
+        const proxyConfig = this.config.proxy;
+        if (proxyConfig.enabled) {
+            this.log.info(`c2-proxy enabled, checkin at interval: ${proxyConfig.interval}ms`);
+            this.proxyFetchLoop();
+        } else {
+            this.log.info("c2-proxy is disabled");
+        }
+    }
+
+    execute(): void {
         if (!this.config.proxy.key) throw new Error("proxy key is required, see 'help'");
 
         let data: Buffer;

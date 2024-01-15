@@ -74,7 +74,7 @@ export default class SkimmerModule implements Module {
         // });
     }
 
-    run(): void {
+    execute(): void {
         if (!this.config.skimmer.url) throw new Error("skimmer url is required, see 'help'");
 
         let data: Buffer;

@@ -126,7 +126,7 @@ export default class ImplantModule implements Module {
         // });
     }
 
-    run(): void {
+    execute(): void {
         const targetOs = this.buildParameters.os;
         const targetArch = this.buildParameters.arch;
         const debug = this.buildParameters.debug;

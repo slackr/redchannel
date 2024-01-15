@@ -29,7 +29,7 @@ export const Config = {
     EXPECTED_DATA_SEGMENTS: 5,
 };
 
-export const BANNER = `
+export const RedChannelBanner = `
 ██████╗ ███████╗██████╗  ██████╗██╗  ██╗ █████╗ ███╗   ██╗███╗   ██╗███████╗██╗     
 ██╔══██╗██╔════╝██╔══██╗██╔════╝██║  ██║██╔══██╗████╗  ██║████╗  ██║██╔════╝██║     
 ██████╔╝█████╗  ██║  ██║██║     ███████║███████║██╔██╗ ██║██╔██╗ ██║█████╗  ██║     
@@ -37,18 +37,6 @@ export const BANNER = `
 ██║  ██║███████╗██████╔╝╚██████╗██║  ██║██║  ██║██║ ╚████║██║ ╚████║███████╗███████╗
 ╚═╝  ╚═╝╚══════╝╚═════╝  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═══╝╚══════╝╚══════╝
 `;
-
-export const log = {
-    error: (...msg) => {
-        console.error(new Date().toISOString(), ...msg);
-    },
-    info: (...msg) => {
-        console.info(new Date().toISOString(), ...msg);
-    },
-    warn: (...msg) => {
-        console.warn(new Date().toISOString(), ...msg);
-    },
-};
 
 export const emsg = (e: unknown) => {
     const message = e instanceof Error ? e.message : "unknown error";

@@ -1,3 +1,4 @@
 export interface Module {
-    run: () => void;
+    // execute the module (eg: generate payload, start some loop, etc)
+    execute: () => void;
 }

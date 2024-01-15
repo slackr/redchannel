@@ -2,44 +2,81 @@ syntax = "proto3";
 
 package c2;
 
-// commands for the c2, broadcast to agents
+import "google/protobuf/wrappers.proto";
+import "implant.proto";
+
 enum C2Command {
-  C2_UNSPECIFIED = 0;
-  C2_KEYX = 1;
-  C2_GET_AGENTS = 2;
-  C2_SET_CONFIG = 3;
+  C2_COMMAND_UNKNOWN = 0;
+  C2_COMMAND_KEYX = 1;
+  C2_COMMAND_GET_AGENTS = 2;
+  C2_COMMAND_SET_CONFIG = 3;
 }
 
-enum C2CommandStatus {
-  COMMAND_STATUS_UNSPECIFIED = 0;
+enum CommandStatus {
+  COMMAND_STATUS_UNKNOWN = 0;
   COMMAND_STATUS_SUCCESS = 1;
   COMMAND_STATUS_ERROR = 2;
 }
 
 enum C2Module {
-  MODULE_UNSPECIFIED = 0;
-  MODULE_C2 = 1;
-  MODULE_PROXY = 2;
-  MODULE_IMPLANT = 3;
-  MODULE_SKIMMER = 4;
-  MODULE_STATIC_DNS = 5;
+  C2_MODULE_UNKNOWN = 0;
+  C2_MODULE_C2 = 1;
+  C2_MODULE_PROXY = 2;
+  C2_MODULE_IMPLANT = 3;
+  C2_MODULE_SKIMMER = 4;
+  C2_MODULE_STATIC_DNS = 5;
 }
 
-// agent command route
-message SendAgentCommandRequest {
+enum AgentChannel {
+  AGENT_CHANNEL_UNKNOWN = 0;
+  AGENT_CHANNEL_DNS = 1;
+  AGENT_CHANNEL_PROXY = 2;
+}
+
+enum ServerEvent {
+  SERVER_EVENT_UNKNOWN = 0;
+  SERVER_EVENT_CONNECTION = 1;
+  SERVER_EVENT_DISCONNECT = 2;
+  SERVER_EVENT_AUTH = 3;
+  SERVER_EVENT_MESSAGE = 4;
+  SERVER_EVENT_ERROR = 5;
+}
+
+message AgentCommandRequest {
   string agent_id = 1;
   implant.AgentCommand command = 2;
   bytes parameters = 3;
 }
-message SendAgentCommandResponse {
+message AgentCommandResponse {
   string agent_id = 1;
   bytes data = 2;
   implant.AgentCommandStatus status = 3;
 }
 
-// a generic, non-agent broadcast command
-message C2CommandRequest { C2Command command = 1; }
-message C2CommandResponse {
-  C2CommandStatus status = 1;
-  bytes data = 2;
+message Agent {
+  string agent_id = 1;
+  bool has_keyx = 2;
+  .google.protobuf.UInt32Value lastseen = 3;
+  repeated string ip = 4;
+  .google.protobuf.UInt32Value sendq_size = 5;
+  .google.protobuf.UInt32Value recvq_size = 6;
+}
+
+message GetAgentsRequest {}
+
+message GetAgentsResponse {
+  repeated Agent agents = 1;
+  CommandStatus status = 2;
+}
+
+message KeyxRequest {
+  string agent_id = 1;
+  bool all_agents = 2;
+}
+message KeyxResponse { CommandStatus status = 1; }
+
+service RedChannel {
+  rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
+  rpc Keyx(KeyxRequest) returns (KeyxResponse);
+  rpc BuildImplant() returns (KeyxResponse);
 }
