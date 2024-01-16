@@ -1,4 +1,4 @@
-# Generate js and ts
+# Generate js and ts (ignore this if using protobuf-ts)
 
 ```shell
 cd redchannel

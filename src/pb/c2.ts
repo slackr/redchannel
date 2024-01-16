@@ -11,42 +11,8 @@ import { UnknownFieldHandler } from "@protobuf-ts/runtime";
 import type { PartialMessage } from "@protobuf-ts/runtime";
 import { reflectionMergePartial } from "@protobuf-ts/runtime";
 import { MessageType } from "@protobuf-ts/runtime";
-import { AgentCommandStatus } from "./implant";
 import { AgentCommand } from "./implant";
-/**
- * @generated from protobuf message c2.AgentCommandRequest
- */
-export interface AgentCommandRequest {
-    /**
-     * @generated from protobuf field: string agent_id = 1;
-     */
-    agentId: string;
-    /**
-     * @generated from protobuf field: implant.AgentCommand command = 2;
-     */
-    command: AgentCommand;
-    /**
-     * @generated from protobuf field: bytes parameters = 3;
-     */
-    parameters: Uint8Array;
-}
-/**
- * @generated from protobuf message c2.AgentCommandResponse
- */
-export interface AgentCommandResponse {
-    /**
-     * @generated from protobuf field: string agent_id = 1;
-     */
-    agentId: string;
-    /**
-     * @generated from protobuf field: bytes data = 2;
-     */
-    data: Uint8Array;
-    /**
-     * @generated from protobuf field: implant.AgentCommandStatus status = 3;
-     */
-    status: AgentCommandStatus;
-}
+import { SysInfoData } from "./implant";
 /**
  * @generated from protobuf message c2.Agent
  */
@@ -75,6 +41,10 @@ export interface Agent {
      * @generated from protobuf field: uint32 recvq_size = 6;
      */
     recvqSize: number;
+    /**
+     * @generated from protobuf field: implant.SysInfoData sysinfo = 7;
+     */
+    sysinfo?: SysInfoData;
 }
 /**
  * @generated from protobuf message c2.GetAgentsRequest
@@ -177,6 +147,36 @@ export interface GetBuildLogResponse {
     log: string;
     /**
      * @generated from protobuf field: string message = 3;
+     */
+    message: string;
+}
+/**
+ * @generated from protobuf message c2.AgentCommandRequest
+ */
+export interface AgentCommandRequest {
+    /**
+     * @generated from protobuf field: string agent_id = 1;
+     */
+    agentId: string;
+    /**
+     * @generated from protobuf field: implant.AgentCommand command = 2;
+     */
+    command: AgentCommand;
+    /**
+     * @generated from protobuf field: string parameters = 3;
+     */
+    parameters: string;
+}
+/**
+ * @generated from protobuf message c2.AgentCommandResponse
+ */
+export interface AgentCommandResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 2;
      */
     message: string;
 }
@@ -294,132 +294,6 @@ export enum ServerEvent {
     ERROR = 5
 }
 // @generated message type with reflection information, may provide speed optimized methods
-class AgentCommandRequest$Type extends MessageType<AgentCommandRequest> {
-    constructor() {
-        super("c2.AgentCommandRequest", [
-            { no: 1, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 2, name: "command", kind: "enum", T: () => ["implant.AgentCommand", AgentCommand, "AGENT_COMMAND_"] },
-            { no: 3, name: "parameters", kind: "scalar", T: 12 /*ScalarType.BYTES*/ }
-        ]);
-    }
-    create(value?: PartialMessage<AgentCommandRequest>): AgentCommandRequest {
-        const message = globalThis.Object.create((this.messagePrototype!));
-        message.agentId = "";
-        message.command = 0;
-        message.parameters = new Uint8Array(0);
-        if (value !== undefined)
-            reflectionMergePartial<AgentCommandRequest>(this, message, value);
-        return message;
-    }
-    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentCommandRequest): AgentCommandRequest {
-        let message = target ?? this.create(), end = reader.pos + length;
-        while (reader.pos < end) {
-            let [fieldNo, wireType] = reader.tag();
-            switch (fieldNo) {
-                case /* string agent_id */ 1:
-                    message.agentId = reader.string();
-                    break;
-                case /* implant.AgentCommand command */ 2:
-                    message.command = reader.int32();
-                    break;
-                case /* bytes parameters */ 3:
-                    message.parameters = reader.bytes();
-                    break;
-                default:
-                    let u = options.readUnknownField;
-                    if (u === "throw")
-                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
-                    let d = reader.skip(wireType);
-                    if (u !== false)
-                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
-            }
-        }
-        return message;
-    }
-    internalBinaryWrite(message: AgentCommandRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
-        /* string agent_id = 1; */
-        if (message.agentId !== "")
-            writer.tag(1, WireType.LengthDelimited).string(message.agentId);
-        /* implant.AgentCommand command = 2; */
-        if (message.command !== 0)
-            writer.tag(2, WireType.Varint).int32(message.command);
-        /* bytes parameters = 3; */
-        if (message.parameters.length)
-            writer.tag(3, WireType.LengthDelimited).bytes(message.parameters);
-        let u = options.writeUnknownFields;
-        if (u !== false)
-            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
-        return writer;
-    }
-}
-/**
- * @generated MessageType for protobuf message c2.AgentCommandRequest
- */
-export const AgentCommandRequest = new AgentCommandRequest$Type();
-// @generated message type with reflection information, may provide speed optimized methods
-class AgentCommandResponse$Type extends MessageType<AgentCommandResponse> {
-    constructor() {
-        super("c2.AgentCommandResponse", [
-            { no: 1, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 2, name: "data", kind: "scalar", T: 12 /*ScalarType.BYTES*/ },
-            { no: 3, name: "status", kind: "enum", T: () => ["implant.AgentCommandStatus", AgentCommandStatus] }
-        ]);
-    }
-    create(value?: PartialMessage<AgentCommandResponse>): AgentCommandResponse {
-        const message = globalThis.Object.create((this.messagePrototype!));
-        message.agentId = "";
-        message.data = new Uint8Array(0);
-        message.status = 0;
-        if (value !== undefined)
-            reflectionMergePartial<AgentCommandResponse>(this, message, value);
-        return message;
-    }
-    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentCommandResponse): AgentCommandResponse {
-        let message = target ?? this.create(), end = reader.pos + length;
-        while (reader.pos < end) {
-            let [fieldNo, wireType] = reader.tag();
-            switch (fieldNo) {
-                case /* string agent_id */ 1:
-                    message.agentId = reader.string();
-                    break;
-                case /* bytes data */ 2:
-                    message.data = reader.bytes();
-                    break;
-                case /* implant.AgentCommandStatus status */ 3:
-                    message.status = reader.int32();
-                    break;
-                default:
-                    let u = options.readUnknownField;
-                    if (u === "throw")
-                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
-                    let d = reader.skip(wireType);
-                    if (u !== false)
-                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
-            }
-        }
-        return message;
-    }
-    internalBinaryWrite(message: AgentCommandResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
-        /* string agent_id = 1; */
-        if (message.agentId !== "")
-            writer.tag(1, WireType.LengthDelimited).string(message.agentId);
-        /* bytes data = 2; */
-        if (message.data.length)
-            writer.tag(2, WireType.LengthDelimited).bytes(message.data);
-        /* implant.AgentCommandStatus status = 3; */
-        if (message.status !== 0)
-            writer.tag(3, WireType.Varint).int32(message.status);
-        let u = options.writeUnknownFields;
-        if (u !== false)
-            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
-        return writer;
-    }
-}
-/**
- * @generated MessageType for protobuf message c2.AgentCommandResponse
- */
-export const AgentCommandResponse = new AgentCommandResponse$Type();
-// @generated message type with reflection information, may provide speed optimized methods
 class Agent$Type extends MessageType<Agent> {
     constructor() {
         super("c2.Agent", [
@@ -428,7 +302,8 @@ class Agent$Type extends MessageType<Agent> {
             { no: 3, name: "lastseen", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
             { no: 4, name: "ip", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
             { no: 5, name: "sendq_size", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 6, name: "recvq_size", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+            { no: 6, name: "recvq_size", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 7, name: "sysinfo", kind: "message", T: () => SysInfoData }
         ]);
     }
     create(value?: PartialMessage<Agent>): Agent {
@@ -466,6 +341,9 @@ class Agent$Type extends MessageType<Agent> {
                 case /* uint32 recvq_size */ 6:
                     message.recvqSize = reader.uint32();
                     break;
+                case /* implant.SysInfoData sysinfo */ 7:
+                    message.sysinfo = SysInfoData.internalBinaryRead(reader, reader.uint32(), options, message.sysinfo);
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -496,6 +374,9 @@ class Agent$Type extends MessageType<Agent> {
         /* uint32 recvq_size = 6; */
         if (message.recvqSize !== 0)
             writer.tag(6, WireType.Varint).uint32(message.recvqSize);
+        /* implant.SysInfoData sysinfo = 7; */
+        if (message.sysinfo)
+            SysInfoData.internalBinaryWrite(message.sysinfo, writer.tag(7, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -918,6 +799,124 @@ class GetBuildLogResponse$Type extends MessageType<GetBuildLogResponse> {
  * @generated MessageType for protobuf message c2.GetBuildLogResponse
  */
 export const GetBuildLogResponse = new GetBuildLogResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AgentCommandRequest$Type extends MessageType<AgentCommandRequest> {
+    constructor() {
+        super("c2.AgentCommandRequest", [
+            { no: 1, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "command", kind: "enum", T: () => ["implant.AgentCommand", AgentCommand, "AGENT_COMMAND_"] },
+            { no: 3, name: "parameters", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AgentCommandRequest>): AgentCommandRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.agentId = "";
+        message.command = 0;
+        message.parameters = "";
+        if (value !== undefined)
+            reflectionMergePartial<AgentCommandRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentCommandRequest): AgentCommandRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string agent_id */ 1:
+                    message.agentId = reader.string();
+                    break;
+                case /* implant.AgentCommand command */ 2:
+                    message.command = reader.int32();
+                    break;
+                case /* string parameters */ 3:
+                    message.parameters = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AgentCommandRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string agent_id = 1; */
+        if (message.agentId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.agentId);
+        /* implant.AgentCommand command = 2; */
+        if (message.command !== 0)
+            writer.tag(2, WireType.Varint).int32(message.command);
+        /* string parameters = 3; */
+        if (message.parameters !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.parameters);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.AgentCommandRequest
+ */
+export const AgentCommandRequest = new AgentCommandRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AgentCommandResponse$Type extends MessageType<AgentCommandResponse> {
+    constructor() {
+        super("c2.AgentCommandResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AgentCommandResponse>): AgentCommandResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<AgentCommandResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentCommandResponse): AgentCommandResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AgentCommandResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.AgentCommandResponse
+ */
+export const AgentCommandResponse = new AgentCommandResponse$Type();
 /**
  * @generated ServiceType for protobuf service c2.RedChannel
  */
@@ -925,5 +924,6 @@ export const RedChannel = new ServiceType("c2.RedChannel", [
     { name: "GetAgents", options: {}, I: GetAgentsRequest, O: GetAgentsResponse },
     { name: "Keyx", options: {}, I: KeyxRequest, O: KeyxResponse },
     { name: "BuildImplant", options: {}, I: BuildImplantRequest, O: BuildImplantResponse },
-    { name: "GetBuildLog", options: {}, I: GetBuildLogRequest, O: GetBuildLogResponse }
+    { name: "GetBuildLog", options: {}, I: GetBuildLogRequest, O: GetBuildLogResponse },
+    { name: "AgentCommand", options: {}, I: AgentCommandRequest, O: AgentCommandResponse }
 ]);

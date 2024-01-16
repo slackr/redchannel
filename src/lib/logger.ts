@@ -29,11 +29,4 @@ export default class Logger {
     msg(...msg) {
         if (this.level >= LogLevel.INFO) console.log(new Date().toISOString(), ...msg);
     }
-
-    displayTable(columns: string[], rows: Array<string[]>) {
-        this.info(columns.join("\t"));
-        for (const row of rows) {
-            this.info(row.join("\t"));
-        }
-    }
 }

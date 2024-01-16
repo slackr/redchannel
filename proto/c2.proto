@@ -41,17 +41,6 @@ enum ServerEvent {
   SERVER_EVENT_ERROR = 5;
 }
 
-message AgentCommandRequest {
-  string agent_id = 1;
-  implant.AgentCommand command = 2;
-  bytes parameters = 3;
-}
-message AgentCommandResponse {
-  string agent_id = 1;
-  bytes data = 2;
-  implant.AgentCommandStatus status = 3;
-}
-
 message Agent {
   string agent_id = 1;
   bool has_keyx = 2;
@@ -59,6 +48,7 @@ message Agent {
   repeated string ip = 4;
   uint32 sendq_size = 5;
   uint32 recvq_size = 6;
+  implant.SysInfoData sysinfo = 7;
 }
 
 message GetAgentsRequest {}
@@ -96,9 +86,20 @@ message GetBuildLogResponse {
   string message = 3;
 }
 
+message AgentCommandRequest {
+  string agent_id = 1;
+  implant.AgentCommand command = 2;
+  string parameters = 3;
+}
+message AgentCommandResponse {
+  CommandStatus status = 1;
+  string message = 2;
+}
+
 service RedChannel {
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
   rpc BuildImplant(BuildImplantRequest) returns (BuildImplantResponse);
   rpc GetBuildLog(GetBuildLogRequest) returns (GetBuildLogResponse);
+  rpc AgentCommand(AgentCommandRequest) returns (AgentCommandResponse);
 }

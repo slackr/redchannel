@@ -4,3 +4,4 @@ pkg/*
 dist/*
 coverage/
 certs/*
+!certs/generate.sh

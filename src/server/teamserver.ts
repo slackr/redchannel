@@ -3,7 +3,19 @@ import RedChannel from "../lib/redchannel";
 import { OnSuccessCallback, ServerBase } from "./base";
 import * as grpc from "@grpc/grpc-js";
 import { redChannelDefinition, IRedChannel } from "../pb/c2.grpc-server";
-import { Agent, BuildImplantRequest, BuildImplantResponse, CommandStatus, GetAgentsRequest, GetAgentsResponse, GetBuildLogResponse, KeyxRequest, KeyxResponse } from "../pb/c2";
+import {
+    Agent,
+    AgentCommandRequest,
+    AgentCommandResponse,
+    BuildImplantRequest,
+    BuildImplantResponse,
+    CommandStatus,
+    GetAgentsRequest,
+    GetAgentsResponse,
+    GetBuildLogResponse,
+    KeyxRequest,
+    KeyxResponse,
+} from "../pb/c2";
 import { emsg } from "../utils";
 
 export interface TeamServerCerts {
@@ -36,6 +48,7 @@ export default class TeamServer implements ServerBase {
             keyx: this.keyx.bind(this),
             buildImplant: this.buildImplant.bind(this),
             getBuildLog: this.getBuildLog.bind(this),
+            agentCommand: this.agentCommand.bind(this),
         };
     }
 
@@ -68,6 +81,7 @@ export default class TeamServer implements ServerBase {
                     ip: [agent.ip || ""],
                     sendqSize: agent.sendq.length,
                     recvqSize: agent.recvq.size,
+                    sysinfo: agent.sysinfo,
                 })
             );
         });
@@ -132,6 +146,27 @@ export default class TeamServer implements ServerBase {
         const implantModule = this.redchannel.modules.implant;
         try {
             responseProto.log = implantModule.getLog();
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
+        callback(null, responseProto);
+    }
+
+    agentCommand(call: grpc.ServerUnaryCall<AgentCommandRequest, AgentCommandRequest>, callback: grpc.sendUnaryData<AgentCommandResponse>): void {
+        call.on("error", (args) => {
+            throw new Error(`agentCommand() error: ${args}`);
+        });
+
+        const responseProto = AgentCommandResponse.create({
+            status: CommandStatus.SUCCESS,
+        });
+
+        const agentId = call.request.agentId;
+        const commandParameters = call.request.parameters;
+        const agentCommand = call.request.command;
+        try {
+            this.redchannel.sendAgentCommand(agentId, agentCommand, commandParameters);
         } catch (e: unknown) {
             responseProto.status = CommandStatus.ERROR;
             responseProto.message = emsg(e);

@@ -4,6 +4,8 @@
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
 import type { ServiceInfo } from "@protobuf-ts/runtime-rpc";
 import { RedChannel } from "./c2";
+import type { AgentCommandResponse } from "./c2";
+import type { AgentCommandRequest } from "./c2";
 import type { GetBuildLogResponse } from "./c2";
 import type { GetBuildLogRequest } from "./c2";
 import type { BuildImplantResponse } from "./c2";
@@ -35,6 +37,10 @@ export interface IRedChannelClient {
      * @generated from protobuf rpc: GetBuildLog(c2.GetBuildLogRequest) returns (c2.GetBuildLogResponse);
      */
     getBuildLog(input: GetBuildLogRequest, options?: RpcOptions): UnaryCall<GetBuildLogRequest, GetBuildLogResponse>;
+    /**
+     * @generated from protobuf rpc: AgentCommand(c2.AgentCommandRequest) returns (c2.AgentCommandResponse);
+     */
+    agentCommand(input: AgentCommandRequest, options?: RpcOptions): UnaryCall<AgentCommandRequest, AgentCommandResponse>;
 }
 /**
  * @generated from protobuf service c2.RedChannel
@@ -72,5 +78,12 @@ export class RedChannelClient implements IRedChannelClient, ServiceInfo {
     getBuildLog(input: GetBuildLogRequest, options?: RpcOptions): UnaryCall<GetBuildLogRequest, GetBuildLogResponse> {
         const method = this.methods[3], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetBuildLogRequest, GetBuildLogResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: AgentCommand(c2.AgentCommandRequest) returns (c2.AgentCommandResponse);
+     */
+    agentCommand(input: AgentCommandRequest, options?: RpcOptions): UnaryCall<AgentCommandRequest, AgentCommandResponse> {
+        const method = this.methods[4], opt = this._transport.mergeOptions(options);
+        return stackIntercept<AgentCommandRequest, AgentCommandResponse>("unary", this._transport, method, opt, input);
     }
 }

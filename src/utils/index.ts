@@ -10,6 +10,7 @@ export const Constants = {
     VALID_HOST_REGEX: /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])$/,
     VALID_BUILD_TARGET_OS: /^(windows|linux|darwin|android|netbsd|openbsd|freebsd|dragonfly|solaris)$/i,
     VALID_BUILD_TARGET_ARCH: /^(amd64|arm|arm64|386|ppc64|ppc64le|mipsle|mips|mips64|mips64le)$/i,
+    VALID_BASE64: /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/i,
 };
 
 export const Config = {
