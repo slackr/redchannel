@@ -14,8 +14,8 @@ const AGENT_BUILD_PATH = `${AGENT_PATH}/build`;
 const AGENT_BUILD_LOG_PATH = `${AGENT_BUILD_PATH}/build.log`;
 
 export type BuildParameters = {
-    os: "windows" | "linux" | "darwin";
-    arch: "amd64" | "386" | "arm64";
+    os: string; //"windows" | "linux" | "darwin";
+    arch: string; //"amd64" | "386" | "arm64" | "arm";
     debug: boolean;
 };
 
@@ -24,7 +24,7 @@ export default class ImplantModule implements Module {
     log: Logger;
     buildParameters: BuildParameters;
 
-    constructor(protected config: RedChannelConfig, protected c2PlainTextPassword: string, log?: Logger) {
+    constructor(protected config: RedChannelConfig, protected c2HashedPassword: string, log?: Logger) {
         this.log = log ?? new Logger();
         this.outputFile = "";
         this.buildParameters = {
@@ -141,6 +141,7 @@ export default class ImplantModule implements Module {
         }
 
         const outputFile = `${AGENT_BUILD_PATH}/agent${targetOs === "windows" ? ".exe" : ""}`;
+        this.outputFile = outputFile;
 
         // prettier-ignore
         const commandArguments = [
@@ -188,8 +189,6 @@ export default class ImplantModule implements Module {
             throw new Error(`failed to write log file: ${emsg(ex)}`);
         }
 
-        this.outputFile = outputFile;
-
         const binaryUrl = this.config.c2.web_url + this.config.c2.binary_route;
 
         this.log.info(`building ${debug ? "(debug)" : ""} agent for os: ${targetOs}, arch: ${targetArch}, binary will be available here: ${outputFile} and ${binaryUrl}`);
@@ -219,7 +218,7 @@ export default class ImplantModule implements Module {
         }
 
         configData = configData.replace(/^\s*c\.C2Domain\s*=\s*".*".*$/im, `c.C2Domain = "${this.config.c2.domain}"`);
-        configData = configData.replace(/^\s*c\.C2Password\s*=\s*".*".*$/im, `c.C2Password = "${this.c2PlainTextPassword}"`);
+        configData = configData.replace(/^\s*c\.C2Password\s*=\s*".*".*$/im, `c.C2Password = "${this.c2HashedPassword}"`);
         configData = configData.replace(/^\s*c\.Resolver\s*=\s*".*".*$/im, `c.Resolver = "${this.config.implant.resolver}"`);
         configData = configData.replace(/^\s*c\.C2Interval\s*=.*$/im, `c.C2Interval = ${this.config.implant.interval}`);
         configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.config.implant.proxy_enabled}`);

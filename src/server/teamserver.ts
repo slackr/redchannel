@@ -3,19 +3,39 @@ import RedChannel from "../lib/redchannel";
 import { OnSuccessCallback, ServerBase } from "./base";
 import * as grpc from "@grpc/grpc-js";
 import { redChannelDefinition, IRedChannel } from "../pb/c2.grpc-server";
-import { Agent, CommandStatus, GetAgentsRequest, GetAgentsResponse, KeyxRequest, KeyxResponse } from "../pb/c2";
+import { Agent, BuildImplantRequest, BuildImplantResponse, CommandStatus, GetAgentsRequest, GetAgentsResponse, GetBuildLogResponse, KeyxRequest, KeyxResponse } from "../pb/c2";
+import { emsg } from "../utils";
+
+export interface TeamServerCerts {
+    ca: Buffer | null;
+    serverCert: Buffer;
+    serverKey: Buffer;
+}
 
 export default class TeamServer implements ServerBase {
     log: Logger;
     server: grpc.Server;
     service: IRedChannel;
+    credentials: grpc.ServerCredentials;
 
-    constructor(protected redchannel: RedChannel, public port: number, public bindIp: string, log?: Logger) {
+    constructor(protected redchannel: RedChannel, certs: TeamServerCerts, public port: number, public bindIp: string, log?: Logger) {
         this.log = log ?? new Logger();
         this.server = new grpc.Server();
+        this.credentials = grpc.ServerCredentials.createSsl(
+            certs.ca,
+            [
+                {
+                    cert_chain: certs.serverCert,
+                    private_key: certs.serverKey,
+                },
+            ],
+            false
+        );
         this.service = {
             getAgents: this.getAgents.bind(this),
             keyx: this.keyx.bind(this),
+            buildImplant: this.buildImplant.bind(this),
+            getBuildLog: this.getBuildLog.bind(this),
         };
     }
 
@@ -39,11 +59,15 @@ export default class TeamServer implements ServerBase {
         const agents = this.redchannel.getAgents();
         const agentList: Agent[] = [];
 
-        agents.forEach((key, value, agent) => {
+        agents.forEach((agent) => {
             agentList.push(
                 Agent.create({
-                    agentId: key.id,
-                    hasKeyx: agent.get("keyx") ? true : false,
+                    agentId: agent.id,
+                    lastseen: Math.floor(agent.lastseen || 0),
+                    hasKeyx: agent.keyx ? true : false,
+                    ip: [agent.ip || ""],
+                    sendqSize: agent.sendq.length,
+                    recvqSize: agent.recvq.size,
                 })
             );
         });
@@ -54,6 +78,7 @@ export default class TeamServer implements ServerBase {
         });
         callback(null, responseProto);
     }
+
     keyx(call: grpc.ServerUnaryCall<KeyxRequest, KeyxRequest>, callback: grpc.sendUnaryData<KeyxResponse>): void {
         call.on("error", (args) => {
             throw new Error(`keyx() error: ${args}`);
@@ -69,6 +94,48 @@ export default class TeamServer implements ServerBase {
         const responseProto = KeyxResponse.create({
             status: CommandStatus.SUCCESS,
         });
+        callback(null, responseProto);
+    }
+
+    buildImplant(call: grpc.ServerUnaryCall<BuildImplantRequest, BuildImplantRequest>, callback: grpc.sendUnaryData<BuildImplantResponse>): void {
+        call.on("error", (args) => {
+            throw new Error(`buildImplant() error: ${args}`);
+        });
+
+        const implantModule = this.redchannel.modules.implant;
+
+        implantModule.buildParameters = { ...call.request };
+
+        const responseProto = BuildImplantResponse.create({
+            status: CommandStatus.SUCCESS,
+        });
+        try {
+            implantModule.execute();
+            responseProto.outputFile = implantModule.outputFile;
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
+        callback(null, responseProto);
+    }
+
+    getBuildLog(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetBuildLogResponse>): void {
+        call.on("error", (args) => {
+            throw new Error(`getBuildLog() error: ${args}`);
+        });
+
+        const responseProto = GetBuildLogResponse.create({
+            status: CommandStatus.SUCCESS,
+            log: "",
+        });
+
+        const implantModule = this.redchannel.modules.implant;
+        try {
+            responseProto.log = implantModule.getLog();
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
         callback(null, responseProto);
     }
 }

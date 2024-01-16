@@ -1,11 +1,13 @@
 import { createCommand } from "commander";
 import _merge from "lodash.merge";
+import * as fs from "fs";
 
 import RedChannel from "./lib/redchannel";
 import Logger, { LogLevel } from "./lib/logger";
 import { Config, Constants, RedChannelBanner, emsg } from "./utils";
 import { DefaultConfig, RedChannelConfig } from "./lib/config";
 import { TeamServer, WebServer, DnsServer } from "./server";
+import { TeamServerCerts } from "./server/teamserver";
 
 const log = new Logger();
 log.msg(RedChannelBanner);
@@ -80,7 +82,13 @@ dnsServer.start(() => {
 /**
  * c2-ts used by operators
  */
-const teamServer = new TeamServer(redchannel, c2Config.ts_port, c2Config.ts_ip, log);
+const certs: TeamServerCerts = {
+    ca: fs.readFileSync(__dirname + "/../certs/ca.crt"),
+    serverCert: fs.readFileSync(__dirname + "/../certs/server.crt"),
+    serverKey: fs.readFileSync(__dirname + "/../certs/server.key"),
+};
+
+const teamServer = new TeamServer(redchannel, certs, c2Config.ts_port, c2Config.ts_ip, log);
 teamServer.start(() => {
     log.info(`teamserver listening on ${teamServer.bindIp}:${teamServer.port}`);
 });

@@ -11,7 +11,6 @@ import { UnknownFieldHandler } from "@protobuf-ts/runtime";
 import type { PartialMessage } from "@protobuf-ts/runtime";
 import { reflectionMergePartial } from "@protobuf-ts/runtime";
 import { MessageType } from "@protobuf-ts/runtime";
-import { UInt32Value } from "./google/protobuf/wrappers";
 import { AgentCommandStatus } from "./implant";
 import { AgentCommand } from "./implant";
 /**
@@ -61,21 +60,21 @@ export interface Agent {
      */
     hasKeyx: boolean;
     /**
-     * @generated from protobuf field: google.protobuf.UInt32Value lastseen = 3;
+     * @generated from protobuf field: uint32 lastseen = 3;
      */
-    lastseen?: UInt32Value;
+    lastseen: number;
     /**
      * @generated from protobuf field: repeated string ip = 4;
      */
     ip: string[];
     /**
-     * @generated from protobuf field: google.protobuf.UInt32Value sendq_size = 5;
+     * @generated from protobuf field: uint32 sendq_size = 5;
      */
-    sendqSize?: UInt32Value;
+    sendqSize: number;
     /**
-     * @generated from protobuf field: google.protobuf.UInt32Value recvq_size = 6;
+     * @generated from protobuf field: uint32 recvq_size = 6;
      */
-    recvqSize?: UInt32Value;
+    recvqSize: number;
 }
 /**
  * @generated from protobuf message c2.GetAgentsRequest
@@ -94,6 +93,10 @@ export interface GetAgentsResponse {
      * @generated from protobuf field: c2.CommandStatus status = 2;
      */
     status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 3;
+     */
+    message: string;
 }
 /**
  * @generated from protobuf message c2.KeyxRequest
@@ -116,6 +119,10 @@ export interface KeyxResponse {
      * @generated from protobuf field: c2.CommandStatus status = 1;
      */
     status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
 }
 /**
  * @generated from protobuf message c2.BuildImplantRequest
@@ -129,6 +136,10 @@ export interface BuildImplantRequest {
      * @generated from protobuf field: string arch = 2;
      */
     arch: string;
+    /**
+     * @generated from protobuf field: bool debug = 3;
+     */
+    debug: boolean;
 }
 /**
  * @generated from protobuf message c2.BuildImplantResponse
@@ -138,6 +149,36 @@ export interface BuildImplantResponse {
      * @generated from protobuf field: c2.CommandStatus status = 1;
      */
     status: CommandStatus;
+    /**
+     * @generated from protobuf field: string output_file = 2;
+     */
+    outputFile: string;
+    /**
+     * @generated from protobuf field: string message = 3;
+     */
+    message: string;
+}
+/**
+ * @generated from protobuf message c2.GetBuildLogRequest
+ */
+export interface GetBuildLogRequest {
+}
+/**
+ * @generated from protobuf message c2.GetBuildLogResponse
+ */
+export interface GetBuildLogResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string log = 2;
+     */
+    log: string;
+    /**
+     * @generated from protobuf field: string message = 3;
+     */
+    message: string;
 }
 /**
  * @generated from protobuf enum c2.C2Command
@@ -384,17 +425,20 @@ class Agent$Type extends MessageType<Agent> {
         super("c2.Agent", [
             { no: 1, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 2, name: "has_keyx", kind: "scalar", T: 8 /*ScalarType.BOOL*/ },
-            { no: 3, name: "lastseen", kind: "message", T: () => UInt32Value },
+            { no: 3, name: "lastseen", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
             { no: 4, name: "ip", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
-            { no: 5, name: "sendq_size", kind: "message", T: () => UInt32Value },
-            { no: 6, name: "recvq_size", kind: "message", T: () => UInt32Value }
+            { no: 5, name: "sendq_size", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 6, name: "recvq_size", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
         ]);
     }
     create(value?: PartialMessage<Agent>): Agent {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.agentId = "";
         message.hasKeyx = false;
+        message.lastseen = 0;
         message.ip = [];
+        message.sendqSize = 0;
+        message.recvqSize = 0;
         if (value !== undefined)
             reflectionMergePartial<Agent>(this, message, value);
         return message;
@@ -410,17 +454,17 @@ class Agent$Type extends MessageType<Agent> {
                 case /* bool has_keyx */ 2:
                     message.hasKeyx = reader.bool();
                     break;
-                case /* google.protobuf.UInt32Value lastseen */ 3:
-                    message.lastseen = UInt32Value.internalBinaryRead(reader, reader.uint32(), options, message.lastseen);
+                case /* uint32 lastseen */ 3:
+                    message.lastseen = reader.uint32();
                     break;
                 case /* repeated string ip */ 4:
                     message.ip.push(reader.string());
                     break;
-                case /* google.protobuf.UInt32Value sendq_size */ 5:
-                    message.sendqSize = UInt32Value.internalBinaryRead(reader, reader.uint32(), options, message.sendqSize);
+                case /* uint32 sendq_size */ 5:
+                    message.sendqSize = reader.uint32();
                     break;
-                case /* google.protobuf.UInt32Value recvq_size */ 6:
-                    message.recvqSize = UInt32Value.internalBinaryRead(reader, reader.uint32(), options, message.recvqSize);
+                case /* uint32 recvq_size */ 6:
+                    message.recvqSize = reader.uint32();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -440,18 +484,18 @@ class Agent$Type extends MessageType<Agent> {
         /* bool has_keyx = 2; */
         if (message.hasKeyx !== false)
             writer.tag(2, WireType.Varint).bool(message.hasKeyx);
-        /* google.protobuf.UInt32Value lastseen = 3; */
-        if (message.lastseen)
-            UInt32Value.internalBinaryWrite(message.lastseen, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        /* uint32 lastseen = 3; */
+        if (message.lastseen !== 0)
+            writer.tag(3, WireType.Varint).uint32(message.lastseen);
         /* repeated string ip = 4; */
         for (let i = 0; i < message.ip.length; i++)
             writer.tag(4, WireType.LengthDelimited).string(message.ip[i]);
-        /* google.protobuf.UInt32Value sendq_size = 5; */
-        if (message.sendqSize)
-            UInt32Value.internalBinaryWrite(message.sendqSize, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
-        /* google.protobuf.UInt32Value recvq_size = 6; */
-        if (message.recvqSize)
-            UInt32Value.internalBinaryWrite(message.recvqSize, writer.tag(6, WireType.LengthDelimited).fork(), options).join();
+        /* uint32 sendq_size = 5; */
+        if (message.sendqSize !== 0)
+            writer.tag(5, WireType.Varint).uint32(message.sendqSize);
+        /* uint32 recvq_size = 6; */
+        if (message.recvqSize !== 0)
+            writer.tag(6, WireType.Varint).uint32(message.recvqSize);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -492,13 +536,15 @@ class GetAgentsResponse$Type extends MessageType<GetAgentsResponse> {
     constructor() {
         super("c2.GetAgentsResponse", [
             { no: 1, name: "agents", kind: "message", repeat: 1 /*RepeatType.PACKED*/, T: () => Agent },
-            { no: 2, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] }
+            { no: 2, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 3, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<GetAgentsResponse>): GetAgentsResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.agents = [];
         message.status = 0;
+        message.message = "";
         if (value !== undefined)
             reflectionMergePartial<GetAgentsResponse>(this, message, value);
         return message;
@@ -513,6 +559,9 @@ class GetAgentsResponse$Type extends MessageType<GetAgentsResponse> {
                     break;
                 case /* c2.CommandStatus status */ 2:
                     message.status = reader.int32();
+                    break;
+                case /* string message */ 3:
+                    message.message = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -532,6 +581,9 @@ class GetAgentsResponse$Type extends MessageType<GetAgentsResponse> {
         /* c2.CommandStatus status = 2; */
         if (message.status !== 0)
             writer.tag(2, WireType.Varint).int32(message.status);
+        /* string message = 3; */
+        if (message.message !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.message);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -601,12 +653,14 @@ export const KeyxRequest = new KeyxRequest$Type();
 class KeyxResponse$Type extends MessageType<KeyxResponse> {
     constructor() {
         super("c2.KeyxResponse", [
-            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] }
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<KeyxResponse>): KeyxResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.status = 0;
+        message.message = "";
         if (value !== undefined)
             reflectionMergePartial<KeyxResponse>(this, message, value);
         return message;
@@ -618,6 +672,9 @@ class KeyxResponse$Type extends MessageType<KeyxResponse> {
             switch (fieldNo) {
                 case /* c2.CommandStatus status */ 1:
                     message.status = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -634,6 +691,9 @@ class KeyxResponse$Type extends MessageType<KeyxResponse> {
         /* c2.CommandStatus status = 1; */
         if (message.status !== 0)
             writer.tag(1, WireType.Varint).int32(message.status);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -649,13 +709,15 @@ class BuildImplantRequest$Type extends MessageType<BuildImplantRequest> {
     constructor() {
         super("c2.BuildImplantRequest", [
             { no: 1, name: "os", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 2, name: "arch", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 2, name: "arch", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "debug", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
         ]);
     }
     create(value?: PartialMessage<BuildImplantRequest>): BuildImplantRequest {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.os = "";
         message.arch = "";
+        message.debug = false;
         if (value !== undefined)
             reflectionMergePartial<BuildImplantRequest>(this, message, value);
         return message;
@@ -670,6 +732,9 @@ class BuildImplantRequest$Type extends MessageType<BuildImplantRequest> {
                     break;
                 case /* string arch */ 2:
                     message.arch = reader.string();
+                    break;
+                case /* bool debug */ 3:
+                    message.debug = reader.bool();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -689,6 +754,9 @@ class BuildImplantRequest$Type extends MessageType<BuildImplantRequest> {
         /* string arch = 2; */
         if (message.arch !== "")
             writer.tag(2, WireType.LengthDelimited).string(message.arch);
+        /* bool debug = 3; */
+        if (message.debug !== false)
+            writer.tag(3, WireType.Varint).bool(message.debug);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -703,12 +771,16 @@ export const BuildImplantRequest = new BuildImplantRequest$Type();
 class BuildImplantResponse$Type extends MessageType<BuildImplantResponse> {
     constructor() {
         super("c2.BuildImplantResponse", [
-            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] }
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "output_file", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<BuildImplantResponse>): BuildImplantResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.status = 0;
+        message.outputFile = "";
+        message.message = "";
         if (value !== undefined)
             reflectionMergePartial<BuildImplantResponse>(this, message, value);
         return message;
@@ -720,6 +792,12 @@ class BuildImplantResponse$Type extends MessageType<BuildImplantResponse> {
             switch (fieldNo) {
                 case /* c2.CommandStatus status */ 1:
                     message.status = reader.int32();
+                    break;
+                case /* string output_file */ 2:
+                    message.outputFile = reader.string();
+                    break;
+                case /* string message */ 3:
+                    message.message = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -736,6 +814,12 @@ class BuildImplantResponse$Type extends MessageType<BuildImplantResponse> {
         /* c2.CommandStatus status = 1; */
         if (message.status !== 0)
             writer.tag(1, WireType.Varint).int32(message.status);
+        /* string output_file = 2; */
+        if (message.outputFile !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.outputFile);
+        /* string message = 3; */
+        if (message.message !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.message);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -746,11 +830,100 @@ class BuildImplantResponse$Type extends MessageType<BuildImplantResponse> {
  * @generated MessageType for protobuf message c2.BuildImplantResponse
  */
 export const BuildImplantResponse = new BuildImplantResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetBuildLogRequest$Type extends MessageType<GetBuildLogRequest> {
+    constructor() {
+        super("c2.GetBuildLogRequest", []);
+    }
+    create(value?: PartialMessage<GetBuildLogRequest>): GetBuildLogRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<GetBuildLogRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetBuildLogRequest): GetBuildLogRequest {
+        return target ?? this.create();
+    }
+    internalBinaryWrite(message: GetBuildLogRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.GetBuildLogRequest
+ */
+export const GetBuildLogRequest = new GetBuildLogRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetBuildLogResponse$Type extends MessageType<GetBuildLogResponse> {
+    constructor() {
+        super("c2.GetBuildLogResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "log", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GetBuildLogResponse>): GetBuildLogResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.log = "";
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<GetBuildLogResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetBuildLogResponse): GetBuildLogResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string log */ 2:
+                    message.log = reader.string();
+                    break;
+                case /* string message */ 3:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetBuildLogResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string log = 2; */
+        if (message.log !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.log);
+        /* string message = 3; */
+        if (message.message !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.GetBuildLogResponse
+ */
+export const GetBuildLogResponse = new GetBuildLogResponse$Type();
 /**
  * @generated ServiceType for protobuf service c2.RedChannel
  */
 export const RedChannel = new ServiceType("c2.RedChannel", [
     { name: "GetAgents", options: {}, I: GetAgentsRequest, O: GetAgentsResponse },
     { name: "Keyx", options: {}, I: KeyxRequest, O: KeyxResponse },
-    { name: "BuildImplant", options: {}, I: BuildImplantRequest, O: BuildImplantResponse }
+    { name: "BuildImplant", options: {}, I: BuildImplantRequest, O: BuildImplantResponse },
+    { name: "GetBuildLog", options: {}, I: GetBuildLogRequest, O: GetBuildLogResponse }
 ]);

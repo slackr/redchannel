@@ -135,7 +135,7 @@ export default class RedChannel {
 
         this.modules = {
             proxy: new ProxyModule(this.config, this.c2MessageHandler.bind(this), this.log),
-            implant: new ImplantModule(this.config, this.plaintextPassword, this.log),
+            implant: new ImplantModule(this.config, this.hashedPassword, this.log),
             static_dns: new StaticDnsModule(this.config, this.log),
             skimmer: new SkimmerModule(this.config, this.log),
         };
@@ -296,7 +296,9 @@ export default class RedChannel {
         }
 
         // this will be set to false after keyx is received and there are no more keyx in sendq
-        if (command === implant.AgentCommand.KEYX) agent.allowKeyx = true;
+        if (command === implant.AgentCommand.KEYX) {
+            agent.allowKeyx = true;
+        }
 
         const dataString = commandProtoBuffer.toString("hex");
         const dataBlocks = chunkString(dataString, Config.DATA_BLOCK_STRING_LENGTH);

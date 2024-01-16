@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package c2;
 
-import "google/protobuf/wrappers.proto";
 import "implant.proto";
 
 enum C2Command {
@@ -56,10 +55,10 @@ message AgentCommandResponse {
 message Agent {
   string agent_id = 1;
   bool has_keyx = 2;
-  .google.protobuf.UInt32Value lastseen = 3;
+  uint32 lastseen = 3;
   repeated string ip = 4;
-  .google.protobuf.UInt32Value sendq_size = 5;
-  .google.protobuf.UInt32Value recvq_size = 6;
+  uint32 sendq_size = 5;
+  uint32 recvq_size = 6;
 }
 
 message GetAgentsRequest {}
@@ -67,22 +66,39 @@ message GetAgentsRequest {}
 message GetAgentsResponse {
   repeated Agent agents = 1;
   CommandStatus status = 2;
+  string message = 3;
 }
 
 message KeyxRequest {
   string agent_id = 1;
   bool all_agents = 2;
 }
-message KeyxResponse { CommandStatus status = 1; }
+message KeyxResponse {
+  CommandStatus status = 1;
+  string message = 2;
+}
 
 message BuildImplantRequest {
   string os = 1;
   string arch = 2;
+  bool debug = 3;
 }
-message BuildImplantResponse { CommandStatus status = 1; }
+message BuildImplantResponse {
+  CommandStatus status = 1;
+  string output_file = 2;
+  string message = 3;
+}
+
+message GetBuildLogRequest {}
+message GetBuildLogResponse {
+  CommandStatus status = 1;
+  string log = 2;
+  string message = 3;
+}
 
 service RedChannel {
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
   rpc BuildImplant(BuildImplantRequest) returns (BuildImplantResponse);
+  rpc GetBuildLog(GetBuildLogRequest) returns (GetBuildLogResponse);
 }
