@@ -1,6 +1,7 @@
 import Logger from "../lib/logger";
 import RedChannel from "../lib/redchannel";
 import { OnSuccessCallback, ServerBase } from "./base";
+import _merge from "lodash.merge";
 import * as grpc from "@grpc/grpc-js";
 import { redChannelDefinition, IRedChannel } from "../pb/c2.grpc-server";
 import {
@@ -15,6 +16,8 @@ import {
     GetBuildLogResponse,
     KeyxRequest,
     KeyxResponse,
+    SetConfigRequest,
+    SetConfigResponse,
 } from "../pb/c2";
 import { emsg } from "../utils";
 
@@ -49,6 +52,7 @@ export default class TeamServer implements ServerBase {
             buildImplant: this.buildImplant.bind(this),
             getBuildLog: this.getBuildLog.bind(this),
             agentCommand: this.agentCommand.bind(this),
+            setConfig: this.setConfig.bind(this),
         };
     }
 
@@ -64,10 +68,39 @@ export default class TeamServer implements ServerBase {
         });
     }
 
+    checkAuth<I, O>(call: grpc.ServerUnaryCall<I, O>) {
+        const headersMap = call.metadata.getMap();
+
+        const sourceIps: string[] = [call.getPeer()];
+        if (headersMap["x-forwarded-for"]) sourceIps.push(headersMap["x-forwarded-for"] as string);
+
+        const authHeader = headersMap.authorization as string;
+        if (!authHeader?.length) {
+            this.log.error(`auth error from client ${sourceIps}, missing authorization header`);
+            return false;
+        }
+        const headerSplit = authHeader.split(" ");
+        if (headerSplit.length < 2) {
+            this.log.error(`auth error from client ${sourceIps}, invalid authorization header`);
+            return false;
+        }
+
+        const token = headerSplit[1];
+        if (token !== this.redchannel.hashedPassword) {
+            this.log.error(`auth error from client ${sourceIps}, invalid token`);
+            return false;
+        }
+
+        return true;
+    }
+
     getAgents(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetAgentsResponse>): void {
+        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error(`Authentication failed`);
+
         call.on("error", (args) => {
             throw new Error(`getAgents() error: ${args}`);
         });
+
         // const c2CommandProto = c2.C2CommandRequest.decode(data);
         const agents = this.redchannel.getAgents();
         const agentList: Agent[] = [];
@@ -94,6 +127,8 @@ export default class TeamServer implements ServerBase {
     }
 
     keyx(call: grpc.ServerUnaryCall<KeyxRequest, KeyxRequest>, callback: grpc.sendUnaryData<KeyxResponse>): void {
+        if (!this.checkAuth<KeyxRequest, KeyxRequest>(call)) throw new Error(`Authentication failed`);
+
         call.on("error", (args) => {
             throw new Error(`keyx() error: ${args}`);
         });
@@ -112,6 +147,8 @@ export default class TeamServer implements ServerBase {
     }
 
     buildImplant(call: grpc.ServerUnaryCall<BuildImplantRequest, BuildImplantRequest>, callback: grpc.sendUnaryData<BuildImplantResponse>): void {
+        if (!this.checkAuth<BuildImplantRequest, BuildImplantRequest>(call)) throw new Error(`Authentication failed`);
+
         call.on("error", (args) => {
             throw new Error(`buildImplant() error: ${args}`);
         });
@@ -134,6 +171,8 @@ export default class TeamServer implements ServerBase {
     }
 
     getBuildLog(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetBuildLogResponse>): void {
+        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error(`Authentication failed`);
+
         call.on("error", (args) => {
             throw new Error(`getBuildLog() error: ${args}`);
         });
@@ -154,6 +193,8 @@ export default class TeamServer implements ServerBase {
     }
 
     agentCommand(call: grpc.ServerUnaryCall<AgentCommandRequest, AgentCommandRequest>, callback: grpc.sendUnaryData<AgentCommandResponse>): void {
+        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error(`Authentication failed`);
+
         call.on("error", (args) => {
             throw new Error(`agentCommand() error: ${args}`);
         });
@@ -167,6 +208,37 @@ export default class TeamServer implements ServerBase {
         const agentCommand = call.request.command;
         try {
             this.redchannel.sendAgentCommand(agentId, agentCommand, commandParameters);
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
+        callback(null, responseProto);
+    }
+
+    setConfig(call: grpc.ServerUnaryCall<SetConfigRequest, SetConfigResponse>, callback: grpc.sendUnaryData<SetConfigResponse>): void {
+        if (!this.checkAuth<SetConfigRequest, SetConfigResponse>(call)) throw new Error(`Authentication failed`);
+
+        call.on("error", (args) => {
+            throw new Error(`setConfig() error: ${args}`);
+        });
+
+        const newConfig = call.request.config;
+        if (!newConfig) {
+            callback(
+                null,
+                SetConfigResponse.create({
+                    status: CommandStatus.ERROR,
+                    message: "invalid config supplied",
+                })
+            );
+            return;
+        }
+
+        const responseProto = BuildImplantResponse.create({
+            status: CommandStatus.SUCCESS,
+        });
+        try {
+            this.redchannel.config = _merge(this.redchannel.config, newConfig);
         } catch (e: unknown) {
             responseProto.status = CommandStatus.ERROR;
             responseProto.message = emsg(e);

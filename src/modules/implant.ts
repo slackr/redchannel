@@ -5,7 +5,7 @@ import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 import Logger from "../lib/logger";
 import { Constants, emsg } from "../utils";
 import { Module } from "./base";
-import { RedChannelConfig } from "../lib/config";
+import { RedChannelConfig } from "../pb/c2";
 
 const AGENT_PATH = `${process.cwd()}/agent`;
 const AGENT_CONFIG_PATH = `${AGENT_PATH}/config/config.go`;
@@ -175,7 +175,7 @@ export default class ImplantModule implements Module {
                 windowsVerbatimArguments: true,
             });
             childProcess.on("close", (code) => {
-                this.log.success(`agent build for os: ${targetOs}, arch: ${targetArch}, debug: ${debug ? "true" : "false"}, return code: ${code}`);
+                this.log.info(`agent build for os: ${targetOs}, arch: ${targetArch}, debug: ${debug ? "true" : "false"}, return code: ${code}`);
             });
         } catch (ex) {
             throw new Error(`failed to launch build command: '${spawnBinary} ${commandArguments.join(" ")}', err: ${emsg(ex)}`);
@@ -189,9 +189,12 @@ export default class ImplantModule implements Module {
             throw new Error(`failed to write log file: ${emsg(ex)}`);
         }
 
-        const binaryUrl = this.config.c2.web_url + this.config.c2.binary_route;
+        let binaryUrl = "";
+        if (this.config.c2?.webIp && this.config.c2?.binaryRoute) binaryUrl = this.config.c2.webUrl + this.config.c2.binaryRoute;
 
-        this.log.info(`building ${debug ? "(debug)" : ""} agent for os: ${targetOs}, arch: ${targetArch}, binary will be available here: ${outputFile} and ${binaryUrl}`);
+        this.log.info(
+            `building ${debug ? "(debug)" : ""} agent for os: ${targetOs}, arch: ${targetArch}, binary will be available here: ${outputFile} ${binaryUrl.length > 0 ? `and ${binaryUrl}` : ""}`
+        );
     }
 
     getLog(): string {
@@ -207,6 +210,9 @@ export default class ImplantModule implements Module {
     }
 
     private generateConfig() {
+        if (!this.config.c2) throw new Error(`missing c2 config`);
+        if (!this.config.implant) throw new Error(`missing implant config`);
+
         let data: Buffer;
         let configData = "";
         const agentConfigPath = AGENT_CONFIG_PATH;
@@ -221,10 +227,10 @@ export default class ImplantModule implements Module {
         configData = configData.replace(/^\s*c\.C2Password\s*=\s*".*".*$/im, `c.C2Password = "${this.c2HashedPassword}"`);
         configData = configData.replace(/^\s*c\.Resolver\s*=\s*".*".*$/im, `c.Resolver = "${this.config.implant.resolver}"`);
         configData = configData.replace(/^\s*c\.C2Interval\s*=.*$/im, `c.C2Interval = ${this.config.implant.interval}`);
-        configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.config.implant.proxy_enabled}`);
-        configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*".*".*$/im, `c.ProxyUrl = "${this.config.implant.proxy_url}"`);
-        configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*".*".*$/im, `c.ProxyKey = "${this.config.implant.proxy_key}"`);
-        configData = configData.replace(/^\s*c\.ThrottleSendQ\s*=.*$/im, `c.ThrottleSendQ = ${!this.config.implant.throttle_sendq}`);
+        configData = configData.replace(/^\s*c\.ProxyEnabled\s*=.*$/im, `c.ProxyEnabled = ${this.config.implant.proxyEnabled}`);
+        configData = configData.replace(/^\s*c\.ProxyUrl\s*=\s*".*".*$/im, `c.ProxyUrl = "${this.config.implant.proxyUrl}"`);
+        configData = configData.replace(/^\s*c\.ProxyKey\s*=\s*".*".*$/im, `c.ProxyKey = "${this.config.implant.proxyKey}"`);
+        configData = configData.replace(/^\s*c\.ThrottleSendQ\s*=.*$/im, `c.ThrottleSendQ = ${!this.config.implant.throttleSendq}`);
 
         try {
             fs.writeFileSync(agentConfigPath, configData, { flag: "w" });

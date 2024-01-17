@@ -4,8 +4,8 @@ import * as fs from "fs";
 import { Constants, emsg } from "../utils";
 import { Module } from "./base";
 import Logger from "../lib/logger";
-import { RedChannelConfig } from "../lib/config";
 import { C2AnswerType, C2MessageRequest, C2MessageResponse } from "../lib/redchannel";
+import { RedChannelConfig } from "../pb/c2";
 
 const PROXY_PAYLOAD_PATH = "payloads/proxy.php";
 
@@ -107,7 +107,7 @@ export default class ProxyModule implements Module {
 
     proxyInit() {
         const proxyConfig = this.config.proxy;
-        if (proxyConfig.enabled) {
+        if (proxyConfig?.enabled) {
             this.log.info(`c2-proxy enabled, checkin at interval: ${proxyConfig.interval}ms`);
             this.proxyFetchLoop();
         } else {
@@ -116,7 +116,7 @@ export default class ProxyModule implements Module {
     }
 
     execute(): void {
-        if (!this.config.proxy.key) throw new Error("proxy key is required, see 'help'");
+        if (!this.config.proxy?.key) throw new Error("proxy key is required");
 
         let data: Buffer;
         let proxyPhp = "";
@@ -138,7 +138,7 @@ export default class ProxyModule implements Module {
         proxyPhp = proxyPhp.replace(/\?>/g, "");
 
         // "obfuscation"
-        if (this.config.proxy.obfuscate_payload) {
+        if (this.config.proxy.obfuscatePayload) {
             proxyPhp = proxyPhp.replace(/\n/g, "");
             proxyPhp = proxyPhp.replace(/\s{2,}/g, "");
         }
@@ -148,6 +148,8 @@ export default class ProxyModule implements Module {
     }
 
     async sendToProxy(agentId: string, records: string[]) {
+        if (!this.config.proxy?.key.length) throw new Error(`cannot send to proxy: proxy key is required`);
+
         const recordsString = `${records.join(";")};`;
 
         // console.log("* sending data to proxy: " + str_data);
@@ -170,17 +172,17 @@ export default class ProxyModule implements Module {
     }
 
     getFromProxy() {
-        if (!this.config.proxy.enabled) {
-            this.log.error("proxy is not enabled: try 'set enabled 1'");
+        if (!this.config.proxy?.enabled) {
+            this.log.error("proxy is not enabled");
             return;
         }
 
-        if (!this.config.proxy.url) {
-            this.log.error("proxy config is missing the url: see 'help'");
+        if (!this.config.proxy?.url) {
+            this.log.error("proxy config is missing the url");
             return;
         }
-        if (!this.config.proxy.key) {
-            this.log.error("proxy config is missing a key: see 'help'");
+        if (!this.config.proxy?.key) {
+            this.log.error("proxy config is missing a key");
             return;
         }
 
@@ -198,6 +200,9 @@ export default class ProxyModule implements Module {
     }
 
     processProxyData(proxyData: string) {
+        if (!this.config.c2?.domain.length) throw new Error("cannot process proxy data: c2 domain is required");
+        if (!this.config.proxy?.url.length) throw new Error("cannot process proxy data: proxy url is required");
+
         // we expect the proxy to respond with ERR 1, or similar
         // this.log.debug(`proxy response:\n${proxyData}`);
         if (proxyData.length < 2) throw new Error(`unexpected response (too small): '${proxyData}'`);
@@ -218,7 +223,7 @@ export default class ProxyModule implements Module {
         data.forEach((q) => {
             const req: C2MessageRequest = {
                 connection: {
-                    remoteAddress: this.config.proxy.url,
+                    remoteAddress: this.config.proxy?.url || "127.0.0.1",
                     type: C2AnswerType.TYPE_PROXY,
                 },
             };
@@ -226,7 +231,7 @@ export default class ProxyModule implements Module {
                 question: [
                     {
                         type: C2AnswerType.TYPE_PROXY,
-                        name: `${q}.${this.config.c2.domain}`,
+                        name: `${q}.${this.config.c2?.domain}`,
                     },
                 ],
                 answer: [],
@@ -244,7 +249,7 @@ export default class ProxyModule implements Module {
     }
 
     proxyEnable() {
-        const message = this.config.proxy.enabled ? `starting proxy checkin at interval: ${this.config.proxy.interval}ms` : "stopping proxy checkin";
+        const message = this.config.proxy?.enabled ? `starting proxy checkin at interval: ${this.config.proxy.interval}ms` : "stopping proxy checkin";
 
         this.proxyFetchLoop();
         return { message: message };
@@ -252,7 +257,7 @@ export default class ProxyModule implements Module {
 
     proxyFetchLoop() {
         if (this.fetchTimer) clearTimeout(this.fetchTimer);
-        if (!this.config.proxy.enabled) return { message: "proxy is not enabled" };
+        if (!this.config.proxy?.enabled) return { message: "proxy is not enabled" };
 
         if (!this.config.proxy.url) {
             throw new Error("proxy config is missing the url");
@@ -264,7 +269,7 @@ export default class ProxyModule implements Module {
         this.getFromProxy()?.finally(() => {
             this.fetchTimer = setTimeout(() => {
                 this.proxyFetchLoop();
-            }, this.config.proxy.interval);
+            }, this.config.proxy?.interval || 5000);
         });
 
         return { message: "starting the proxy checkin loop" };

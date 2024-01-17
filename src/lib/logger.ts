@@ -9,24 +9,18 @@ export default class Logger {
     level: LogLevel = LogLevel.INFO;
 
     error(...msg) {
-        console.error(new Date().toISOString(), ...msg);
+        console.error(new Date().toISOString(), LogLevel[LogLevel.ERROR], "\t", ...msg);
     }
     warn(msg) {
-        if (this.level >= LogLevel.WARN) console.warn(new Date().toISOString(), ...msg);
-    }
-    info(...msg) {
-        if (this.level >= LogLevel.INFO) this.msg(...msg);
+        if (this.level >= LogLevel.WARN) console.warn(new Date().toISOString(), LogLevel[LogLevel.WARN], "\t", ...msg);
     }
     debug(...msg) {
-        console.debug(new Date().toISOString(), ...msg);
+        console.debug(new Date().toISOString(), LogLevel[LogLevel.DEBUG], "\t", ...msg);
     }
-    success(...msg) {
-        if (this.level >= LogLevel.INFO) this.msg(...msg);
-    }
-    echo(...msg) {
-        this.msg(...msg);
+    info(...msg) {
+        if (this.level >= LogLevel.INFO) console.log(new Date().toISOString(), LogLevel[LogLevel.INFO], "\t", ...msg);
     }
     msg(...msg) {
-        if (this.level >= LogLevel.INFO) console.log(new Date().toISOString(), ...msg);
+        console.log(...msg);
     }
 }

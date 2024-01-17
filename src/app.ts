@@ -5,9 +5,10 @@ import * as fs from "fs";
 import RedChannel from "./lib/redchannel";
 import Logger, { LogLevel } from "./lib/logger";
 import { Config, Constants, RedChannelBanner, emsg } from "./utils";
-import { DefaultConfig, RedChannelConfig } from "./lib/config";
+import { DefaultConfig } from "./lib/config";
 import { TeamServer, WebServer, DnsServer } from "./server";
 import { TeamServerCerts } from "./server/teamserver";
+import { RedChannelConfig } from "./pb/c2";
 
 const log = new Logger();
 log.msg(RedChannelBanner);
@@ -35,15 +36,17 @@ if (!password?.length) {
     process.exit(1);
 }
 
-const cliConfig: RedChannelConfig = _merge(DefaultConfig, {
+const configFromCli: RedChannelConfig = _merge(DefaultConfig, {
     c2: {
         domain: program.getOptionValue("domain"),
-        dns_ip: program.getOptionValue("ip"),
-        dns_port: program.getOptionValue("port"),
-        web_ip: program.getOptionValue("webIp"),
-        web_port: program.getOptionValue("webPort"),
-        ws_ip: program.getOptionValue("wsIp"),
-        ws_port: program.getOptionValue("wsPort"),
+        dnsIp: program.getOptionValue("ip"),
+        dnsPort: program.getOptionValue("port"),
+        webIp: program.getOptionValue("webIp"),
+        webPort: program.getOptionValue("webPort"),
+        wsIp: program.getOptionValue("wsIp"),
+        wsPort: program.getOptionValue("wsPort"),
+        tsIp: program.getOptionValue("tsIp"),
+        tsPort: program.getOptionValue("tsPort"),
         debug: program.getOptionValue("debug"),
     },
 });
@@ -52,13 +55,13 @@ const cliConfigFilePath = program.getOptionValue("config");
 
 let redchannel: RedChannel;
 try {
-    redchannel = new RedChannel(password, cliConfigFilePath, cliConfig);
+    redchannel = new RedChannel(password, cliConfigFilePath, configFromCli);
 } catch (ex) {
     log.error(`error instantiating redchannel: ${emsg(ex)}`);
     process.exit(1);
 }
 
-if (redchannel.config.c2.debug) {
+if (redchannel.config.c2?.debug) {
     log.warn("debug is enabled");
     log.level = LogLevel.DEBUG;
 }
@@ -69,14 +72,17 @@ process.on("uncaughtException", (ex, origin) => {
 });
 
 const c2Config = redchannel.config.c2;
-const webServer = new WebServer(redchannel, c2Config.web_port, c2Config.web_ip, log);
+if (!c2Config?.webPort || !c2Config.webIp) throw new Error(`invalid c2 configuration: invalid ip or port`);
+
+const webServer = new WebServer(redchannel, c2Config.webPort, c2Config.webIp, log);
 webServer.start(() => {
     log.info(`c2-web listening on ${webServer.bindIp}:${webServer.port}`);
 });
 
-const dnsServer = new DnsServer(redchannel, c2Config.dns_port, c2Config.dns_ip, c2Config.domain, log);
+if (!c2Config?.dnsPort || !c2Config.dnsIp) throw new Error(`invalid c2 configuration: invalid ip or port`);
+const dnsServer = new DnsServer(redchannel, c2Config.dnsPort, c2Config.dnsIp, c2Config.domain, log);
 dnsServer.start(() => {
-    log.info(`c2-dns listening on: ${c2Config.dns_ip}:${c2Config.dns_port}, c2 domain: ${c2Config.domain}`);
+    log.info(`c2-dns listening on: ${c2Config.dnsIp}:${c2Config.dnsPort}, c2 domain: ${c2Config.domain}`);
 });
 
 /**
@@ -88,7 +94,7 @@ const certs: TeamServerCerts = {
     serverKey: fs.readFileSync(__dirname + "/../certs/server.key"),
 };
 
-const teamServer = new TeamServer(redchannel, certs, c2Config.ts_port, c2Config.ts_ip, log);
+const teamServer = new TeamServer(redchannel, certs, c2Config.tsPort, c2Config.tsIp, log);
 teamServer.start(() => {
     log.info(`teamserver listening on ${teamServer.bindIp}:${teamServer.port}`);
 });

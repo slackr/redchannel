@@ -20,7 +20,16 @@ export default class WebServer implements ServerBase {
     }
 
     setupRoutes() {
-        this.webServer.get(this.redchannel.config.skimmer.data_route, this.redchannel.modules.skimmer.dataRouteHandler.bind(this.redchannel.modules.skimmer));
-        this.webServer.get(this.redchannel.config.skimmer.payload_route, this.redchannel.modules.skimmer.payloadRouteHandler.bind(this.redchannel.modules.skimmer));
+        if (!this.redchannel.config.skimmer?.dataRoute) {
+            this.log.error(`invalid skimmer dataRoute`);
+            return;
+        }
+        if (!this.redchannel.config.skimmer?.payloadRoute) {
+            this.log.error(`invalid skimmer payloadRoute`);
+            return;
+        }
+
+        this.webServer.get(this.redchannel.config.skimmer?.dataRoute, this.redchannel.modules.skimmer.dataRouteHandler.bind(this.redchannel.modules.skimmer));
+        this.webServer.get(this.redchannel.config.skimmer?.payloadRoute, this.redchannel.modules.skimmer.payloadRouteHandler.bind(this.redchannel.modules.skimmer));
     }
 }
