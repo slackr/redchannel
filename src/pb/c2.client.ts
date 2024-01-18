@@ -4,6 +4,9 @@
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
 import type { ServiceInfo } from "@protobuf-ts/runtime-rpc";
 import { RedChannel } from "./c2";
+import type { StreamLogResponse } from "./c2";
+import type { StreamLogRequest } from "./c2";
+import type { ServerStreamingCall } from "@protobuf-ts/runtime-rpc";
 import type { SetConfigResponse } from "./c2";
 import type { SetConfigRequest } from "./c2";
 import type { AgentCommandResponse } from "./c2";
@@ -47,6 +50,10 @@ export interface IRedChannelClient {
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
     setConfig(input: SetConfigRequest, options?: RpcOptions): UnaryCall<SetConfigRequest, SetConfigResponse>;
+    /**
+     * @generated from protobuf rpc: StreamLog(c2.StreamLogRequest) returns (stream c2.StreamLogResponse);
+     */
+    streamLog(input: StreamLogRequest, options?: RpcOptions): ServerStreamingCall<StreamLogRequest, StreamLogResponse>;
 }
 /**
  * @generated from protobuf service c2.RedChannel
@@ -98,5 +105,12 @@ export class RedChannelClient implements IRedChannelClient, ServiceInfo {
     setConfig(input: SetConfigRequest, options?: RpcOptions): UnaryCall<SetConfigRequest, SetConfigResponse> {
         const method = this.methods[5], opt = this._transport.mergeOptions(options);
         return stackIntercept<SetConfigRequest, SetConfigResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: StreamLog(c2.StreamLogRequest) returns (stream c2.StreamLogResponse);
+     */
+    streamLog(input: StreamLogRequest, options?: RpcOptions): ServerStreamingCall<StreamLogRequest, StreamLogResponse> {
+        const method = this.methods[6], opt = this._transport.mergeOptions(options);
+        return stackIntercept<StreamLogRequest, StreamLogResponse>("serverStreaming", this._transport, method, opt, input);
     }
 }

@@ -48,6 +48,13 @@ export interface C2Config {
      */
     webPort: number;
     /**
+     * the external url of the web server: http://c2.redchannel.tld
+     * this will be the base of the binary_route
+     *
+     * @generated from protobuf field: string web_url = 7;
+     */
+    webUrl: string;
+    /**
      * the route to serve the binary from on the web server
      * ie: /payload.exe - agent code will be available at
      * http://[web_ip]:[web_port]/payload.exe
@@ -55,13 +62,6 @@ export interface C2Config {
      * @generated from protobuf field: string binary_route = 6;
      */
     binaryRoute: string;
-    /**
-     * the external url of the web server: http://c2.redchannel.tld
-     * this will be the base of the binary_route
-     *
-     * @generated from protobuf field: string web_url = 7;
-     */
-    webUrl: string;
     /**
      * the bind ip of the teamserver
      *
@@ -414,6 +414,28 @@ export interface SetConfigResponse {
     message: string;
 }
 /**
+ * @generated from protobuf message c2.StreamLogRequest
+ */
+export interface StreamLogRequest {
+    /**
+     * @generated from protobuf field: c2.LogLevel level = 1;
+     */
+    level: LogLevel;
+}
+/**
+ * @generated from protobuf message c2.StreamLogResponse
+ */
+export interface StreamLogResponse {
+    /**
+     * @generated from protobuf field: c2.LogLevel level = 1;
+     */
+    level: LogLevel;
+    /**
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
+}
+/**
  * @generated from protobuf enum c2.C2Command
  */
 export enum C2Command {
@@ -526,6 +548,27 @@ export enum ServerEvent {
      */
     ERROR = 5
 }
+/**
+ * @generated from protobuf enum c2.LogLevel
+ */
+export enum LogLevel {
+    /**
+     * @generated from protobuf enum value: LOG_LEVEL_DEBUG = 0;
+     */
+    DEBUG = 0,
+    /**
+     * @generated from protobuf enum value: LOG_LEVEL_INFO = 1;
+     */
+    INFO = 1,
+    /**
+     * @generated from protobuf enum value: LOG_LEVEL_WARN = 2;
+     */
+    WARN = 2,
+    /**
+     * @generated from protobuf enum value: LOG_LEVEL_ERROR = 3;
+     */
+    ERROR = 3
+}
 // @generated message type with reflection information, may provide speed optimized methods
 class C2Config$Type extends MessageType<C2Config> {
     constructor() {
@@ -535,8 +578,8 @@ class C2Config$Type extends MessageType<C2Config> {
             { no: 3, name: "dns_port", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
             { no: 4, name: "web_ip", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 5, name: "web_port", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 6, name: "binary_route", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 7, name: "web_url", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "binary_route", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 8, name: "ts_ip", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 9, name: "ts_port", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
             { no: 10, name: "debug", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
@@ -549,8 +592,8 @@ class C2Config$Type extends MessageType<C2Config> {
         message.dnsPort = 0;
         message.webIp = "";
         message.webPort = 0;
-        message.binaryRoute = "";
         message.webUrl = "";
+        message.binaryRoute = "";
         message.tsIp = "";
         message.tsPort = 0;
         message.debug = false;
@@ -578,11 +621,11 @@ class C2Config$Type extends MessageType<C2Config> {
                 case /* uint32 web_port */ 5:
                     message.webPort = reader.uint32();
                     break;
-                case /* string binary_route */ 6:
-                    message.binaryRoute = reader.string();
-                    break;
                 case /* string web_url */ 7:
                     message.webUrl = reader.string();
+                    break;
+                case /* string binary_route */ 6:
+                    message.binaryRoute = reader.string();
                     break;
                 case /* string ts_ip */ 8:
                     message.tsIp = reader.string();
@@ -620,12 +663,12 @@ class C2Config$Type extends MessageType<C2Config> {
         /* uint32 web_port = 5; */
         if (message.webPort !== 0)
             writer.tag(5, WireType.Varint).uint32(message.webPort);
-        /* string binary_route = 6; */
-        if (message.binaryRoute !== "")
-            writer.tag(6, WireType.LengthDelimited).string(message.binaryRoute);
         /* string web_url = 7; */
         if (message.webUrl !== "")
             writer.tag(7, WireType.LengthDelimited).string(message.webUrl);
+        /* string binary_route = 6; */
+        if (message.binaryRoute !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.binaryRoute);
         /* string ts_ip = 8; */
         if (message.tsIp !== "")
             writer.tag(8, WireType.LengthDelimited).string(message.tsIp);
@@ -1722,6 +1765,108 @@ class SetConfigResponse$Type extends MessageType<SetConfigResponse> {
  * @generated MessageType for protobuf message c2.SetConfigResponse
  */
 export const SetConfigResponse = new SetConfigResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class StreamLogRequest$Type extends MessageType<StreamLogRequest> {
+    constructor() {
+        super("c2.StreamLogRequest", [
+            { no: 1, name: "level", kind: "enum", T: () => ["c2.LogLevel", LogLevel, "LOG_LEVEL_"] }
+        ]);
+    }
+    create(value?: PartialMessage<StreamLogRequest>): StreamLogRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.level = 0;
+        if (value !== undefined)
+            reflectionMergePartial<StreamLogRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: StreamLogRequest): StreamLogRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.LogLevel level */ 1:
+                    message.level = reader.int32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: StreamLogRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.LogLevel level = 1; */
+        if (message.level !== 0)
+            writer.tag(1, WireType.Varint).int32(message.level);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.StreamLogRequest
+ */
+export const StreamLogRequest = new StreamLogRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class StreamLogResponse$Type extends MessageType<StreamLogResponse> {
+    constructor() {
+        super("c2.StreamLogResponse", [
+            { no: 1, name: "level", kind: "enum", T: () => ["c2.LogLevel", LogLevel, "LOG_LEVEL_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<StreamLogResponse>): StreamLogResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.level = 0;
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<StreamLogResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: StreamLogResponse): StreamLogResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.LogLevel level */ 1:
+                    message.level = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: StreamLogResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.LogLevel level = 1; */
+        if (message.level !== 0)
+            writer.tag(1, WireType.Varint).int32(message.level);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.StreamLogResponse
+ */
+export const StreamLogResponse = new StreamLogResponse$Type();
 /**
  * @generated ServiceType for protobuf service c2.RedChannel
  */
@@ -1731,5 +1876,6 @@ export const RedChannel = new ServiceType("c2.RedChannel", [
     { name: "BuildImplant", options: {}, I: BuildImplantRequest, O: BuildImplantResponse },
     { name: "GetBuildLog", options: {}, I: GetBuildLogRequest, O: GetBuildLogResponse },
     { name: "AgentCommand", options: {}, I: AgentCommandRequest, O: AgentCommandResponse },
-    { name: "SetConfig", options: {}, I: SetConfigRequest, O: SetConfigResponse }
+    { name: "SetConfig", options: {}, I: SetConfigRequest, O: SetConfigResponse },
+    { name: "StreamLog", serverStreaming: true, options: {}, I: StreamLogRequest, O: StreamLogResponse }
 ]);

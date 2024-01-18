@@ -16,8 +16,11 @@ import {
     GetBuildLogResponse,
     KeyxRequest,
     KeyxResponse,
+    LogLevel,
     SetConfigRequest,
     SetConfigResponse,
+    StreamLogRequest,
+    StreamLogResponse,
 } from "../pb/c2";
 import { emsg } from "../utils";
 
@@ -53,6 +56,7 @@ export default class TeamServer implements ServerBase {
             getBuildLog: this.getBuildLog.bind(this),
             agentCommand: this.agentCommand.bind(this),
             setConfig: this.setConfig.bind(this),
+            streamLog: this.streamLog.bind(this),
         };
     }
 
@@ -68,7 +72,7 @@ export default class TeamServer implements ServerBase {
         });
     }
 
-    checkAuth<I, O>(call: grpc.ServerUnaryCall<I, O>) {
+    checkAuth<I, O>(call: grpc.ServerUnaryCall<I, O> | grpc.ServerWritableStream<I, O>): boolean {
         const headersMap = call.metadata.getMap();
 
         const sourceIps: string[] = [call.getPeer()];
@@ -97,10 +101,10 @@ export default class TeamServer implements ServerBase {
     getAgents(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetAgentsResponse>): void {
         if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error(`Authentication failed`);
 
-        call.on("error", (args) => {
-            throw new Error(`getAgents() error: ${args}`);
+        call.on("error", (error) => {
+            this.log.error(`getAgents() error: ${error}`);
+            throw new Error("server error");
         });
-
         // const c2CommandProto = c2.C2CommandRequest.decode(data);
         const agents = this.redchannel.getAgents();
         const agentList: Agent[] = [];
@@ -129,8 +133,9 @@ export default class TeamServer implements ServerBase {
     keyx(call: grpc.ServerUnaryCall<KeyxRequest, KeyxRequest>, callback: grpc.sendUnaryData<KeyxResponse>): void {
         if (!this.checkAuth<KeyxRequest, KeyxRequest>(call)) throw new Error(`Authentication failed`);
 
-        call.on("error", (args) => {
-            throw new Error(`keyx() error: ${args}`);
+        call.on("error", (error) => {
+            this.log.error(`keyx() error: ${error}`);
+            throw new Error("server error");
         });
 
         const agentId = call.request.agentId;
@@ -149,8 +154,9 @@ export default class TeamServer implements ServerBase {
     buildImplant(call: grpc.ServerUnaryCall<BuildImplantRequest, BuildImplantRequest>, callback: grpc.sendUnaryData<BuildImplantResponse>): void {
         if (!this.checkAuth<BuildImplantRequest, BuildImplantRequest>(call)) throw new Error(`Authentication failed`);
 
-        call.on("error", (args) => {
-            throw new Error(`buildImplant() error: ${args}`);
+        call.on("error", (error) => {
+            this.log.error(`buildImplant() error: ${error}`);
+            throw new Error("server error");
         });
 
         const implantModule = this.redchannel.modules.implant;
@@ -173,8 +179,9 @@ export default class TeamServer implements ServerBase {
     getBuildLog(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetBuildLogResponse>): void {
         if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error(`Authentication failed`);
 
-        call.on("error", (args) => {
-            throw new Error(`getBuildLog() error: ${args}`);
+        call.on("error", (error) => {
+            this.log.error(`getBuildLog() error: ${error}`);
+            throw new Error("server error");
         });
 
         const responseProto = GetBuildLogResponse.create({
@@ -195,8 +202,9 @@ export default class TeamServer implements ServerBase {
     agentCommand(call: grpc.ServerUnaryCall<AgentCommandRequest, AgentCommandRequest>, callback: grpc.sendUnaryData<AgentCommandResponse>): void {
         if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error(`Authentication failed`);
 
-        call.on("error", (args) => {
-            throw new Error(`agentCommand() error: ${args}`);
+        call.on("error", (error) => {
+            this.log.error(`agentCommand() error: ${error}`);
+            throw new Error("server error");
         });
 
         const responseProto = AgentCommandResponse.create({
@@ -218,8 +226,9 @@ export default class TeamServer implements ServerBase {
     setConfig(call: grpc.ServerUnaryCall<SetConfigRequest, SetConfigResponse>, callback: grpc.sendUnaryData<SetConfigResponse>): void {
         if (!this.checkAuth<SetConfigRequest, SetConfigResponse>(call)) throw new Error(`Authentication failed`);
 
-        call.on("error", (args) => {
-            throw new Error(`setConfig() error: ${args}`);
+        call.on("error", (error) => {
+            this.log.error(`setConfig() error: ${error}`);
+            throw new Error("server error");
         });
 
         const newConfig = call.request.config;
@@ -244,5 +253,36 @@ export default class TeamServer implements ServerBase {
             responseProto.message = emsg(e);
         }
         callback(null, responseProto);
+    }
+
+    streamLog(call: grpc.ServerWritableStream<StreamLogRequest, StreamLogResponse>): void {
+        if (!this.checkAuth<StreamLogRequest, StreamLogResponse>(call)) throw new Error(`Authentication failed`);
+
+        const requestedLogLevel = call.request.level;
+
+        const streamLogCallback = (level: LogLevel, ...msg) => {
+            if (level >= requestedLogLevel)
+                call.write(
+                    StreamLogResponse.create({
+                        level: level,
+                        message: Array.prototype.slice.call(msg).join(" "),
+                    })
+                );
+        };
+
+        const eventName = "log";
+        this.redchannel.log.eventEmitter.addListener(eventName, streamLogCallback);
+
+        call.on("error", (error) => {
+            this.redchannel.log.eventEmitter.removeListener(eventName, streamLogCallback);
+            this.log.error(`streamLog() error: ${error}`);
+            throw new Error("server error");
+        });
+        call.on("close", () => {
+            this.redchannel.log.eventEmitter.removeListener(eventName, streamLogCallback);
+        });
+        call.on("finish", () => {
+            this.redchannel.log.eventEmitter.removeListener(eventName, streamLogCallback);
+        });
     }
 }

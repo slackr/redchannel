@@ -8,11 +8,11 @@ export const DefaultConfig: RedChannelConfig = {
         dnsPort: 53,
         webIp: "127.0.0.1",
         webPort: 80,
+        webUrl: "http://127.0.0.1/",
         tsIp: "127.0.0.1",
         tsPort: 4321,
         binaryRoute: "/agent",
         debug: true,
-        webUrl: "",
     },
     proxy: {
         enabled: false,

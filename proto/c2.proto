@@ -17,14 +17,13 @@ message C2Config {
   string web_ip = 4;
   // the port of the web server
   uint32 web_port = 5;
-
+  // the external url of the web server: http://c2.redchannel.tld
+  // this will be the base of the binary_route
+  string web_url = 7;
   // the route to serve the binary from on the web server
   // ie: /payload.exe - agent code will be available at
   // http://[web_ip]:[web_port]/payload.exe
   string binary_route = 6;
-  // the external url of the web server: http://c2.redchannel.tld
-  // this will be the base of the binary_route
-  string web_url = 7;
 
   // the bind ip of the teamserver
   string ts_ip = 8;
@@ -190,6 +189,18 @@ message SetConfigResponse {
   string message = 2;
 }
 
+enum LogLevel {
+  LOG_LEVEL_DEBUG = 0;
+  LOG_LEVEL_INFO = 1;
+  LOG_LEVEL_WARN = 2;
+  LOG_LEVEL_ERROR = 3;
+}
+message StreamLogRequest { LogLevel level = 1; }
+message StreamLogResponse {
+  LogLevel level = 1;
+  string message = 2;
+}
+
 service RedChannel {
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
@@ -197,4 +208,5 @@ service RedChannel {
   rpc GetBuildLog(GetBuildLogRequest) returns (GetBuildLogResponse);
   rpc AgentCommand(AgentCommandRequest) returns (AgentCommandResponse);
   rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
+  rpc StreamLog(StreamLogRequest) returns (stream StreamLogResponse);
 }

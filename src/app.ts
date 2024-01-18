@@ -3,12 +3,12 @@ import _merge from "lodash.merge";
 import * as fs from "fs";
 
 import RedChannel from "./lib/redchannel";
-import Logger, { LogLevel } from "./lib/logger";
+import Logger from "./lib/logger";
 import { Config, Constants, RedChannelBanner, emsg } from "./utils";
 import { DefaultConfig } from "./lib/config";
 import { TeamServer, WebServer, DnsServer } from "./server";
 import { TeamServerCerts } from "./server/teamserver";
-import { RedChannelConfig } from "./pb/c2";
+import { LogLevel, RedChannelConfig } from "./pb/c2";
 
 const log = new Logger();
 log.msg(RedChannelBanner);
