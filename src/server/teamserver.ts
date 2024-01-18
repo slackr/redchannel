@@ -89,9 +89,16 @@ export default class TeamServer implements ServerBase {
             return false;
         }
 
-        const token = headerSplit[1];
-        if (token !== this.redchannel.hashedPassword) {
-            this.log.error(`auth error from client ${sourceIps}, invalid token`);
+        const tokenSplit = headerSplit[1].split(":");
+        if (tokenSplit.length < 2) {
+            this.log.error(`auth error from client ${sourceIps}, invalid authorization token`);
+            return false;
+        }
+
+        const operator = tokenSplit[0];
+        const passwordHash = tokenSplit[1];
+        if (!this.redchannel.verifyOperator(operator, passwordHash)) {
+            this.log.error(`auth error from client ${sourceIps}, operator did not verify: ${operator}/${passwordHash}`);
             return false;
         }
 
@@ -265,7 +272,7 @@ export default class TeamServer implements ServerBase {
                 call.write(
                     StreamLogResponse.create({
                         level: level,
-                        message: Array.prototype.slice.call(msg).join(" "),
+                        message: msg.join(" "),
                     })
                 );
         };

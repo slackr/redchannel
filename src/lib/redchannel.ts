@@ -97,6 +97,12 @@ export type RedChannelModules = {
     skimmer: SkimmerModule;
 };
 
+// operators list
+type OperatorHashedPassword = string;
+export interface OperatorsList {
+    [operator: string]: OperatorHashedPassword;
+}
+
 export default class RedChannel {
     version = Constants.VERSION;
 
@@ -117,6 +123,8 @@ export default class RedChannel {
     crypto: Crypto;
 
     modules: RedChannelModules;
+
+    operators: OperatorsList = {};
 
     constructor(c2Password: string, configFile: string, initialConfig?: c2.RedChannelConfig) {
         this.log = new Logger();
@@ -147,7 +155,38 @@ export default class RedChannel {
 
         this.flood = new Map<AgentId, NodeJS.Timeout>();
 
+        this.initOperators();
+
         this.modules.proxy.proxyInit();
+    }
+
+    // creates the operators object and hashes their passwords
+    initOperators() {
+        if (!this.config.c2) throw new Error(`operators: c2 config is required`);
+
+        for (const operator in this.config.c2.operators) {
+            this.operators[operator] = crypto.createHash("sha256").update(this.config.c2.operators[operator]).digest("hex");
+        }
+    }
+
+    verifyOperator(operator: string, hashedPassword: string): boolean {
+        if (!operator || !hashedPassword.length) {
+            this.log.error(`operator ${operator} failed to verify, invalid operator or password`);
+            return false;
+        }
+
+        const operatorPasswordHash = this.operators[operator];
+        if (!operatorPasswordHash?.length) {
+            this.log.error(`operator ${operator} failed to verify, operator is unknown`);
+            return false;
+        }
+
+        if (operatorPasswordHash !== hashedPassword) {
+            this.log.error(`operator ${operator} failed to verify, password mismatch`);
+            return false;
+        }
+
+        return true;
     }
 
     resetConfig(initialConfig: c2.RedChannelConfig) {

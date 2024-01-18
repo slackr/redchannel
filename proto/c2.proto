@@ -32,6 +32,9 @@ message C2Config {
 
   // enable debug mode
   bool debug = 10;
+
+  // a map of <operator, password> with access to the server
+  map<string, string> operators = 11;
 }
 
 message SkimmerModuleConfig {
