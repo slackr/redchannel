@@ -7,8 +7,8 @@ export default class DnsServer implements ServerBase {
     dnsServer: dnsd.Server;
     log: Logger;
 
-    constructor(protected redchannel: RedChannel, public port: number, public bindIp: string, public domain: string, log?: Logger) {
-        this.log = log ?? new Logger();
+    constructor(protected redchannel: RedChannel, public port: number, public bindIp: string, public domain: string) {
+        this.log = this.redchannel.log ?? new Logger();
         this.dnsServer = dnsd.createServer(this.redchannel.c2MessageHandler.bind(this.redchannel)) as dnsd.Server;
     }
 

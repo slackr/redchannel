@@ -7,8 +7,8 @@ export default class WebServer implements ServerBase {
     webServer: Express;
     log: Logger;
 
-    constructor(protected redchannel: RedChannel, public port: number, public bindIp: string, log?: Logger) {
-        this.log = log ?? new Logger();
+    constructor(protected redchannel: RedChannel, public port: number, public bindIp: string) {
+        this.log = this.redchannel.log ?? new Logger();
         this.webServer = express();
         this.setupRoutes();
     }

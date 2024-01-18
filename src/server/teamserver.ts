@@ -23,6 +23,7 @@ import {
     StreamLogResponse,
 } from "../pb/c2";
 import { emsg } from "../utils";
+import { AgentCommand } from "../pb/implant";
 
 export interface TeamServerCerts {
     ca: Buffer | null;
@@ -36,8 +37,8 @@ export default class TeamServer implements ServerBase {
     service: IRedChannel;
     credentials: grpc.ServerCredentials;
 
-    constructor(protected redchannel: RedChannel, certs: TeamServerCerts, public port: number, public bindIp: string, log?: Logger) {
-        this.log = log ?? new Logger();
+    constructor(protected redchannel: RedChannel, certs: TeamServerCerts, public port: number, public bindIp: string) {
+        this.log = this.redchannel.log ?? new Logger();
         this.server = new grpc.Server();
         this.credentials = grpc.ServerCredentials.createSsl(
             certs.ca,
@@ -102,6 +103,7 @@ export default class TeamServer implements ServerBase {
             return false;
         }
 
+        call.metadata.add("operator", operator);
         return true;
     }
 
@@ -223,6 +225,7 @@ export default class TeamServer implements ServerBase {
         const agentCommand = call.request.command;
         try {
             this.redchannel.sendAgentCommand(agentId, agentCommand, commandParameters);
+            this.log.warn(`${call.metadata.get("operator")} sent agent(${agentId}) command ${AgentCommand[agentCommand]}`);
         } catch (e: unknown) {
             responseProto.status = CommandStatus.ERROR;
             responseProto.message = emsg(e);
@@ -255,6 +258,7 @@ export default class TeamServer implements ServerBase {
         });
         try {
             this.redchannel.config = _merge(this.redchannel.config, newConfig);
+            this.log.warn(`${call.metadata.get("operator")} updated c2 config`);
         } catch (e: unknown) {
             responseProto.status = CommandStatus.ERROR;
             responseProto.message = emsg(e);
@@ -268,17 +272,23 @@ export default class TeamServer implements ServerBase {
         const requestedLogLevel = call.request.level;
 
         const streamLogCallback = (level: LogLevel, ...msg) => {
-            if (level >= requestedLogLevel)
+            if (level >= requestedLogLevel) {
+                const message = msg.map((entry) => {
+                    if (typeof entry === "object") return JSON.stringify(entry);
+                    return entry;
+                });
                 call.write(
                     StreamLogResponse.create({
                         level: level,
-                        message: msg.join(" "),
+                        message: message.join(" "),
                     })
                 );
+            }
         };
 
         const eventName = "log";
         this.redchannel.log.eventEmitter.addListener(eventName, streamLogCallback);
+        this.log.info(`streaming logs to ${call.metadata.get("operator")}`);
 
         call.on("error", (error) => {
             this.redchannel.log.eventEmitter.removeListener(eventName, streamLogCallback);

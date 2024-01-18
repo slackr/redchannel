@@ -20,15 +20,17 @@ export default class Logger {
     }
 
     debug(...msg) {
-        this.emit(LogLevel.DEBUG, new Date().toISOString(), LogLevel[LogLevel.DEBUG], "\t", ...msg);
+        if (this.level < LogLevel.INFO) {
+            this.emit(LogLevel.DEBUG, new Date().toISOString(), LogLevel[LogLevel.DEBUG], "\t", ...msg);
+        }
     }
     info(...msg) {
-        if (this.level >= LogLevel.INFO) {
+        if (this.level < LogLevel.WARN) {
             this.emit(LogLevel.INFO, new Date().toISOString(), LogLevel[LogLevel.INFO], "\t", ...msg);
         }
     }
     warn(...msg) {
-        if (this.level >= LogLevel.WARN) {
+        if (this.level < LogLevel.ERROR) {
             this.emit(LogLevel.WARN, new Date().toISOString(), LogLevel[LogLevel.WARN], "\t", ...msg);
         }
     }

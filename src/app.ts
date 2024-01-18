@@ -74,13 +74,13 @@ process.on("uncaughtException", (ex, origin) => {
 const c2Config = redchannel.config.c2;
 if (!c2Config?.webPort || !c2Config.webIp) throw new Error(`invalid c2 configuration: invalid ip or port`);
 
-const webServer = new WebServer(redchannel, c2Config.webPort, c2Config.webIp, log);
+const webServer = new WebServer(redchannel, c2Config.webPort, c2Config.webIp);
 webServer.start(() => {
     log.info(`c2-web listening on ${webServer.bindIp}:${webServer.port}`);
 });
 
 if (!c2Config?.dnsPort || !c2Config.dnsIp) throw new Error(`invalid c2 configuration: invalid ip or port`);
-const dnsServer = new DnsServer(redchannel, c2Config.dnsPort, c2Config.dnsIp, c2Config.domain, log);
+const dnsServer = new DnsServer(redchannel, c2Config.dnsPort, c2Config.dnsIp, c2Config.domain);
 dnsServer.start(() => {
     log.info(`c2-dns listening on: ${c2Config.dnsIp}:${c2Config.dnsPort}, c2 domain: ${c2Config.domain}`);
 });
@@ -94,7 +94,7 @@ const certs: TeamServerCerts = {
     serverKey: fs.readFileSync(__dirname + "/../certs/server.key"),
 };
 
-const teamServer = new TeamServer(redchannel, certs, c2Config.tsPort, c2Config.tsIp, log);
+const teamServer = new TeamServer(redchannel, certs, c2Config.tsPort, c2Config.tsIp);
 teamServer.start(() => {
     log.info(`teamserver listening on ${teamServer.bindIp}:${teamServer.port}`);
 });
