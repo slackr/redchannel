@@ -181,6 +181,7 @@ message AgentCommandRequest {
   string agent_id = 1;
   implant.AgentCommand command = 2;
   string parameters = 3;
+  ImplantModuleConfig implant_config = 4;
 }
 message AgentCommandResponse {
   CommandStatus status = 1;

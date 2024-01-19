@@ -223,8 +223,9 @@ export default class TeamServer implements ServerBase {
         const agentId = call.request.agentId;
         const commandParameters = call.request.parameters;
         const agentCommand = call.request.command;
+        const commandImplantConfig = call.request.implantConfig;
         try {
-            this.redchannel.sendAgentCommand(agentId, agentCommand, commandParameters);
+            this.redchannel.sendAgentCommand(agentId, agentCommand, commandParameters, commandImplantConfig);
             this.log.warn(`${call.metadata.get("operator")} sent agent(${agentId}) command ${AgentCommand[agentCommand]}`);
         } catch (e: unknown) {
             responseProto.status = CommandStatus.ERROR;

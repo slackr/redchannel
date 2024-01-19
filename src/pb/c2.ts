@@ -385,6 +385,10 @@ export interface AgentCommandRequest {
      * @generated from protobuf field: string parameters = 3;
      */
     parameters: string;
+    /**
+     * @generated from protobuf field: c2.ImplantModuleConfig implant_config = 4;
+     */
+    implantConfig?: ImplantModuleConfig;
 }
 /**
  * @generated from protobuf message c2.AgentCommandResponse
@@ -1584,7 +1588,8 @@ class AgentCommandRequest$Type extends MessageType<AgentCommandRequest> {
         super("c2.AgentCommandRequest", [
             { no: 1, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 2, name: "command", kind: "enum", T: () => ["implant.AgentCommand", AgentCommand, "AGENT_COMMAND_"] },
-            { no: 3, name: "parameters", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 3, name: "parameters", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "implant_config", kind: "message", T: () => ImplantModuleConfig }
         ]);
     }
     create(value?: PartialMessage<AgentCommandRequest>): AgentCommandRequest {
@@ -1610,6 +1615,9 @@ class AgentCommandRequest$Type extends MessageType<AgentCommandRequest> {
                 case /* string parameters */ 3:
                     message.parameters = reader.string();
                     break;
+                case /* c2.ImplantModuleConfig implant_config */ 4:
+                    message.implantConfig = ImplantModuleConfig.internalBinaryRead(reader, reader.uint32(), options, message.implantConfig);
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -1631,6 +1639,9 @@ class AgentCommandRequest$Type extends MessageType<AgentCommandRequest> {
         /* string parameters = 3; */
         if (message.parameters !== "")
             writer.tag(3, WireType.LengthDelimited).string(message.parameters);
+        /* c2.ImplantModuleConfig implant_config = 4; */
+        if (message.implantConfig)
+            ImplantModuleConfig.internalBinaryWrite(message.implantConfig, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
