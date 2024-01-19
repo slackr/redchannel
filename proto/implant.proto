@@ -49,9 +49,9 @@ message AgentConfig {
   // accidentally use the default proto3 values for optional fields
   .google.protobuf.StringValue resolver = 3;
   .google.protobuf.UInt32Value c2_interval_ms = 4;
-  .google.protobuf.BoolValue use_web_channel = 5;
-  .google.protobuf.StringValue web_url = 6;
-  .google.protobuf.StringValue web_key = 7;
+  .google.protobuf.BoolValue use_proxy_channel = 5;
+  .google.protobuf.StringValue proxy_url = 6;
+  .google.protobuf.StringValue proxy_key = 7;
   .google.protobuf.BoolValue throttle_sendq = 8;
 }
 
@@ -75,6 +75,6 @@ message Command {
   message Response {
     AgentCommand command = 1;
     bytes data = 2;
-    AgentCommandStatus status = 4;
+    AgentCommandStatus status = 3;
   }
 }

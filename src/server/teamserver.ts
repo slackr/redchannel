@@ -1,7 +1,6 @@
 import Logger from "../lib/logger";
 import RedChannel from "../lib/redchannel";
 import { OnSuccessCallback, ServerBase } from "./base";
-import _merge from "lodash.merge";
 import * as grpc from "@grpc/grpc-js";
 import { redChannelDefinition, IRedChannel } from "../pb/c2.grpc-server";
 import {
@@ -18,8 +17,12 @@ import {
     GetAgentsRequest,
     GetAgentsResponse,
     GetBuildLogResponse,
+    GetConfigRequest,
+    GetConfigResponse,
     KeyxRequest,
     KeyxResponse,
+    KillAgentRequest,
+    KillAgentResponse,
     LogLevel,
     ProxyLoopRequest,
     ProxyLoopResponse,
@@ -59,11 +62,17 @@ export default class TeamServer implements ServerBase {
         this.service = {
             getAgents: this.getAgents.bind(this),
             keyx: this.keyx.bind(this),
+            agentCommand: this.agentCommand.bind(this),
+            killAgent: this.killAgent.bind(this),
+
             buildImplant: this.buildImplant.bind(this),
             getBuildLog: this.getBuildLog.bind(this),
-            agentCommand: this.agentCommand.bind(this),
+
+            getConfig: this.getConfig.bind(this),
             setConfig: this.setConfig.bind(this),
+
             streamLog: this.streamLog.bind(this),
+
             proxyLoop: this.proxyLoop.bind(this),
             generateProxyPayload: this.generateProxyPayload.bind(this),
             forceFetch: this.forceFetch.bind(this),
@@ -132,7 +141,7 @@ export default class TeamServer implements ServerBase {
                 Agent.create({
                     agentId: agent.id,
                     lastseen: Math.floor(agent.lastseen || 0),
-                    hasKeyx: agent.keyx ? true : false,
+                    hasPubkey: agent.pubkey ? true : false,
                     ip: [agent.ip || ""],
                     sendqSize: agent.sendq.length,
                     recvqSize: agent.recvq.size,
@@ -145,6 +154,28 @@ export default class TeamServer implements ServerBase {
             agents: agentList,
             status: CommandStatus.SUCCESS,
         });
+        callback(null, responseProto);
+    }
+
+    killAgent(call: grpc.ServerUnaryCall<KillAgentRequest, KillAgentResponse>, callback: grpc.sendUnaryData<KillAgentResponse>): void {
+        if (!this.checkAuth<KillAgentRequest, KillAgentResponse>(call)) throw new Error("Authentication failed");
+
+        call.on("error", (error) => {
+            this.log.error(`killAgent() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        const responseProto = KillAgentResponse.create({
+            status: CommandStatus.SUCCESS,
+        });
+        const agentId = call.request.agentId;
+        try {
+            this.redchannel.killAgent(agentId);
+            this.log.warn(`${call.metadata.get("operator")} killed agent(${agentId}), agent may reconnect`);
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
         callback(null, responseProto);
     }
 
@@ -243,6 +274,25 @@ export default class TeamServer implements ServerBase {
         callback(null, responseProto);
     }
 
+    getConfig(call: grpc.ServerUnaryCall<GetConfigRequest, GetConfigResponse>, callback: grpc.sendUnaryData<GetConfigResponse>): void {
+        if (!this.checkAuth<GetConfigRequest, GetConfigResponse>(call)) throw new Error("Authentication failed");
+
+        call.on("error", (error) => {
+            this.log.error(`getConfig() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        // cleanup sensitive information
+        const sanitizedConfig = this.redchannel.config;
+        if (sanitizedConfig.c2) sanitizedConfig.c2.operators = {};
+
+        const responseProto = GetConfigResponse.create({
+            status: CommandStatus.SUCCESS,
+            config: sanitizedConfig,
+        });
+        callback(null, responseProto);
+    }
+
     setConfig(call: grpc.ServerUnaryCall<SetConfigRequest, SetConfigResponse>, callback: grpc.sendUnaryData<SetConfigResponse>): void {
         if (!this.checkAuth<SetConfigRequest, SetConfigResponse>(call)) throw new Error("Authentication failed");
 
@@ -257,22 +307,32 @@ export default class TeamServer implements ServerBase {
                 null,
                 SetConfigResponse.create({
                     status: CommandStatus.ERROR,
-                    message: "invalid config supplied",
+                    message: "invalid config",
                 })
             );
             return;
         }
 
-        const responseProto = BuildImplantResponse.create({
+        const responseProto = SetConfigResponse.create({
             status: CommandStatus.SUCCESS,
         });
-        try {
-            this.redchannel.config = _merge(this.redchannel.config, newConfig);
-            this.log.warn(`${call.metadata.get("operator")} updated c2 config`);
-        } catch (e: unknown) {
-            responseProto.status = CommandStatus.ERROR;
-            responseProto.message = emsg(e);
+
+        const updatedEntries: string[] = [];
+        for (const module in newConfig) {
+            if (Object.prototype.hasOwnProperty.call(this.redchannel.config, module)) {
+                for (const property in newConfig[module]) {
+                    if (Object.prototype.hasOwnProperty.call(this.redchannel.config[module], property)) {
+                        this.redchannel.config[module][property] = newConfig[module][property].value;
+                        updatedEntries.push(`${module}.${property} = ${newConfig[module][property].value}`);
+                    }
+                }
+            }
         }
+
+        // if the debug property changes, reset the log level as well to show debug messages in the console
+        this.redchannel.resetLogLevel();
+
+        this.log.warn(`${call.metadata.get("operator")} updated ${updatedEntries.length} entries in c2 config:`, updatedEntries);
         callback(null, responseProto);
     }
 
@@ -326,7 +386,8 @@ export default class TeamServer implements ServerBase {
             status: CommandStatus.SUCCESS,
         });
         try {
-            proxyModule.proxyInit();
+            if (this.redchannel.config.proxy) this.redchannel.config.proxy.enabled = call.request.start;
+            proxyModule.proxyFetchLoop();
         } catch (e: unknown) {
             responseProto.status = CommandStatus.ERROR;
             responseProto.message = emsg(e);

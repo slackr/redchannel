@@ -248,16 +248,21 @@ export default class ProxyModule implements Module {
         this.log.info("fetching data from proxy...");
     }
 
-    proxyEnable() {
+    proxyStart() {
         const message = this.config.proxy?.enabled ? `starting proxy checkin at interval: ${this.config.proxy.interval}ms` : "stopping proxy checkin";
         this.log.info(message);
         this.proxyFetchLoop();
     }
 
-    proxyFetchLoop() {
+    proxyClearInterval() {
         if (this.fetchTimer) clearTimeout(this.fetchTimer);
+    }
+
+    proxyFetchLoop() {
+        this.proxyClearInterval();
+
         if (!this.config.proxy?.enabled) {
-            this.log.warn("proxy is not enabled");
+            this.log.warn("proxy is disabled");
             return;
         }
 
@@ -273,7 +278,5 @@ export default class ProxyModule implements Module {
                 this.proxyFetchLoop();
             }, this.config.proxy?.interval || 5000);
         });
-
-        this.log.info("starting the proxy checkin loop");
     }
 }

@@ -11,6 +11,9 @@ import { UnknownFieldHandler } from "@protobuf-ts/runtime";
 import type { PartialMessage } from "@protobuf-ts/runtime";
 import { reflectionMergePartial } from "@protobuf-ts/runtime";
 import { MessageType } from "@protobuf-ts/runtime";
+import { StringValue } from "./google/protobuf/wrappers";
+import { UInt32Value } from "./google/protobuf/wrappers";
+import { BoolValue } from "./google/protobuf/wrappers";
 import { AgentCommand } from "./implant";
 import { SysInfoData } from "./implant";
 /**
@@ -51,7 +54,7 @@ export interface C2Config {
      * the external url of the web server: http://c2.redchannel.tld
      * this will be the base of the binary_route
      *
-     * @generated from protobuf field: string web_url = 7;
+     * @generated from protobuf field: string web_url = 6;
      */
     webUrl: string;
     /**
@@ -59,7 +62,7 @@ export interface C2Config {
      * ie: /payload.exe - agent code will be available at
      * http://[web_ip]:[web_port]/payload.exe
      *
-     * @generated from protobuf field: string binary_route = 6;
+     * @generated from protobuf field: string binary_route = 7;
      */
     binaryRoute: string;
     /**
@@ -241,9 +244,9 @@ export interface Agent {
      */
     agentId: string;
     /**
-     * @generated from protobuf field: bool has_keyx = 2;
+     * @generated from protobuf field: bool has_pubkey = 2;
      */
-    hasKeyx: boolean;
+    hasPubkey: boolean;
     /**
      * @generated from protobuf field: uint32 lastseen = 3;
      */
@@ -295,10 +298,6 @@ export interface KeyxRequest {
      * @generated from protobuf field: string agent_id = 1;
      */
     agentId: string;
-    /**
-     * @generated from protobuf field: bool all_agents = 2;
-     */
-    allAgents: boolean;
 }
 /**
  * @generated from protobuf message c2.KeyxResponse
@@ -403,14 +402,122 @@ export interface AgentCommandResponse {
      */
     message: string;
 }
+// this allows over the network, live updates of the config
+// we do not allow operators to modify every part of the config
+// so, some fields from the *Config messages are not available
+// 
+// we also use google wrappers to differentiate between undefined and
+// defaults
+
+/**
+ * @generated from protobuf message c2.UpdatedConfig
+ */
+export interface UpdatedConfig {
+    /**
+     * @generated from protobuf field: c2.UpdatedConfig.C2 c2 = 1;
+     */
+    c2?: UpdatedConfig_C2;
+    /**
+     * @generated from protobuf field: c2.UpdatedConfig.Proxy proxy = 2;
+     */
+    proxy?: UpdatedConfig_Proxy;
+    /**
+     * @generated from protobuf field: c2.UpdatedConfig.Implant implant = 3;
+     */
+    implant?: UpdatedConfig_Implant;
+    /**
+     * @generated from protobuf field: c2.UpdatedConfig.Skimmer skimmer = 4;
+     */
+    skimmer?: UpdatedConfig_Skimmer;
+}
+/**
+ * @generated from protobuf message c2.UpdatedConfig.C2
+ */
+export interface UpdatedConfig_C2 {
+    /**
+     * @generated from protobuf field: google.protobuf.BoolValue debug = 1;
+     */
+    debug?: BoolValue;
+}
+/**
+ * @generated from protobuf message c2.UpdatedConfig.Implant
+ */
+export interface UpdatedConfig_Implant {
+    /**
+     * @generated from protobuf field: google.protobuf.UInt32Value interval = 1;
+     */
+    interval?: UInt32Value;
+    /**
+     * @generated from protobuf field: google.protobuf.BoolValue debug = 2;
+     */
+    debug?: BoolValue;
+    /**
+     * @generated from protobuf field: google.protobuf.StringValue proxy_url = 3;
+     */
+    proxyUrl?: StringValue;
+    /**
+     * @generated from protobuf field: google.protobuf.BoolValue proxy_enabled = 4;
+     */
+    proxyEnabled?: BoolValue;
+    /**
+     * @generated from protobuf field: google.protobuf.StringValue proxy_key = 5;
+     */
+    proxyKey?: StringValue;
+    /**
+     * @generated from protobuf field: google.protobuf.BoolValue throttle_sendq = 6;
+     */
+    throttleSendq?: BoolValue;
+}
+/**
+ * @generated from protobuf message c2.UpdatedConfig.Proxy
+ */
+export interface UpdatedConfig_Proxy {
+    /**
+     * @generated from protobuf field: google.protobuf.BoolValue enabled = 1;
+     */
+    enabled?: BoolValue;
+    /**
+     * @generated from protobuf field: google.protobuf.StringValue url = 2;
+     */
+    url?: StringValue;
+    /**
+     * @generated from protobuf field: google.protobuf.StringValue key = 3;
+     */
+    key?: StringValue;
+    /**
+     * @generated from protobuf field: google.protobuf.UInt32Value interval = 4;
+     */
+    interval?: UInt32Value;
+    /**
+     * @generated from protobuf field: google.protobuf.BoolValue obfuscate_payload = 5;
+     */
+    obfuscatePayload?: BoolValue;
+}
+/**
+ * @generated from protobuf message c2.UpdatedConfig.Skimmer
+ */
+export interface UpdatedConfig_Skimmer {
+    /**
+     * @generated from protobuf field: repeated string target_classes = 1;
+     */
+    targetClasses: string[];
+    /**
+     * @generated from protobuf field: repeated string target_ids = 2;
+     */
+    targetIds: string[];
+    /**
+     * @generated from protobuf field: google.protobuf.BoolValue obfuscate_payload = 3;
+     */
+    obfuscatePayload?: BoolValue;
+}
 /**
  * @generated from protobuf message c2.SetConfigRequest
  */
 export interface SetConfigRequest {
     /**
-     * @generated from protobuf field: c2.RedChannelConfig config = 1;
+     * @generated from protobuf field: c2.UpdatedConfig config = 1;
      */
-    config?: RedChannelConfig;
+    config?: UpdatedConfig;
 }
 /**
  * @generated from protobuf message c2.SetConfigResponse
@@ -424,6 +531,24 @@ export interface SetConfigResponse {
      * @generated from protobuf field: string message = 2;
      */
     message: string;
+}
+/**
+ * @generated from protobuf message c2.GetConfigRequest
+ */
+export interface GetConfigRequest {
+}
+/**
+ * @generated from protobuf message c2.GetConfigResponse
+ */
+export interface GetConfigResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: c2.RedChannelConfig config = 2;
+     */
+    config?: RedChannelConfig;
 }
 /**
  * @generated from protobuf message c2.StreamLogRequest
@@ -506,6 +631,28 @@ export interface GenerateProxyPayloadResponse {
     payload: string;
     /**
      * @generated from protobuf field: string message = 3;
+     */
+    message: string;
+}
+/**
+ * @generated from protobuf message c2.KillAgentRequest
+ */
+export interface KillAgentRequest {
+    /**
+     * @generated from protobuf field: string agent_id = 1;
+     */
+    agentId: string;
+}
+/**
+ * @generated from protobuf message c2.KillAgentResponse
+ */
+export interface KillAgentResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 2;
      */
     message: string;
 }
@@ -652,8 +799,8 @@ class C2Config$Type extends MessageType<C2Config> {
             { no: 3, name: "dns_port", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
             { no: 4, name: "web_ip", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 5, name: "web_port", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
-            { no: 7, name: "web_url", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 6, name: "binary_route", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "web_url", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "binary_route", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 8, name: "ts_ip", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 9, name: "ts_port", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
             { no: 10, name: "debug", kind: "scalar", T: 8 /*ScalarType.BOOL*/ },
@@ -697,10 +844,10 @@ class C2Config$Type extends MessageType<C2Config> {
                 case /* uint32 web_port */ 5:
                     message.webPort = reader.uint32();
                     break;
-                case /* string web_url */ 7:
+                case /* string web_url */ 6:
                     message.webUrl = reader.string();
                     break;
-                case /* string binary_route */ 6:
+                case /* string binary_route */ 7:
                     message.binaryRoute = reader.string();
                     break;
                 case /* string ts_ip */ 8:
@@ -758,12 +905,12 @@ class C2Config$Type extends MessageType<C2Config> {
         /* uint32 web_port = 5; */
         if (message.webPort !== 0)
             writer.tag(5, WireType.Varint).uint32(message.webPort);
-        /* string web_url = 7; */
+        /* string web_url = 6; */
         if (message.webUrl !== "")
-            writer.tag(7, WireType.LengthDelimited).string(message.webUrl);
-        /* string binary_route = 6; */
+            writer.tag(6, WireType.LengthDelimited).string(message.webUrl);
+        /* string binary_route = 7; */
         if (message.binaryRoute !== "")
-            writer.tag(6, WireType.LengthDelimited).string(message.binaryRoute);
+            writer.tag(7, WireType.LengthDelimited).string(message.binaryRoute);
         /* string ts_ip = 8; */
         if (message.tsIp !== "")
             writer.tag(8, WireType.LengthDelimited).string(message.tsIp);
@@ -1143,7 +1290,7 @@ class Agent$Type extends MessageType<Agent> {
     constructor() {
         super("c2.Agent", [
             { no: 1, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 2, name: "has_keyx", kind: "scalar", T: 8 /*ScalarType.BOOL*/ },
+            { no: 2, name: "has_pubkey", kind: "scalar", T: 8 /*ScalarType.BOOL*/ },
             { no: 3, name: "lastseen", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
             { no: 4, name: "ip", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
             { no: 5, name: "sendq_size", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
@@ -1154,7 +1301,7 @@ class Agent$Type extends MessageType<Agent> {
     create(value?: PartialMessage<Agent>): Agent {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.agentId = "";
-        message.hasKeyx = false;
+        message.hasPubkey = false;
         message.lastseen = 0;
         message.ip = [];
         message.sendqSize = 0;
@@ -1171,8 +1318,8 @@ class Agent$Type extends MessageType<Agent> {
                 case /* string agent_id */ 1:
                     message.agentId = reader.string();
                     break;
-                case /* bool has_keyx */ 2:
-                    message.hasKeyx = reader.bool();
+                case /* bool has_pubkey */ 2:
+                    message.hasPubkey = reader.bool();
                     break;
                 case /* uint32 lastseen */ 3:
                     message.lastseen = reader.uint32();
@@ -1204,9 +1351,9 @@ class Agent$Type extends MessageType<Agent> {
         /* string agent_id = 1; */
         if (message.agentId !== "")
             writer.tag(1, WireType.LengthDelimited).string(message.agentId);
-        /* bool has_keyx = 2; */
-        if (message.hasKeyx !== false)
-            writer.tag(2, WireType.Varint).bool(message.hasKeyx);
+        /* bool has_pubkey = 2; */
+        if (message.hasPubkey !== false)
+            writer.tag(2, WireType.Varint).bool(message.hasPubkey);
         /* uint32 lastseen = 3; */
         if (message.lastseen !== 0)
             writer.tag(3, WireType.Varint).uint32(message.lastseen);
@@ -1324,14 +1471,12 @@ export const GetAgentsResponse = new GetAgentsResponse$Type();
 class KeyxRequest$Type extends MessageType<KeyxRequest> {
     constructor() {
         super("c2.KeyxRequest", [
-            { no: 1, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 2, name: "all_agents", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
+            { no: 1, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<KeyxRequest>): KeyxRequest {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.agentId = "";
-        message.allAgents = false;
         if (value !== undefined)
             reflectionMergePartial<KeyxRequest>(this, message, value);
         return message;
@@ -1343,9 +1488,6 @@ class KeyxRequest$Type extends MessageType<KeyxRequest> {
             switch (fieldNo) {
                 case /* string agent_id */ 1:
                     message.agentId = reader.string();
-                    break;
-                case /* bool all_agents */ 2:
-                    message.allAgents = reader.bool();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1362,9 +1504,6 @@ class KeyxRequest$Type extends MessageType<KeyxRequest> {
         /* string agent_id = 1; */
         if (message.agentId !== "")
             writer.tag(1, WireType.LengthDelimited).string(message.agentId);
-        /* bool all_agents = 2; */
-        if (message.allAgents !== false)
-            writer.tag(2, WireType.Varint).bool(message.allAgents);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1770,10 +1909,340 @@ class AgentCommandResponse$Type extends MessageType<AgentCommandResponse> {
  */
 export const AgentCommandResponse = new AgentCommandResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class UpdatedConfig$Type extends MessageType<UpdatedConfig> {
+    constructor() {
+        super("c2.UpdatedConfig", [
+            { no: 1, name: "c2", kind: "message", T: () => UpdatedConfig_C2 },
+            { no: 2, name: "proxy", kind: "message", T: () => UpdatedConfig_Proxy },
+            { no: 3, name: "implant", kind: "message", T: () => UpdatedConfig_Implant },
+            { no: 4, name: "skimmer", kind: "message", T: () => UpdatedConfig_Skimmer }
+        ]);
+    }
+    create(value?: PartialMessage<UpdatedConfig>): UpdatedConfig {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<UpdatedConfig>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: UpdatedConfig): UpdatedConfig {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.UpdatedConfig.C2 c2 */ 1:
+                    message.c2 = UpdatedConfig_C2.internalBinaryRead(reader, reader.uint32(), options, message.c2);
+                    break;
+                case /* c2.UpdatedConfig.Proxy proxy */ 2:
+                    message.proxy = UpdatedConfig_Proxy.internalBinaryRead(reader, reader.uint32(), options, message.proxy);
+                    break;
+                case /* c2.UpdatedConfig.Implant implant */ 3:
+                    message.implant = UpdatedConfig_Implant.internalBinaryRead(reader, reader.uint32(), options, message.implant);
+                    break;
+                case /* c2.UpdatedConfig.Skimmer skimmer */ 4:
+                    message.skimmer = UpdatedConfig_Skimmer.internalBinaryRead(reader, reader.uint32(), options, message.skimmer);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: UpdatedConfig, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.UpdatedConfig.C2 c2 = 1; */
+        if (message.c2)
+            UpdatedConfig_C2.internalBinaryWrite(message.c2, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* c2.UpdatedConfig.Proxy proxy = 2; */
+        if (message.proxy)
+            UpdatedConfig_Proxy.internalBinaryWrite(message.proxy, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* c2.UpdatedConfig.Implant implant = 3; */
+        if (message.implant)
+            UpdatedConfig_Implant.internalBinaryWrite(message.implant, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        /* c2.UpdatedConfig.Skimmer skimmer = 4; */
+        if (message.skimmer)
+            UpdatedConfig_Skimmer.internalBinaryWrite(message.skimmer, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.UpdatedConfig
+ */
+export const UpdatedConfig = new UpdatedConfig$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class UpdatedConfig_C2$Type extends MessageType<UpdatedConfig_C2> {
+    constructor() {
+        super("c2.UpdatedConfig.C2", [
+            { no: 1, name: "debug", kind: "message", T: () => BoolValue }
+        ]);
+    }
+    create(value?: PartialMessage<UpdatedConfig_C2>): UpdatedConfig_C2 {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<UpdatedConfig_C2>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: UpdatedConfig_C2): UpdatedConfig_C2 {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* google.protobuf.BoolValue debug */ 1:
+                    message.debug = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.debug);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: UpdatedConfig_C2, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* google.protobuf.BoolValue debug = 1; */
+        if (message.debug)
+            BoolValue.internalBinaryWrite(message.debug, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.UpdatedConfig.C2
+ */
+export const UpdatedConfig_C2 = new UpdatedConfig_C2$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class UpdatedConfig_Implant$Type extends MessageType<UpdatedConfig_Implant> {
+    constructor() {
+        super("c2.UpdatedConfig.Implant", [
+            { no: 1, name: "interval", kind: "message", T: () => UInt32Value },
+            { no: 2, name: "debug", kind: "message", T: () => BoolValue },
+            { no: 3, name: "proxy_url", kind: "message", T: () => StringValue },
+            { no: 4, name: "proxy_enabled", kind: "message", T: () => BoolValue },
+            { no: 5, name: "proxy_key", kind: "message", T: () => StringValue },
+            { no: 6, name: "throttle_sendq", kind: "message", T: () => BoolValue }
+        ]);
+    }
+    create(value?: PartialMessage<UpdatedConfig_Implant>): UpdatedConfig_Implant {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<UpdatedConfig_Implant>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: UpdatedConfig_Implant): UpdatedConfig_Implant {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* google.protobuf.UInt32Value interval */ 1:
+                    message.interval = UInt32Value.internalBinaryRead(reader, reader.uint32(), options, message.interval);
+                    break;
+                case /* google.protobuf.BoolValue debug */ 2:
+                    message.debug = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.debug);
+                    break;
+                case /* google.protobuf.StringValue proxy_url */ 3:
+                    message.proxyUrl = StringValue.internalBinaryRead(reader, reader.uint32(), options, message.proxyUrl);
+                    break;
+                case /* google.protobuf.BoolValue proxy_enabled */ 4:
+                    message.proxyEnabled = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.proxyEnabled);
+                    break;
+                case /* google.protobuf.StringValue proxy_key */ 5:
+                    message.proxyKey = StringValue.internalBinaryRead(reader, reader.uint32(), options, message.proxyKey);
+                    break;
+                case /* google.protobuf.BoolValue throttle_sendq */ 6:
+                    message.throttleSendq = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.throttleSendq);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: UpdatedConfig_Implant, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* google.protobuf.UInt32Value interval = 1; */
+        if (message.interval)
+            UInt32Value.internalBinaryWrite(message.interval, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.BoolValue debug = 2; */
+        if (message.debug)
+            BoolValue.internalBinaryWrite(message.debug, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.StringValue proxy_url = 3; */
+        if (message.proxyUrl)
+            StringValue.internalBinaryWrite(message.proxyUrl, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.BoolValue proxy_enabled = 4; */
+        if (message.proxyEnabled)
+            BoolValue.internalBinaryWrite(message.proxyEnabled, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.StringValue proxy_key = 5; */
+        if (message.proxyKey)
+            StringValue.internalBinaryWrite(message.proxyKey, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.BoolValue throttle_sendq = 6; */
+        if (message.throttleSendq)
+            BoolValue.internalBinaryWrite(message.throttleSendq, writer.tag(6, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.UpdatedConfig.Implant
+ */
+export const UpdatedConfig_Implant = new UpdatedConfig_Implant$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class UpdatedConfig_Proxy$Type extends MessageType<UpdatedConfig_Proxy> {
+    constructor() {
+        super("c2.UpdatedConfig.Proxy", [
+            { no: 1, name: "enabled", kind: "message", T: () => BoolValue },
+            { no: 2, name: "url", kind: "message", T: () => StringValue },
+            { no: 3, name: "key", kind: "message", T: () => StringValue },
+            { no: 4, name: "interval", kind: "message", T: () => UInt32Value },
+            { no: 5, name: "obfuscate_payload", kind: "message", T: () => BoolValue }
+        ]);
+    }
+    create(value?: PartialMessage<UpdatedConfig_Proxy>): UpdatedConfig_Proxy {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<UpdatedConfig_Proxy>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: UpdatedConfig_Proxy): UpdatedConfig_Proxy {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* google.protobuf.BoolValue enabled */ 1:
+                    message.enabled = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.enabled);
+                    break;
+                case /* google.protobuf.StringValue url */ 2:
+                    message.url = StringValue.internalBinaryRead(reader, reader.uint32(), options, message.url);
+                    break;
+                case /* google.protobuf.StringValue key */ 3:
+                    message.key = StringValue.internalBinaryRead(reader, reader.uint32(), options, message.key);
+                    break;
+                case /* google.protobuf.UInt32Value interval */ 4:
+                    message.interval = UInt32Value.internalBinaryRead(reader, reader.uint32(), options, message.interval);
+                    break;
+                case /* google.protobuf.BoolValue obfuscate_payload */ 5:
+                    message.obfuscatePayload = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.obfuscatePayload);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: UpdatedConfig_Proxy, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* google.protobuf.BoolValue enabled = 1; */
+        if (message.enabled)
+            BoolValue.internalBinaryWrite(message.enabled, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.StringValue url = 2; */
+        if (message.url)
+            StringValue.internalBinaryWrite(message.url, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.StringValue key = 3; */
+        if (message.key)
+            StringValue.internalBinaryWrite(message.key, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.UInt32Value interval = 4; */
+        if (message.interval)
+            UInt32Value.internalBinaryWrite(message.interval, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.BoolValue obfuscate_payload = 5; */
+        if (message.obfuscatePayload)
+            BoolValue.internalBinaryWrite(message.obfuscatePayload, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.UpdatedConfig.Proxy
+ */
+export const UpdatedConfig_Proxy = new UpdatedConfig_Proxy$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class UpdatedConfig_Skimmer$Type extends MessageType<UpdatedConfig_Skimmer> {
+    constructor() {
+        super("c2.UpdatedConfig.Skimmer", [
+            { no: 1, name: "target_classes", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "target_ids", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "obfuscate_payload", kind: "message", T: () => BoolValue }
+        ]);
+    }
+    create(value?: PartialMessage<UpdatedConfig_Skimmer>): UpdatedConfig_Skimmer {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.targetClasses = [];
+        message.targetIds = [];
+        if (value !== undefined)
+            reflectionMergePartial<UpdatedConfig_Skimmer>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: UpdatedConfig_Skimmer): UpdatedConfig_Skimmer {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated string target_classes */ 1:
+                    message.targetClasses.push(reader.string());
+                    break;
+                case /* repeated string target_ids */ 2:
+                    message.targetIds.push(reader.string());
+                    break;
+                case /* google.protobuf.BoolValue obfuscate_payload */ 3:
+                    message.obfuscatePayload = BoolValue.internalBinaryRead(reader, reader.uint32(), options, message.obfuscatePayload);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: UpdatedConfig_Skimmer, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated string target_classes = 1; */
+        for (let i = 0; i < message.targetClasses.length; i++)
+            writer.tag(1, WireType.LengthDelimited).string(message.targetClasses[i]);
+        /* repeated string target_ids = 2; */
+        for (let i = 0; i < message.targetIds.length; i++)
+            writer.tag(2, WireType.LengthDelimited).string(message.targetIds[i]);
+        /* google.protobuf.BoolValue obfuscate_payload = 3; */
+        if (message.obfuscatePayload)
+            BoolValue.internalBinaryWrite(message.obfuscatePayload, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.UpdatedConfig.Skimmer
+ */
+export const UpdatedConfig_Skimmer = new UpdatedConfig_Skimmer$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class SetConfigRequest$Type extends MessageType<SetConfigRequest> {
     constructor() {
         super("c2.SetConfigRequest", [
-            { no: 1, name: "config", kind: "message", T: () => RedChannelConfig }
+            { no: 1, name: "config", kind: "message", T: () => UpdatedConfig }
         ]);
     }
     create(value?: PartialMessage<SetConfigRequest>): SetConfigRequest {
@@ -1787,8 +2256,8 @@ class SetConfigRequest$Type extends MessageType<SetConfigRequest> {
         while (reader.pos < end) {
             let [fieldNo, wireType] = reader.tag();
             switch (fieldNo) {
-                case /* c2.RedChannelConfig config */ 1:
-                    message.config = RedChannelConfig.internalBinaryRead(reader, reader.uint32(), options, message.config);
+                case /* c2.UpdatedConfig config */ 1:
+                    message.config = UpdatedConfig.internalBinaryRead(reader, reader.uint32(), options, message.config);
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1802,9 +2271,9 @@ class SetConfigRequest$Type extends MessageType<SetConfigRequest> {
         return message;
     }
     internalBinaryWrite(message: SetConfigRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
-        /* c2.RedChannelConfig config = 1; */
+        /* c2.UpdatedConfig config = 1; */
         if (message.config)
-            RedChannelConfig.internalBinaryWrite(message.config, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+            UpdatedConfig.internalBinaryWrite(message.config, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1870,6 +2339,85 @@ class SetConfigResponse$Type extends MessageType<SetConfigResponse> {
  * @generated MessageType for protobuf message c2.SetConfigResponse
  */
 export const SetConfigResponse = new SetConfigResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetConfigRequest$Type extends MessageType<GetConfigRequest> {
+    constructor() {
+        super("c2.GetConfigRequest", []);
+    }
+    create(value?: PartialMessage<GetConfigRequest>): GetConfigRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<GetConfigRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetConfigRequest): GetConfigRequest {
+        return target ?? this.create();
+    }
+    internalBinaryWrite(message: GetConfigRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.GetConfigRequest
+ */
+export const GetConfigRequest = new GetConfigRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetConfigResponse$Type extends MessageType<GetConfigResponse> {
+    constructor() {
+        super("c2.GetConfigResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "config", kind: "message", T: () => RedChannelConfig }
+        ]);
+    }
+    create(value?: PartialMessage<GetConfigResponse>): GetConfigResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        if (value !== undefined)
+            reflectionMergePartial<GetConfigResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetConfigResponse): GetConfigResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* c2.RedChannelConfig config */ 2:
+                    message.config = RedChannelConfig.internalBinaryRead(reader, reader.uint32(), options, message.config);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetConfigResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* c2.RedChannelConfig config = 2; */
+        if (message.config)
+            RedChannelConfig.internalBinaryWrite(message.config, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.GetConfigResponse
+ */
+export const GetConfigResponse = new GetConfigResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class StreamLogRequest$Type extends MessageType<StreamLogRequest> {
     constructor() {
@@ -2242,6 +2790,108 @@ class GenerateProxyPayloadResponse$Type extends MessageType<GenerateProxyPayload
  * @generated MessageType for protobuf message c2.GenerateProxyPayloadResponse
  */
 export const GenerateProxyPayloadResponse = new GenerateProxyPayloadResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class KillAgentRequest$Type extends MessageType<KillAgentRequest> {
+    constructor() {
+        super("c2.KillAgentRequest", [
+            { no: 1, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<KillAgentRequest>): KillAgentRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.agentId = "";
+        if (value !== undefined)
+            reflectionMergePartial<KillAgentRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: KillAgentRequest): KillAgentRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string agent_id */ 1:
+                    message.agentId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: KillAgentRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string agent_id = 1; */
+        if (message.agentId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.agentId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.KillAgentRequest
+ */
+export const KillAgentRequest = new KillAgentRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class KillAgentResponse$Type extends MessageType<KillAgentResponse> {
+    constructor() {
+        super("c2.KillAgentResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<KillAgentResponse>): KillAgentResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<KillAgentResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: KillAgentResponse): KillAgentResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: KillAgentResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.KillAgentResponse
+ */
+export const KillAgentResponse = new KillAgentResponse$Type();
 /**
  * @generated ServiceType for protobuf service c2.RedChannel
  */
@@ -2251,9 +2901,11 @@ export const RedChannel = new ServiceType("c2.RedChannel", [
     { name: "AgentCommand", options: {}, I: AgentCommandRequest, O: AgentCommandResponse },
     { name: "BuildImplant", options: {}, I: BuildImplantRequest, O: BuildImplantResponse },
     { name: "GetBuildLog", options: {}, I: GetBuildLogRequest, O: GetBuildLogResponse },
+    { name: "KillAgent", options: {}, I: KillAgentRequest, O: KillAgentResponse },
     { name: "ProxyLoop", options: {}, I: ProxyLoopRequest, O: ProxyLoopResponse },
     { name: "ForceFetch", options: {}, I: ForceFetchRequest, O: ForceFetchResponse },
     { name: "GenerateProxyPayload", options: {}, I: GenerateProxyPayloadRequest, O: GenerateProxyPayloadResponse },
     { name: "SetConfig", options: {}, I: SetConfigRequest, O: SetConfigResponse },
+    { name: "GetConfig", options: {}, I: GetConfigRequest, O: GetConfigResponse },
     { name: "StreamLog", serverStreaming: true, options: {}, I: StreamLogRequest, O: StreamLogResponse }
 ]);

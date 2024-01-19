@@ -7,6 +7,8 @@ import { RedChannel } from "./c2";
 import type { StreamLogResponse } from "./c2";
 import type { StreamLogRequest } from "./c2";
 import type { ServerStreamingCall } from "@protobuf-ts/runtime-rpc";
+import type { GetConfigResponse } from "./c2";
+import type { GetConfigRequest } from "./c2";
 import type { SetConfigResponse } from "./c2";
 import type { SetConfigRequest } from "./c2";
 import type { GenerateProxyPayloadResponse } from "./c2";
@@ -15,6 +17,8 @@ import type { ForceFetchResponse } from "./c2";
 import type { ForceFetchRequest } from "./c2";
 import type { ProxyLoopResponse } from "./c2";
 import type { ProxyLoopRequest } from "./c2";
+import type { KillAgentResponse } from "./c2";
+import type { KillAgentRequest } from "./c2";
 import type { GetBuildLogResponse } from "./c2";
 import type { GetBuildLogRequest } from "./c2";
 import type { BuildImplantResponse } from "./c2";
@@ -53,6 +57,10 @@ export interface IRedChannelClient {
      */
     getBuildLog(input: GetBuildLogRequest, options?: RpcOptions): UnaryCall<GetBuildLogRequest, GetBuildLogResponse>;
     /**
+     * @generated from protobuf rpc: KillAgent(c2.KillAgentRequest) returns (c2.KillAgentResponse);
+     */
+    killAgent(input: KillAgentRequest, options?: RpcOptions): UnaryCall<KillAgentRequest, KillAgentResponse>;
+    /**
      * @generated from protobuf rpc: ProxyLoop(c2.ProxyLoopRequest) returns (c2.ProxyLoopResponse);
      */
     proxyLoop(input: ProxyLoopRequest, options?: RpcOptions): UnaryCall<ProxyLoopRequest, ProxyLoopResponse>;
@@ -68,6 +76,10 @@ export interface IRedChannelClient {
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
     setConfig(input: SetConfigRequest, options?: RpcOptions): UnaryCall<SetConfigRequest, SetConfigResponse>;
+    /**
+     * @generated from protobuf rpc: GetConfig(c2.GetConfigRequest) returns (c2.GetConfigResponse);
+     */
+    getConfig(input: GetConfigRequest, options?: RpcOptions): UnaryCall<GetConfigRequest, GetConfigResponse>;
     /**
      * @generated from protobuf rpc: StreamLog(c2.StreamLogRequest) returns (stream c2.StreamLogResponse);
      */
@@ -118,38 +130,52 @@ export class RedChannelClient implements IRedChannelClient, ServiceInfo {
         return stackIntercept<GetBuildLogRequest, GetBuildLogResponse>("unary", this._transport, method, opt, input);
     }
     /**
+     * @generated from protobuf rpc: KillAgent(c2.KillAgentRequest) returns (c2.KillAgentResponse);
+     */
+    killAgent(input: KillAgentRequest, options?: RpcOptions): UnaryCall<KillAgentRequest, KillAgentResponse> {
+        const method = this.methods[5], opt = this._transport.mergeOptions(options);
+        return stackIntercept<KillAgentRequest, KillAgentResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
      * @generated from protobuf rpc: ProxyLoop(c2.ProxyLoopRequest) returns (c2.ProxyLoopResponse);
      */
     proxyLoop(input: ProxyLoopRequest, options?: RpcOptions): UnaryCall<ProxyLoopRequest, ProxyLoopResponse> {
-        const method = this.methods[5], opt = this._transport.mergeOptions(options);
+        const method = this.methods[6], opt = this._transport.mergeOptions(options);
         return stackIntercept<ProxyLoopRequest, ProxyLoopResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: ForceFetch(c2.ForceFetchRequest) returns (c2.ForceFetchResponse);
      */
     forceFetch(input: ForceFetchRequest, options?: RpcOptions): UnaryCall<ForceFetchRequest, ForceFetchResponse> {
-        const method = this.methods[6], opt = this._transport.mergeOptions(options);
+        const method = this.methods[7], opt = this._transport.mergeOptions(options);
         return stackIntercept<ForceFetchRequest, ForceFetchResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GenerateProxyPayload(c2.GenerateProxyPayloadRequest) returns (c2.GenerateProxyPayloadResponse);
      */
     generateProxyPayload(input: GenerateProxyPayloadRequest, options?: RpcOptions): UnaryCall<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse> {
-        const method = this.methods[7], opt = this._transport.mergeOptions(options);
+        const method = this.methods[8], opt = this._transport.mergeOptions(options);
         return stackIntercept<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
     setConfig(input: SetConfigRequest, options?: RpcOptions): UnaryCall<SetConfigRequest, SetConfigResponse> {
-        const method = this.methods[8], opt = this._transport.mergeOptions(options);
+        const method = this.methods[9], opt = this._transport.mergeOptions(options);
         return stackIntercept<SetConfigRequest, SetConfigResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: GetConfig(c2.GetConfigRequest) returns (c2.GetConfigResponse);
+     */
+    getConfig(input: GetConfigRequest, options?: RpcOptions): UnaryCall<GetConfigRequest, GetConfigResponse> {
+        const method = this.methods[10], opt = this._transport.mergeOptions(options);
+        return stackIntercept<GetConfigRequest, GetConfigResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: StreamLog(c2.StreamLogRequest) returns (stream c2.StreamLogResponse);
      */
     streamLog(input: StreamLogRequest, options?: RpcOptions): ServerStreamingCall<StreamLogRequest, StreamLogResponse> {
-        const method = this.methods[9], opt = this._transport.mergeOptions(options);
+        const method = this.methods[11], opt = this._transport.mergeOptions(options);
         return stackIntercept<StreamLogRequest, StreamLogResponse>("serverStreaming", this._transport, method, opt, input);
     }
 }

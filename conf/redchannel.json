@@ -5,12 +5,14 @@
         "dns_port": 5353,
         "web_ip": "127.0.0.1",
         "web_port": 8080,
+        "ts_ip": "0.0.0.0",
+        "ts_port": 4321,
         "binary_route": "/setup.exe",
         "web_url": "http://c2.redchannel.tld",
-        "debug": true
+        "debug": false,
         "operators": {
             "neo": "my name is neo!",
-            "litmus": "eddie lives somewhere in time!"        
+            "litmus": "eddie lives somewhere in time!"
         }
     },
     "skimmer": {
@@ -19,23 +21,25 @@
         "url": "http://c2.redchannel.tld/stats?id=",
         "target_classes": [],
         "target_ids": [],
-        "obfuscate_payload": false
+        "obfuscate_payload": true
     },
     "proxy": {
         "enabled": false,
         "key": "redchannel",
         "interval": 2000,
-        "obfuscate_payload": false,
+        "obfuscate_payload": true,
         "url": "http://127.0.0.1/"
     },
     "static_dns": {
         "test.c2.redchannel.tld": "127.0.0.1"
     },
     "implant": {
-        "os": "windows",
-        "arch": "amd64",
         "debug": true,
         "interval": 5000,
-        "resolver": "127.0.0.1:5353"
+        "resolver": "127.0.0.1:53",
+        "proxy_url": "http://127.0.0.1:8888/proxy.php",
+        "proxy_enabled": false,
+        "proxy_key": "redchannel",
+        "throttle_sendq": true
     }
 }

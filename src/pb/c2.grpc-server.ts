@@ -3,6 +3,8 @@
 // tslint:disable
 import { StreamLogResponse } from "./c2";
 import { StreamLogRequest } from "./c2";
+import { GetConfigResponse } from "./c2";
+import { GetConfigRequest } from "./c2";
 import { SetConfigResponse } from "./c2";
 import { SetConfigRequest } from "./c2";
 import { GenerateProxyPayloadResponse } from "./c2";
@@ -11,6 +13,8 @@ import { ForceFetchResponse } from "./c2";
 import { ForceFetchRequest } from "./c2";
 import { ProxyLoopResponse } from "./c2";
 import { ProxyLoopRequest } from "./c2";
+import { KillAgentResponse } from "./c2";
+import { KillAgentRequest } from "./c2";
 import { GetBuildLogResponse } from "./c2";
 import { GetBuildLogRequest } from "./c2";
 import { BuildImplantResponse } from "./c2";
@@ -47,6 +51,10 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
      */
     getBuildLog: grpc.handleUnaryCall<GetBuildLogRequest, GetBuildLogResponse>;
     /**
+     * @generated from protobuf rpc: KillAgent(c2.KillAgentRequest) returns (c2.KillAgentResponse);
+     */
+    killAgent: grpc.handleUnaryCall<KillAgentRequest, KillAgentResponse>;
+    /**
      * @generated from protobuf rpc: ProxyLoop(c2.ProxyLoopRequest) returns (c2.ProxyLoopResponse);
      */
     proxyLoop: grpc.handleUnaryCall<ProxyLoopRequest, ProxyLoopResponse>;
@@ -62,6 +70,10 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
     setConfig: grpc.handleUnaryCall<SetConfigRequest, SetConfigResponse>;
+    /**
+     * @generated from protobuf rpc: GetConfig(c2.GetConfigRequest) returns (c2.GetConfigResponse);
+     */
+    getConfig: grpc.handleUnaryCall<GetConfigRequest, GetConfigResponse>;
     /**
      * @generated from protobuf rpc: StreamLog(c2.StreamLogRequest) returns (stream c2.StreamLogResponse);
      */
@@ -129,6 +141,16 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         responseSerialize: value => Buffer.from(GetBuildLogResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(GetBuildLogRequest.toBinary(value))
     },
+    killAgent: {
+        path: "/c2.RedChannel/KillAgent",
+        originalName: "KillAgent",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => KillAgentResponse.fromBinary(bytes),
+        requestDeserialize: bytes => KillAgentRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(KillAgentResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(KillAgentRequest.toBinary(value))
+    },
     proxyLoop: {
         path: "/c2.RedChannel/ProxyLoop",
         originalName: "ProxyLoop",
@@ -168,6 +190,16 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         requestDeserialize: bytes => SetConfigRequest.fromBinary(bytes),
         responseSerialize: value => Buffer.from(SetConfigResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(SetConfigRequest.toBinary(value))
+    },
+    getConfig: {
+        path: "/c2.RedChannel/GetConfig",
+        originalName: "GetConfig",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => GetConfigResponse.fromBinary(bytes),
+        requestDeserialize: bytes => GetConfigRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(GetConfigResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(GetConfigRequest.toBinary(value))
     },
     streamLog: {
         path: "/c2.RedChannel/StreamLog",
