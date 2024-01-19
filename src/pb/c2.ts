@@ -448,6 +448,68 @@ export interface StreamLogResponse {
     message: string;
 }
 /**
+ * @generated from protobuf message c2.ProxyLoopRequest
+ */
+export interface ProxyLoopRequest {
+    /**
+     * @generated from protobuf field: bool start = 1;
+     */
+    start: boolean;
+}
+/**
+ * @generated from protobuf message c2.ProxyLoopResponse
+ */
+export interface ProxyLoopResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
+}
+/**
+ * @generated from protobuf message c2.ForceFetchRequest
+ */
+export interface ForceFetchRequest {
+}
+/**
+ * @generated from protobuf message c2.ForceFetchResponse
+ */
+export interface ForceFetchResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
+}
+/**
+ * @generated from protobuf message c2.GenerateProxyPayloadRequest
+ */
+export interface GenerateProxyPayloadRequest {
+}
+/**
+ * @generated from protobuf message c2.GenerateProxyPayloadResponse
+ */
+export interface GenerateProxyPayloadResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string payload = 2;
+     */
+    payload: string;
+    /**
+     * @generated from protobuf field: string message = 3;
+     */
+    message: string;
+}
+/**
  * @generated from protobuf enum c2.C2Command
  */
 export enum C2Command {
@@ -1910,15 +1972,288 @@ class StreamLogResponse$Type extends MessageType<StreamLogResponse> {
  * @generated MessageType for protobuf message c2.StreamLogResponse
  */
 export const StreamLogResponse = new StreamLogResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ProxyLoopRequest$Type extends MessageType<ProxyLoopRequest> {
+    constructor() {
+        super("c2.ProxyLoopRequest", [
+            { no: 1, name: "start", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ProxyLoopRequest>): ProxyLoopRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.start = false;
+        if (value !== undefined)
+            reflectionMergePartial<ProxyLoopRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ProxyLoopRequest): ProxyLoopRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* bool start */ 1:
+                    message.start = reader.bool();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ProxyLoopRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* bool start = 1; */
+        if (message.start !== false)
+            writer.tag(1, WireType.Varint).bool(message.start);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.ProxyLoopRequest
+ */
+export const ProxyLoopRequest = new ProxyLoopRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ProxyLoopResponse$Type extends MessageType<ProxyLoopResponse> {
+    constructor() {
+        super("c2.ProxyLoopResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ProxyLoopResponse>): ProxyLoopResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<ProxyLoopResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ProxyLoopResponse): ProxyLoopResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ProxyLoopResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.ProxyLoopResponse
+ */
+export const ProxyLoopResponse = new ProxyLoopResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ForceFetchRequest$Type extends MessageType<ForceFetchRequest> {
+    constructor() {
+        super("c2.ForceFetchRequest", []);
+    }
+    create(value?: PartialMessage<ForceFetchRequest>): ForceFetchRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<ForceFetchRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ForceFetchRequest): ForceFetchRequest {
+        return target ?? this.create();
+    }
+    internalBinaryWrite(message: ForceFetchRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.ForceFetchRequest
+ */
+export const ForceFetchRequest = new ForceFetchRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ForceFetchResponse$Type extends MessageType<ForceFetchResponse> {
+    constructor() {
+        super("c2.ForceFetchResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ForceFetchResponse>): ForceFetchResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<ForceFetchResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ForceFetchResponse): ForceFetchResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ForceFetchResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.ForceFetchResponse
+ */
+export const ForceFetchResponse = new ForceFetchResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GenerateProxyPayloadRequest$Type extends MessageType<GenerateProxyPayloadRequest> {
+    constructor() {
+        super("c2.GenerateProxyPayloadRequest", []);
+    }
+    create(value?: PartialMessage<GenerateProxyPayloadRequest>): GenerateProxyPayloadRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<GenerateProxyPayloadRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GenerateProxyPayloadRequest): GenerateProxyPayloadRequest {
+        return target ?? this.create();
+    }
+    internalBinaryWrite(message: GenerateProxyPayloadRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.GenerateProxyPayloadRequest
+ */
+export const GenerateProxyPayloadRequest = new GenerateProxyPayloadRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GenerateProxyPayloadResponse$Type extends MessageType<GenerateProxyPayloadResponse> {
+    constructor() {
+        super("c2.GenerateProxyPayloadResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "payload", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GenerateProxyPayloadResponse>): GenerateProxyPayloadResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.payload = "";
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<GenerateProxyPayloadResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GenerateProxyPayloadResponse): GenerateProxyPayloadResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string payload */ 2:
+                    message.payload = reader.string();
+                    break;
+                case /* string message */ 3:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GenerateProxyPayloadResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string payload = 2; */
+        if (message.payload !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.payload);
+        /* string message = 3; */
+        if (message.message !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.GenerateProxyPayloadResponse
+ */
+export const GenerateProxyPayloadResponse = new GenerateProxyPayloadResponse$Type();
 /**
  * @generated ServiceType for protobuf service c2.RedChannel
  */
 export const RedChannel = new ServiceType("c2.RedChannel", [
     { name: "GetAgents", options: {}, I: GetAgentsRequest, O: GetAgentsResponse },
     { name: "Keyx", options: {}, I: KeyxRequest, O: KeyxResponse },
+    { name: "AgentCommand", options: {}, I: AgentCommandRequest, O: AgentCommandResponse },
     { name: "BuildImplant", options: {}, I: BuildImplantRequest, O: BuildImplantResponse },
     { name: "GetBuildLog", options: {}, I: GetBuildLogRequest, O: GetBuildLogResponse },
-    { name: "AgentCommand", options: {}, I: AgentCommandRequest, O: AgentCommandResponse },
+    { name: "ProxyLoop", options: {}, I: ProxyLoopRequest, O: ProxyLoopResponse },
+    { name: "ForceFetch", options: {}, I: ForceFetchRequest, O: ForceFetchResponse },
+    { name: "GenerateProxyPayload", options: {}, I: GenerateProxyPayloadRequest, O: GenerateProxyPayloadResponse },
     { name: "SetConfig", options: {}, I: SetConfigRequest, O: SetConfigResponse },
     { name: "StreamLog", serverStreaming: true, options: {}, I: StreamLogRequest, O: StreamLogResponse }
 ]);

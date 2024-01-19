@@ -171,9 +171,9 @@ export default class ProxyModule implements Module {
         return;
     }
 
-    getFromProxy() {
+    async getFromProxy() {
         if (!this.config.proxy?.enabled) {
-            this.log.error("proxy is not enabled");
+            this.log.error("c2-proxy is disabled");
             return;
         }
 
@@ -245,19 +245,21 @@ export default class ProxyModule implements Module {
 
     proxyFetch() {
         this.getFromProxy();
-        return { message: "fetching data from proxy..." };
+        this.log.info("fetching data from proxy...");
     }
 
     proxyEnable() {
         const message = this.config.proxy?.enabled ? `starting proxy checkin at interval: ${this.config.proxy.interval}ms` : "stopping proxy checkin";
-
+        this.log.info(message);
         this.proxyFetchLoop();
-        return { message: message };
     }
 
     proxyFetchLoop() {
         if (this.fetchTimer) clearTimeout(this.fetchTimer);
-        if (!this.config.proxy?.enabled) return { message: "proxy is not enabled" };
+        if (!this.config.proxy?.enabled) {
+            this.log.warn("proxy is not enabled");
+            return;
+        }
 
         if (!this.config.proxy.url) {
             throw new Error("proxy config is missing the url");
@@ -272,6 +274,6 @@ export default class ProxyModule implements Module {
             }, this.config.proxy?.interval || 5000);
         });
 
-        return { message: "starting the proxy checkin loop" };
+        this.log.info("starting the proxy checkin loop");
     }
 }

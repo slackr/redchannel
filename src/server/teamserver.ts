@@ -11,12 +11,18 @@ import {
     BuildImplantRequest,
     BuildImplantResponse,
     CommandStatus,
+    ForceFetchRequest,
+    ForceFetchResponse,
+    GenerateProxyPayloadRequest,
+    GenerateProxyPayloadResponse,
     GetAgentsRequest,
     GetAgentsResponse,
     GetBuildLogResponse,
     KeyxRequest,
     KeyxResponse,
     LogLevel,
+    ProxyLoopRequest,
+    ProxyLoopResponse,
     SetConfigRequest,
     SetConfigResponse,
     StreamLogRequest,
@@ -58,6 +64,9 @@ export default class TeamServer implements ServerBase {
             agentCommand: this.agentCommand.bind(this),
             setConfig: this.setConfig.bind(this),
             streamLog: this.streamLog.bind(this),
+            proxyLoop: this.proxyLoop.bind(this),
+            generateProxyPayload: this.generateProxyPayload.bind(this),
+            forceFetch: this.forceFetch.bind(this),
         };
     }
 
@@ -108,11 +117,11 @@ export default class TeamServer implements ServerBase {
     }
 
     getAgents(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetAgentsResponse>): void {
-        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error(`Authentication failed`);
+        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error("Authentication failed");
 
         call.on("error", (error) => {
             this.log.error(`getAgents() error: ${error}`);
-            throw new Error("server error");
+            throw new Error("Server error");
         });
         // const c2CommandProto = c2.C2CommandRequest.decode(data);
         const agents = this.redchannel.getAgents();
@@ -139,12 +148,12 @@ export default class TeamServer implements ServerBase {
         callback(null, responseProto);
     }
 
-    keyx(call: grpc.ServerUnaryCall<KeyxRequest, KeyxRequest>, callback: grpc.sendUnaryData<KeyxResponse>): void {
-        if (!this.checkAuth<KeyxRequest, KeyxRequest>(call)) throw new Error(`Authentication failed`);
+    keyx(call: grpc.ServerUnaryCall<KeyxRequest, KeyxResponse>, callback: grpc.sendUnaryData<KeyxResponse>): void {
+        if (!this.checkAuth<KeyxRequest, KeyxResponse>(call)) throw new Error("Authentication failed");
 
         call.on("error", (error) => {
             this.log.error(`keyx() error: ${error}`);
-            throw new Error("server error");
+            throw new Error("Server error");
         });
 
         const agentId = call.request.agentId;
@@ -160,12 +169,12 @@ export default class TeamServer implements ServerBase {
         callback(null, responseProto);
     }
 
-    buildImplant(call: grpc.ServerUnaryCall<BuildImplantRequest, BuildImplantRequest>, callback: grpc.sendUnaryData<BuildImplantResponse>): void {
-        if (!this.checkAuth<BuildImplantRequest, BuildImplantRequest>(call)) throw new Error(`Authentication failed`);
+    buildImplant(call: grpc.ServerUnaryCall<BuildImplantRequest, BuildImplantResponse>, callback: grpc.sendUnaryData<BuildImplantResponse>): void {
+        if (!this.checkAuth<BuildImplantRequest, BuildImplantResponse>(call)) throw new Error("Authentication failed");
 
         call.on("error", (error) => {
             this.log.error(`buildImplant() error: ${error}`);
-            throw new Error("server error");
+            throw new Error("Server error");
         });
 
         const implantModule = this.redchannel.modules.implant;
@@ -186,11 +195,11 @@ export default class TeamServer implements ServerBase {
     }
 
     getBuildLog(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetBuildLogResponse>): void {
-        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error(`Authentication failed`);
+        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error("Authentication failed");
 
         call.on("error", (error) => {
             this.log.error(`getBuildLog() error: ${error}`);
-            throw new Error("server error");
+            throw new Error("Server error");
         });
 
         const responseProto = GetBuildLogResponse.create({
@@ -208,12 +217,12 @@ export default class TeamServer implements ServerBase {
         callback(null, responseProto);
     }
 
-    agentCommand(call: grpc.ServerUnaryCall<AgentCommandRequest, AgentCommandRequest>, callback: grpc.sendUnaryData<AgentCommandResponse>): void {
-        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error(`Authentication failed`);
+    agentCommand(call: grpc.ServerUnaryCall<AgentCommandRequest, AgentCommandResponse>, callback: grpc.sendUnaryData<AgentCommandResponse>): void {
+        if (!this.checkAuth<AgentCommandRequest, AgentCommandResponse>(call)) throw new Error("Authentication failed");
 
         call.on("error", (error) => {
             this.log.error(`agentCommand() error: ${error}`);
-            throw new Error("server error");
+            throw new Error("Server error");
         });
 
         const responseProto = AgentCommandResponse.create({
@@ -235,11 +244,11 @@ export default class TeamServer implements ServerBase {
     }
 
     setConfig(call: grpc.ServerUnaryCall<SetConfigRequest, SetConfigResponse>, callback: grpc.sendUnaryData<SetConfigResponse>): void {
-        if (!this.checkAuth<SetConfigRequest, SetConfigResponse>(call)) throw new Error(`Authentication failed`);
+        if (!this.checkAuth<SetConfigRequest, SetConfigResponse>(call)) throw new Error("Authentication failed");
 
         call.on("error", (error) => {
             this.log.error(`setConfig() error: ${error}`);
-            throw new Error("server error");
+            throw new Error("Server error");
         });
 
         const newConfig = call.request.config;
@@ -268,7 +277,7 @@ export default class TeamServer implements ServerBase {
     }
 
     streamLog(call: grpc.ServerWritableStream<StreamLogRequest, StreamLogResponse>): void {
-        if (!this.checkAuth<StreamLogRequest, StreamLogResponse>(call)) throw new Error(`Authentication failed`);
+        if (!this.checkAuth<StreamLogRequest, StreamLogResponse>(call)) throw new Error("Authentication failed");
 
         const requestedLogLevel = call.request.level;
 
@@ -294,7 +303,7 @@ export default class TeamServer implements ServerBase {
         call.on("error", (error) => {
             this.redchannel.log.eventEmitter.removeListener(eventName, streamLogCallback);
             this.log.error(`streamLog() error: ${error}`);
-            throw new Error("server error");
+            throw new Error("Server error");
         });
         call.on("close", () => {
             this.redchannel.log.eventEmitter.removeListener(eventName, streamLogCallback);
@@ -302,5 +311,70 @@ export default class TeamServer implements ServerBase {
         call.on("finish", () => {
             this.redchannel.log.eventEmitter.removeListener(eventName, streamLogCallback);
         });
+    }
+
+    proxyLoop(call: grpc.ServerUnaryCall<ProxyLoopRequest, ProxyLoopResponse>, callback: grpc.sendUnaryData<ProxyLoopResponse>): void {
+        if (!this.checkAuth<ProxyLoopRequest, ProxyLoopResponse>(call)) throw new Error("Authentication failed");
+
+        call.on("error", (error) => {
+            this.log.error(`proxyLoop() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        const proxyModule = this.redchannel.modules.proxy;
+        const responseProto = ProxyLoopResponse.create({
+            status: CommandStatus.SUCCESS,
+        });
+        try {
+            proxyModule.proxyInit();
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
+        callback(null, responseProto);
+    }
+
+    forceFetch(call: grpc.ServerUnaryCall<ForceFetchRequest, ForceFetchResponse>, callback: grpc.sendUnaryData<ForceFetchResponse>): void {
+        if (!this.checkAuth<ForceFetchRequest, ForceFetchResponse>(call)) throw new Error("Authentication failed");
+
+        call.on("error", (error) => {
+            this.log.error(`forceFetch() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        const proxyModule = this.redchannel.modules.proxy;
+        const responseProto = ForceFetchResponse.create({
+            status: CommandStatus.SUCCESS,
+        });
+        try {
+            proxyModule.proxyFetch();
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
+        callback(null, responseProto);
+    }
+
+    generateProxyPayload(call: grpc.ServerUnaryCall<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>, callback: grpc.sendUnaryData<GenerateProxyPayloadResponse>): void {
+        if (!this.checkAuth<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>(call)) throw new Error("Authentication failed");
+
+        call.on("error", (error) => {
+            this.log.error(`generateProxyPayload() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        const responseProto = GenerateProxyPayloadResponse.create({
+            status: CommandStatus.SUCCESS,
+        });
+
+        const proxyModule = this.redchannel.modules.proxy;
+        try {
+            proxyModule.execute();
+            responseProto.payload = proxyModule.payload;
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
+        callback(null, responseProto);
     }
 }

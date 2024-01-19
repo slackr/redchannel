@@ -205,12 +205,37 @@ message StreamLogResponse {
   string message = 2;
 }
 
+message ProxyLoopRequest { bool start = 1; }
+message ProxyLoopResponse {
+  CommandStatus status = 1;
+  string message = 2;
+}
+message ForceFetchRequest {}
+message ForceFetchResponse {
+  CommandStatus status = 1;
+  string message = 2;
+}
+message GenerateProxyPayloadRequest {}
+message GenerateProxyPayloadResponse {
+  CommandStatus status = 1;
+  string payload = 2;
+  string message = 3;
+}
+
 service RedChannel {
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
+  rpc AgentCommand(AgentCommandRequest) returns (AgentCommandResponse);
+
   rpc BuildImplant(BuildImplantRequest) returns (BuildImplantResponse);
   rpc GetBuildLog(GetBuildLogRequest) returns (GetBuildLogResponse);
-  rpc AgentCommand(AgentCommandRequest) returns (AgentCommandResponse);
+
+  rpc ProxyLoop(ProxyLoopRequest) returns (ProxyLoopResponse);
+  rpc ForceFetch(ForceFetchRequest) returns (ForceFetchResponse);
+  rpc GenerateProxyPayload(GenerateProxyPayloadRequest)
+      returns (GenerateProxyPayloadResponse);
+
   rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
+
   rpc StreamLog(StreamLogRequest) returns (stream StreamLogResponse);
 }

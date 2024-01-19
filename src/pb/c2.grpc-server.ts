@@ -5,12 +5,18 @@ import { StreamLogResponse } from "./c2";
 import { StreamLogRequest } from "./c2";
 import { SetConfigResponse } from "./c2";
 import { SetConfigRequest } from "./c2";
-import { AgentCommandResponse } from "./c2";
-import { AgentCommandRequest } from "./c2";
+import { GenerateProxyPayloadResponse } from "./c2";
+import { GenerateProxyPayloadRequest } from "./c2";
+import { ForceFetchResponse } from "./c2";
+import { ForceFetchRequest } from "./c2";
+import { ProxyLoopResponse } from "./c2";
+import { ProxyLoopRequest } from "./c2";
 import { GetBuildLogResponse } from "./c2";
 import { GetBuildLogRequest } from "./c2";
 import { BuildImplantResponse } from "./c2";
 import { BuildImplantRequest } from "./c2";
+import { AgentCommandResponse } from "./c2";
+import { AgentCommandRequest } from "./c2";
 import { KeyxResponse } from "./c2";
 import { KeyxRequest } from "./c2";
 import { GetAgentsResponse } from "./c2";
@@ -29,6 +35,10 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
      */
     keyx: grpc.handleUnaryCall<KeyxRequest, KeyxResponse>;
     /**
+     * @generated from protobuf rpc: AgentCommand(c2.AgentCommandRequest) returns (c2.AgentCommandResponse);
+     */
+    agentCommand: grpc.handleUnaryCall<AgentCommandRequest, AgentCommandResponse>;
+    /**
      * @generated from protobuf rpc: BuildImplant(c2.BuildImplantRequest) returns (c2.BuildImplantResponse);
      */
     buildImplant: grpc.handleUnaryCall<BuildImplantRequest, BuildImplantResponse>;
@@ -37,9 +47,17 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
      */
     getBuildLog: grpc.handleUnaryCall<GetBuildLogRequest, GetBuildLogResponse>;
     /**
-     * @generated from protobuf rpc: AgentCommand(c2.AgentCommandRequest) returns (c2.AgentCommandResponse);
+     * @generated from protobuf rpc: ProxyLoop(c2.ProxyLoopRequest) returns (c2.ProxyLoopResponse);
      */
-    agentCommand: grpc.handleUnaryCall<AgentCommandRequest, AgentCommandResponse>;
+    proxyLoop: grpc.handleUnaryCall<ProxyLoopRequest, ProxyLoopResponse>;
+    /**
+     * @generated from protobuf rpc: ForceFetch(c2.ForceFetchRequest) returns (c2.ForceFetchResponse);
+     */
+    forceFetch: grpc.handleUnaryCall<ForceFetchRequest, ForceFetchResponse>;
+    /**
+     * @generated from protobuf rpc: GenerateProxyPayload(c2.GenerateProxyPayloadRequest) returns (c2.GenerateProxyPayloadResponse);
+     */
+    generateProxyPayload: grpc.handleUnaryCall<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>;
     /**
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
@@ -81,6 +99,16 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         responseSerialize: value => Buffer.from(KeyxResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(KeyxRequest.toBinary(value))
     },
+    agentCommand: {
+        path: "/c2.RedChannel/AgentCommand",
+        originalName: "AgentCommand",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => AgentCommandResponse.fromBinary(bytes),
+        requestDeserialize: bytes => AgentCommandRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(AgentCommandResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(AgentCommandRequest.toBinary(value))
+    },
     buildImplant: {
         path: "/c2.RedChannel/BuildImplant",
         originalName: "BuildImplant",
@@ -101,15 +129,35 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         responseSerialize: value => Buffer.from(GetBuildLogResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(GetBuildLogRequest.toBinary(value))
     },
-    agentCommand: {
-        path: "/c2.RedChannel/AgentCommand",
-        originalName: "AgentCommand",
+    proxyLoop: {
+        path: "/c2.RedChannel/ProxyLoop",
+        originalName: "ProxyLoop",
         requestStream: false,
         responseStream: false,
-        responseDeserialize: bytes => AgentCommandResponse.fromBinary(bytes),
-        requestDeserialize: bytes => AgentCommandRequest.fromBinary(bytes),
-        responseSerialize: value => Buffer.from(AgentCommandResponse.toBinary(value)),
-        requestSerialize: value => Buffer.from(AgentCommandRequest.toBinary(value))
+        responseDeserialize: bytes => ProxyLoopResponse.fromBinary(bytes),
+        requestDeserialize: bytes => ProxyLoopRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(ProxyLoopResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(ProxyLoopRequest.toBinary(value))
+    },
+    forceFetch: {
+        path: "/c2.RedChannel/ForceFetch",
+        originalName: "ForceFetch",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => ForceFetchResponse.fromBinary(bytes),
+        requestDeserialize: bytes => ForceFetchRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(ForceFetchResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(ForceFetchRequest.toBinary(value))
+    },
+    generateProxyPayload: {
+        path: "/c2.RedChannel/GenerateProxyPayload",
+        originalName: "GenerateProxyPayload",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => GenerateProxyPayloadResponse.fromBinary(bytes),
+        requestDeserialize: bytes => GenerateProxyPayloadRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(GenerateProxyPayloadResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(GenerateProxyPayloadRequest.toBinary(value))
     },
     setConfig: {
         path: "/c2.RedChannel/SetConfig",
