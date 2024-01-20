@@ -15,6 +15,8 @@ import {
     ForceFetchResponse,
     GenerateProxyPayloadRequest,
     GenerateProxyPayloadResponse,
+    GenerateSkimmerPayloadRequest,
+    GenerateSkimmerPayloadResponse,
     GetAgentsRequest,
     GetAgentsResponse,
     GetBuildLogResponse,
@@ -75,6 +77,8 @@ export default class TeamServer implements ServerBase {
             setConfig: this.setConfig.bind(this),
 
             streamLog: this.streamLog.bind(this),
+
+            generateSkimmerPayload: this.generateSkimmerPayload.bind(this),
 
             proxyLoop: this.proxyLoop.bind(this),
             generateProxyPayload: this.generateProxyPayload.bind(this),
@@ -490,6 +494,29 @@ export default class TeamServer implements ServerBase {
         try {
             proxyModule.execute();
             responseProto.payload = proxyModule.payload;
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
+        callback(null, responseProto);
+    }
+
+    generateSkimmerPayload(call: grpc.ServerUnaryCall<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>, callback: grpc.sendUnaryData<GenerateSkimmerPayloadResponse>): void {
+        if (!this.checkAuth<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>(call)) throw new Error("Authentication failed");
+
+        call.on("error", (error) => {
+            this.log.error(`generateSkimmerPayload() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        const responseProto = GenerateSkimmerPayloadResponse.create({
+            status: CommandStatus.SUCCESS,
+        });
+
+        const skimmerModule = this.redchannel.modules.skimmer;
+        try {
+            skimmerModule.execute();
+            responseProto.payload = skimmerModule.payload;
         } catch (e: unknown) {
             responseProto.status = CommandStatus.ERROR;
             responseProto.message = emsg(e);

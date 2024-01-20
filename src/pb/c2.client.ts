@@ -10,6 +10,8 @@ import type { GetConfigResponse } from "./c2";
 import type { GetConfigRequest } from "./c2";
 import type { SetConfigResponse } from "./c2";
 import type { SetConfigRequest } from "./c2";
+import type { GenerateSkimmerPayloadResponse } from "./c2";
+import type { GenerateSkimmerPayloadRequest } from "./c2";
 import type { GenerateProxyPayloadResponse } from "./c2";
 import type { GenerateProxyPayloadRequest } from "./c2";
 import type { ForceFetchResponse } from "./c2";
@@ -77,6 +79,10 @@ export interface IRedChannelClient {
      * @generated from protobuf rpc: GenerateProxyPayload(c2.GenerateProxyPayloadRequest) returns (c2.GenerateProxyPayloadResponse);
      */
     generateProxyPayload(input: GenerateProxyPayloadRequest, options?: RpcOptions): UnaryCall<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>;
+    /**
+     * @generated from protobuf rpc: GenerateSkimmerPayload(c2.GenerateSkimmerPayloadRequest) returns (c2.GenerateSkimmerPayloadResponse);
+     */
+    generateSkimmerPayload(input: GenerateSkimmerPayloadRequest, options?: RpcOptions): UnaryCall<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>;
     /**
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
@@ -170,24 +176,31 @@ export class RedChannelClient implements IRedChannelClient, ServiceInfo {
         return stackIntercept<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>("unary", this._transport, method, opt, input);
     }
     /**
+     * @generated from protobuf rpc: GenerateSkimmerPayload(c2.GenerateSkimmerPayloadRequest) returns (c2.GenerateSkimmerPayloadResponse);
+     */
+    generateSkimmerPayload(input: GenerateSkimmerPayloadRequest, options?: RpcOptions): UnaryCall<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse> {
+        const method = this.methods[10], opt = this._transport.mergeOptions(options);
+        return stackIntercept<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
     setConfig(input: SetConfigRequest, options?: RpcOptions): UnaryCall<SetConfigRequest, SetConfigResponse> {
-        const method = this.methods[10], opt = this._transport.mergeOptions(options);
+        const method = this.methods[11], opt = this._transport.mergeOptions(options);
         return stackIntercept<SetConfigRequest, SetConfigResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GetConfig(c2.GetConfigRequest) returns (c2.GetConfigResponse);
      */
     getConfig(input: GetConfigRequest, options?: RpcOptions): UnaryCall<GetConfigRequest, GetConfigResponse> {
-        const method = this.methods[11], opt = this._transport.mergeOptions(options);
+        const method = this.methods[12], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetConfigRequest, GetConfigResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: StreamLog(c2.StreamLogRequest) returns (stream c2.StreamLogResponse);
      */
     streamLog(input: StreamLogRequest, options?: RpcOptions): ServerStreamingCall<StreamLogRequest, StreamLogResponse> {
-        const method = this.methods[12], opt = this._transport.mergeOptions(options);
+        const method = this.methods[13], opt = this._transport.mergeOptions(options);
         return stackIntercept<StreamLogRequest, StreamLogResponse>("serverStreaming", this._transport, method, opt, input);
     }
 }

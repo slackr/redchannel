@@ -140,6 +140,13 @@ message GenerateProxyPayloadResponse {
   string message = 3;
 }
 
+message GenerateSkimmerPayloadRequest {}
+message GenerateSkimmerPayloadResponse {
+  CommandStatus status = 1;
+  string payload = 2;
+  string message = 3;
+}
+
 message KillAgentRequest { string agent_id = 1; }
 message KillAgentResponse {
   CommandStatus status = 1;
@@ -161,6 +168,9 @@ service RedChannel {
   rpc ForceFetch(ForceFetchRequest) returns (ForceFetchResponse);
   rpc GenerateProxyPayload(GenerateProxyPayloadRequest)
       returns (GenerateProxyPayloadResponse);
+
+  rpc GenerateSkimmerPayload(GenerateSkimmerPayloadRequest)
+      returns (GenerateSkimmerPayloadResponse);
 
   rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
   rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);

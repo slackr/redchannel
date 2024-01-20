@@ -7,6 +7,8 @@ import { GetConfigResponse } from "./c2";
 import { GetConfigRequest } from "./c2";
 import { SetConfigResponse } from "./c2";
 import { SetConfigRequest } from "./c2";
+import { GenerateSkimmerPayloadResponse } from "./c2";
+import { GenerateSkimmerPayloadRequest } from "./c2";
 import { GenerateProxyPayloadResponse } from "./c2";
 import { GenerateProxyPayloadRequest } from "./c2";
 import { ForceFetchResponse } from "./c2";
@@ -71,6 +73,10 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
      * @generated from protobuf rpc: GenerateProxyPayload(c2.GenerateProxyPayloadRequest) returns (c2.GenerateProxyPayloadResponse);
      */
     generateProxyPayload: grpc.handleUnaryCall<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>;
+    /**
+     * @generated from protobuf rpc: GenerateSkimmerPayload(c2.GenerateSkimmerPayloadRequest) returns (c2.GenerateSkimmerPayloadResponse);
+     */
+    generateSkimmerPayload: grpc.handleUnaryCall<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>;
     /**
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
@@ -195,6 +201,16 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         requestDeserialize: bytes => GenerateProxyPayloadRequest.fromBinary(bytes),
         responseSerialize: value => Buffer.from(GenerateProxyPayloadResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(GenerateProxyPayloadRequest.toBinary(value))
+    },
+    generateSkimmerPayload: {
+        path: "/c2.RedChannel/GenerateSkimmerPayload",
+        originalName: "GenerateSkimmerPayload",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => GenerateSkimmerPayloadResponse.fromBinary(bytes),
+        requestDeserialize: bytes => GenerateSkimmerPayloadRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(GenerateSkimmerPayloadResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(GenerateSkimmerPayloadRequest.toBinary(value))
     },
     setConfig: {
         path: "/c2.RedChannel/SetConfig",
