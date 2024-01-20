@@ -8,22 +8,6 @@ export default class StaticDnsModule implements Module {
 
     constructor(protected config: RedChannelConfig, log?: Logger) {
         this.log = log ?? new Logger();
-        // this.defineCommands({
-        //     add: {
-        //         arguments: ["<host>", "<ip>"],
-        //         description: "add a static DNS A record",
-        //         execute: (params: string[]) => {
-        //             this.add(params[0], params[1]);
-        //         },
-        //     },
-        //     delete: {
-        //         arguments: ["<host>"],
-        //         description: "delete static DNS A record",
-        //         execute: (params: string[]) => {
-        //             this.delete(params[0]);
-        //         },
-        //     },
-        // });
     }
 
     execute() {
@@ -36,8 +20,10 @@ export default class StaticDnsModule implements Module {
         if (!Constants.VALID_HOST_REGEX.test(host)) throw new Error("invalid host value");
         if (!Constants.VALID_IP_REGEX.test(ip)) throw new Error("invalid ip value");
 
+        const action = Object.prototype.hasOwnProperty.call(this.config.staticDns, host) ? "modified" : "added";
+
         this.config.staticDns[host] = ip;
-        return { message: `added static dns record ${host} = ${ip}` };
+        this.log.info(`${action} static dns record ${host} = ${ip}`);
     }
 
     delete(host: string) {

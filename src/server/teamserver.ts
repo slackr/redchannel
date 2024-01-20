@@ -22,6 +22,8 @@ import {
     GetBuildLogResponse,
     GetConfigRequest,
     GetConfigResponse,
+    GetStaticDnsRequest,
+    GetStaticDnsResponse,
     KeyxRequest,
     KeyxResponse,
     KillAgentRequest,
@@ -31,6 +33,9 @@ import {
     ProxyLoopResponse,
     SetConfigRequest,
     SetConfigResponse,
+    SetStaticDnsRequest,
+    SetStaticDnsResponse,
+    StaticDnsAction,
     StreamLogRequest,
     StreamLogResponse,
 } from "../pb/c2";
@@ -79,6 +84,9 @@ export default class TeamServer implements ServerBase {
             streamLog: this.streamLog.bind(this),
 
             generateSkimmerPayload: this.generateSkimmerPayload.bind(this),
+
+            setStaticDns: this.setStaticDns.bind(this),
+            getStaticDns: this.getStaticDns.bind(this),
 
             proxyLoop: this.proxyLoop.bind(this),
             generateProxyPayload: this.generateProxyPayload.bind(this),
@@ -521,6 +529,59 @@ export default class TeamServer implements ServerBase {
             responseProto.status = CommandStatus.ERROR;
             responseProto.message = emsg(e);
         }
+        callback(null, responseProto);
+    }
+
+    setStaticDns(call: grpc.ServerUnaryCall<SetStaticDnsRequest, SetStaticDnsResponse>, callback: grpc.sendUnaryData<SetStaticDnsResponse>): void {
+        if (!this.checkAuth<SetStaticDnsRequest, SetStaticDnsResponse>(call)) throw new Error("Authentication failed");
+
+        call.on("error", (error) => {
+            this.log.error(`setStaticDns() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        const responseProto = SetStaticDnsResponse.create({
+            status: CommandStatus.SUCCESS,
+        });
+
+        const staticDnsModule = this.redchannel.modules.static_dns;
+
+        const action = call.request.action;
+        const hostname = call.request.hostname;
+        const ip = call.request.ip;
+
+        try {
+            switch (action) {
+                case StaticDnsAction.ADD:
+                case StaticDnsAction.MODIFY:
+                    staticDnsModule.add(hostname, ip);
+                    break;
+                case StaticDnsAction.DELETE:
+                    staticDnsModule.delete(hostname);
+                    break;
+            }
+        } catch (e: unknown) {
+            responseProto.status = CommandStatus.ERROR;
+            responseProto.message = emsg(e);
+        }
+        callback(null, responseProto);
+    }
+
+    getStaticDns(call: grpc.ServerUnaryCall<GetStaticDnsRequest, GetStaticDnsResponse>, callback: grpc.sendUnaryData<GetStaticDnsResponse>): void {
+        if (!this.checkAuth<GetStaticDnsRequest, GetStaticDnsResponse>(call)) throw new Error("Authentication failed");
+
+        call.on("error", (error) => {
+            this.log.error(`getConfig() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        // cleanup sensitive information
+        const staticDnsRecords = JSON.stringify(this.redchannel.config.staticDns);
+
+        const responseProto = GetStaticDnsResponse.create({
+            status: CommandStatus.SUCCESS,
+            message: staticDnsRecords,
+        });
         callback(null, responseProto);
     }
 }

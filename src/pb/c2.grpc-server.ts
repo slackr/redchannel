@@ -7,6 +7,10 @@ import { GetConfigResponse } from "./c2";
 import { GetConfigRequest } from "./c2";
 import { SetConfigResponse } from "./c2";
 import { SetConfigRequest } from "./c2";
+import { GetStaticDnsResponse } from "./c2";
+import { GetStaticDnsRequest } from "./c2";
+import { SetStaticDnsResponse } from "./c2";
+import { SetStaticDnsRequest } from "./c2";
 import { GenerateSkimmerPayloadResponse } from "./c2";
 import { GenerateSkimmerPayloadRequest } from "./c2";
 import { GenerateProxyPayloadResponse } from "./c2";
@@ -77,6 +81,14 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
      * @generated from protobuf rpc: GenerateSkimmerPayload(c2.GenerateSkimmerPayloadRequest) returns (c2.GenerateSkimmerPayloadResponse);
      */
     generateSkimmerPayload: grpc.handleUnaryCall<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>;
+    /**
+     * @generated from protobuf rpc: SetStaticDns(c2.SetStaticDnsRequest) returns (c2.SetStaticDnsResponse);
+     */
+    setStaticDns: grpc.handleUnaryCall<SetStaticDnsRequest, SetStaticDnsResponse>;
+    /**
+     * @generated from protobuf rpc: GetStaticDns(c2.GetStaticDnsRequest) returns (c2.GetStaticDnsResponse);
+     */
+    getStaticDns: grpc.handleUnaryCall<GetStaticDnsRequest, GetStaticDnsResponse>;
     /**
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
@@ -211,6 +223,26 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         requestDeserialize: bytes => GenerateSkimmerPayloadRequest.fromBinary(bytes),
         responseSerialize: value => Buffer.from(GenerateSkimmerPayloadResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(GenerateSkimmerPayloadRequest.toBinary(value))
+    },
+    setStaticDns: {
+        path: "/c2.RedChannel/SetStaticDns",
+        originalName: "SetStaticDns",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => SetStaticDnsResponse.fromBinary(bytes),
+        requestDeserialize: bytes => SetStaticDnsRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(SetStaticDnsResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(SetStaticDnsRequest.toBinary(value))
+    },
+    getStaticDns: {
+        path: "/c2.RedChannel/GetStaticDns",
+        originalName: "GetStaticDns",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => GetStaticDnsResponse.fromBinary(bytes),
+        requestDeserialize: bytes => GetStaticDnsRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(GetStaticDnsResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(GetStaticDnsRequest.toBinary(value))
     },
     setConfig: {
         path: "/c2.RedChannel/SetConfig",

@@ -153,6 +153,27 @@ message KillAgentResponse {
   string message = 2;
 }
 
+enum StaticDnsAction {
+  STATIC_DNS_ACTION_UNSPECIFIED = 0;
+  STATIC_DNS_ACTION_ADD = 1;
+  STATIC_DNS_ACTION_DELETE = 2;
+  STATIC_DNS_ACTION_MODIFY = 3;
+}
+message SetStaticDnsRequest {
+  StaticDnsAction action = 1;
+  string hostname = 2;
+  string ip = 3;
+}
+message SetStaticDnsResponse {
+  CommandStatus status = 1;
+  string message = 2;
+}
+message GetStaticDnsRequest {}
+message GetStaticDnsResponse {
+  CommandStatus status = 1;
+  string message = 2;
+}
+
 service RedChannel {
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
@@ -171,6 +192,9 @@ service RedChannel {
 
   rpc GenerateSkimmerPayload(GenerateSkimmerPayloadRequest)
       returns (GenerateSkimmerPayloadResponse);
+
+  rpc SetStaticDns(SetStaticDnsRequest) returns (SetStaticDnsResponse);
+  rpc GetStaticDns(GetStaticDnsRequest) returns (GetStaticDnsResponse);
 
   rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
   rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);

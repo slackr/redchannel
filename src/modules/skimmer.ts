@@ -16,62 +16,6 @@ export default class SkimmerModule implements Module {
     constructor(protected config: RedChannelConfig, log?: Logger) {
         this.payload = "";
         this.log = log ?? new Logger();
-
-        // this.defineCommands({
-        //     generate: {
-        //         arguments: [],
-        //         description: "generate skimmer payload with the specified url and target classes and ids",
-        //         execute: this.run,
-        //     },
-        //     payload: {
-        //         arguments: [],
-        //         description: "get the current generated payload",
-        //         execute: () => {
-        //             return { message: this.payload };
-        //         },
-        //     },
-        //     "set url": {
-        //         arguments: ["<url>"],
-        //         description: "set the external skimmer c2 url (http://skimmer.url)",
-        //         validateRegex: Constants.VALID_URL_REGEX,
-        //         execute: (params: string) => {
-        //             this.config.skimmer.url = params;
-        //         },
-        //     },
-        //     "set obfuscate_payload": {
-        //         arguments: ["<1|0>"],
-        //         description: "enable or disable payload obfuscation",
-        //         execute: (params: string) => {
-        //             this.config.skimmer.obfuscate_payload = params !== "0" && params !== "false" ? true : false;
-        //         },
-        //     },
-        //     "set data_route": {
-        //         arguments: ["<route>"],
-        //         description: "set the skimmer url data route (/stats)",
-        //         validateRegex: Constants.VALID_ROUTE_REGEX,
-        //         execute: (params: string) => {
-        //             this.config.skimmer.data_route = params;
-        //         },
-        //     },
-        //     "set target_classes": {
-        //         arguments: ["<class 1,class 2,class 3>"],
-        //         description: "(optional) target classes with skimmer click handler, separated by comma",
-        //         validateRegex: Constants.VALID_CLASS_ID_REGEX,
-        //         execute: (params: string) => {
-        //             const classes = params.split(",");
-        //             this.config.skimmer.target_classes = [...new Set(classes)];
-        //         },
-        //     },
-        //     "set target_ids": {
-        //         arguments: ["<id 1,id 2,id 3>"],
-        //         description: "(optional) target ids with skimmer click handler, separated by comma",
-        //         validateRegex: Constants.VALID_CLASS_ID_REGEX,
-        //         execute: (params: string) => {
-        //             const ids = params.split(",");
-        //             this.config.skimmer.target_ids = [...new Set(ids)];
-        //         },
-        //     },
-        // });
     }
 
     execute(): void {

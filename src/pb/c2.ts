@@ -365,6 +365,54 @@ export interface KillAgentResponse {
     message: string;
 }
 /**
+ * @generated from protobuf message c2.SetStaticDnsRequest
+ */
+export interface SetStaticDnsRequest {
+    /**
+     * @generated from protobuf field: c2.StaticDnsAction action = 1;
+     */
+    action: StaticDnsAction;
+    /**
+     * @generated from protobuf field: string hostname = 2;
+     */
+    hostname: string;
+    /**
+     * @generated from protobuf field: string ip = 3;
+     */
+    ip: string;
+}
+/**
+ * @generated from protobuf message c2.SetStaticDnsResponse
+ */
+export interface SetStaticDnsResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
+}
+/**
+ * @generated from protobuf message c2.GetStaticDnsRequest
+ */
+export interface GetStaticDnsRequest {
+}
+/**
+ * @generated from protobuf message c2.GetStaticDnsResponse
+ */
+export interface GetStaticDnsResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
+}
+/**
  * @generated from protobuf enum c2.C2Command
  */
 export enum C2Command {
@@ -497,6 +545,27 @@ export enum LogLevel {
      * @generated from protobuf enum value: LOG_LEVEL_ERROR = 3;
      */
     ERROR = 3
+}
+/**
+ * @generated from protobuf enum c2.StaticDnsAction
+ */
+export enum StaticDnsAction {
+    /**
+     * @generated from protobuf enum value: STATIC_DNS_ACTION_UNSPECIFIED = 0;
+     */
+    UNSPECIFIED = 0,
+    /**
+     * @generated from protobuf enum value: STATIC_DNS_ACTION_ADD = 1;
+     */
+    ADD = 1,
+    /**
+     * @generated from protobuf enum value: STATIC_DNS_ACTION_DELETE = 2;
+     */
+    DELETE = 2,
+    /**
+     * @generated from protobuf enum value: STATIC_DNS_ACTION_MODIFY = 3;
+     */
+    MODIFY = 3
 }
 // @generated message type with reflection information, may provide speed optimized methods
 class Agent$Type extends MessageType<Agent> {
@@ -1918,6 +1987,204 @@ class KillAgentResponse$Type extends MessageType<KillAgentResponse> {
  * @generated MessageType for protobuf message c2.KillAgentResponse
  */
 export const KillAgentResponse = new KillAgentResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SetStaticDnsRequest$Type extends MessageType<SetStaticDnsRequest> {
+    constructor() {
+        super("c2.SetStaticDnsRequest", [
+            { no: 1, name: "action", kind: "enum", T: () => ["c2.StaticDnsAction", StaticDnsAction, "STATIC_DNS_ACTION_"] },
+            { no: 2, name: "hostname", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "ip", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<SetStaticDnsRequest>): SetStaticDnsRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.action = 0;
+        message.hostname = "";
+        message.ip = "";
+        if (value !== undefined)
+            reflectionMergePartial<SetStaticDnsRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SetStaticDnsRequest): SetStaticDnsRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.StaticDnsAction action */ 1:
+                    message.action = reader.int32();
+                    break;
+                case /* string hostname */ 2:
+                    message.hostname = reader.string();
+                    break;
+                case /* string ip */ 3:
+                    message.ip = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SetStaticDnsRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.StaticDnsAction action = 1; */
+        if (message.action !== 0)
+            writer.tag(1, WireType.Varint).int32(message.action);
+        /* string hostname = 2; */
+        if (message.hostname !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.hostname);
+        /* string ip = 3; */
+        if (message.ip !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.ip);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.SetStaticDnsRequest
+ */
+export const SetStaticDnsRequest = new SetStaticDnsRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SetStaticDnsResponse$Type extends MessageType<SetStaticDnsResponse> {
+    constructor() {
+        super("c2.SetStaticDnsResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<SetStaticDnsResponse>): SetStaticDnsResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<SetStaticDnsResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SetStaticDnsResponse): SetStaticDnsResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SetStaticDnsResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.SetStaticDnsResponse
+ */
+export const SetStaticDnsResponse = new SetStaticDnsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetStaticDnsRequest$Type extends MessageType<GetStaticDnsRequest> {
+    constructor() {
+        super("c2.GetStaticDnsRequest", []);
+    }
+    create(value?: PartialMessage<GetStaticDnsRequest>): GetStaticDnsRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<GetStaticDnsRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetStaticDnsRequest): GetStaticDnsRequest {
+        return target ?? this.create();
+    }
+    internalBinaryWrite(message: GetStaticDnsRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.GetStaticDnsRequest
+ */
+export const GetStaticDnsRequest = new GetStaticDnsRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetStaticDnsResponse$Type extends MessageType<GetStaticDnsResponse> {
+    constructor() {
+        super("c2.GetStaticDnsResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GetStaticDnsResponse>): GetStaticDnsResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<GetStaticDnsResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetStaticDnsResponse): GetStaticDnsResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetStaticDnsResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.GetStaticDnsResponse
+ */
+export const GetStaticDnsResponse = new GetStaticDnsResponse$Type();
 /**
  * @generated ServiceType for protobuf service c2.RedChannel
  */
@@ -1933,6 +2200,8 @@ export const RedChannel = new ServiceType("c2.RedChannel", [
     { name: "ForceFetch", options: {}, I: ForceFetchRequest, O: ForceFetchResponse },
     { name: "GenerateProxyPayload", options: {}, I: GenerateProxyPayloadRequest, O: GenerateProxyPayloadResponse },
     { name: "GenerateSkimmerPayload", options: {}, I: GenerateSkimmerPayloadRequest, O: GenerateSkimmerPayloadResponse },
+    { name: "SetStaticDns", options: {}, I: SetStaticDnsRequest, O: SetStaticDnsResponse },
+    { name: "GetStaticDns", options: {}, I: GetStaticDnsRequest, O: GetStaticDnsResponse },
     { name: "SetConfig", options: {}, I: SetConfigRequest, O: SetConfigResponse },
     { name: "GetConfig", options: {}, I: GetConfigRequest, O: GetConfigResponse },
     { name: "StreamLog", serverStreaming: true, options: {}, I: StreamLogRequest, O: StreamLogResponse }
