@@ -1,5 +1,5 @@
 import * as crypto from "crypto";
-import { RedChannelConfig } from "../pb/c2";
+import { RedChannelConfig } from "../pb/config";
 
 export const DefaultConfig: RedChannelConfig = {
     c2: {

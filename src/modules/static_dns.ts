@@ -1,5 +1,5 @@
 import Logger from "../lib/logger";
-import { RedChannelConfig } from "../pb/c2";
+import { RedChannelConfig } from "../pb/config";
 import { Constants } from "../utils";
 import { Module } from "./base";
 

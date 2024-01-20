@@ -2,6 +2,9 @@ import EventEmitter from "node:events";
 import { LogLevel } from "../pb/c2";
 
 export type OnLogEntryEventHandler = (...msg) => void;
+export enum LogEvent {
+    EVENT_LOG = "log",
+}
 
 export default class Logger {
     level: LogLevel = LogLevel.INFO;
@@ -16,7 +19,7 @@ export default class Logger {
         if (level === LogLevel.INFO) console.log(...msg);
         if (level === LogLevel.WARN) console.warn(...msg);
         if (level === LogLevel.ERROR) console.error(...msg);
-        this.eventEmitter.emit("log", level, ...msg);
+        this.eventEmitter.emit(LogEvent.EVENT_LOG, level, ...msg);
     }
 
     debug(...msg) {

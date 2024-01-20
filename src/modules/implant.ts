@@ -1,11 +1,13 @@
 import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
+import EventEmitter from "node:events";
+
 import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 import Logger from "../lib/logger";
 import { Constants, emsg } from "../utils";
 import { Module } from "./base";
-import { RedChannelConfig } from "../pb/c2";
+import { RedChannelConfig } from "../pb/config";
 
 const AGENT_PATH = `${process.cwd()}/agent`;
 const AGENT_CONFIG_PATH = `${AGENT_PATH}/config/config.go`;
@@ -19,10 +21,17 @@ export type BuildParameters = {
     debug: boolean;
 };
 
+export enum BuildEvent {
+    BUILD_STDOUT = "buildStdOut",
+    BUILD_STDERR = "buildStdErr",
+    BUILD_END = "buildEnd",
+}
+
 export default class ImplantModule implements Module {
     outputFile: string;
     log: Logger;
     buildParameters: BuildParameters;
+    eventEmitter: EventEmitter;
 
     constructor(protected config: RedChannelConfig, protected c2HashedPassword: string, log?: Logger) {
         this.log = log ?? new Logger();
@@ -32,6 +41,7 @@ export default class ImplantModule implements Module {
             arch: "amd64",
             debug: false,
         };
+        this.eventEmitter = new EventEmitter({});
 
         // this.defineCommands({
         //     build: {
@@ -175,7 +185,15 @@ export default class ImplantModule implements Module {
                 windowsVerbatimArguments: true,
             });
             childProcess.on("close", (code) => {
-                this.log.info(`agent build for os: ${targetOs}, arch: ${targetArch}, debug: ${debug ? "true" : "false"}, return code: ${code}`);
+                const message = `agent build for os: ${targetOs}, arch: ${targetArch}, debug: ${debug ? "true" : "false"}, return code: ${code}`;
+                if (code !== 0) {
+                    this.log.error(message);
+                    this.eventEmitter.emit(BuildEvent.BUILD_STDERR, message);
+                } else {
+                    this.log.info(message);
+                    this.eventEmitter.emit(BuildEvent.BUILD_STDOUT, message);
+                }
+                this.eventEmitter.emit(BuildEvent.BUILD_END, code);
             });
         } catch (ex) {
             throw new Error(`failed to launch build command: '${spawnBinary} ${commandArguments.join(" ")}', err: ${emsg(ex)}`);
@@ -185,16 +203,62 @@ export default class ImplantModule implements Module {
             const logStream = fs.createWriteStream(`${AGENT_BUILD_LOG_PATH}`, { flags: "w" });
             childProcess.stdout.pipe(logStream);
             childProcess.stderr.pipe(logStream);
+
+            // data is chunked
+            childProcess.stdout.on("data", (chunk) => {
+                this.eventEmitter.emit(BuildEvent.BUILD_STDOUT, chunk);
+            });
+            childProcess.stderr.on("data", (chunk) => {
+                this.eventEmitter.emit(BuildEvent.BUILD_STDERR, chunk);
+            });
+            /**
+             * if we want to send one line at a time we can use this, but this is too noisy 
+             * 
+            // send messages to any event listeners (build implant stream rpc)
+            let stdOutLine = "";
+            childProcess.stdout.on("data", (chunk) => {
+                stdOutLine += chunk || "";
+                const lines = stdOutLine.split("\n");
+                while (lines.length > 1) {
+                    const line = lines.shift();
+                    this.eventEmitter.emit(BuildEvent.BUILD_STDOUT, line);
+                }
+                stdOutLine = lines.shift() || "";
+                this.eventEmitter.emit(BuildEvent.BUILD_STDOUT, stdOutLine);
+            });
+            childProcess.stdout.on("end", () => {
+                this.eventEmitter.emit(BuildEvent.BUILD_STDOUT, stdOutLine);
+            });
+
+            let stdErrLine = "";
+            childProcess.stderr.on("data", (chunk) => {
+                stdErrLine += chunk || "";
+                const lines = stdErrLine.split("\n");
+                while (lines.length > 1) {
+                    const line = lines.shift();
+                    this.eventEmitter.emit(BuildEvent.BUILD_STDERR, line);
+                }
+                stdErrLine = lines.shift() || "";
+                this.eventEmitter.emit(BuildEvent.BUILD_STDERR, stdErrLine);
+            });
+            childProcess.stderr.on("end", () => {
+                this.eventEmitter.emit(BuildEvent.BUILD_STDOUT, stdErrLine);
+            });
+             */
         } catch (ex) {
-            throw new Error(`failed to write log file: ${emsg(ex)}`);
+            const errorMessage = `failed to write log file: ${emsg(ex)}`;
+            this.eventEmitter.emit(BuildEvent.BUILD_STDERR, errorMessage);
+            throw new Error(errorMessage);
         }
 
         let binaryUrl = "";
         if (this.config.c2?.webIp && this.config.c2?.binaryRoute) binaryUrl = this.config.c2.webUrl + this.config.c2.binaryRoute;
 
-        this.log.info(
-            `building ${debug ? "(debug)" : ""} agent for os: ${targetOs}, arch: ${targetArch}, binary will be available here: ${outputFile} ${binaryUrl.length > 0 ? `and ${binaryUrl}` : ""}`
-        );
+        const buildMessage = `building ${debug ? "(debug)" : ""} agent for os: ${targetOs}, arch: ${targetArch}, binary will be available here: ${outputFile} ${
+            binaryUrl.length > 0 ? `and ${binaryUrl}` : ""
+        }`;
+        this.log.info(buildMessage);
+        this.eventEmitter.emit(BuildEvent.BUILD_STDOUT, buildMessage);
     }
 
     getLog(): string {

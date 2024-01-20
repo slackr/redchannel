@@ -5,7 +5,7 @@ import Logger from "../lib/logger";
 
 import { emsg } from "../utils";
 import { Module } from "./base";
-import { RedChannelConfig } from "../pb/c2";
+import { RedChannelConfig } from "../pb/config";
 
 const SKIMMER_PAYLOAD_TEMPLATE_PATH = "payloads/skimmer.js";
 

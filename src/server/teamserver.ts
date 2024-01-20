@@ -9,6 +9,7 @@ import {
     AgentCommandResponse,
     BuildImplantRequest,
     BuildImplantResponse,
+    BuildImplantStreamResponse,
     CommandStatus,
     ForceFetchRequest,
     ForceFetchResponse,
@@ -33,6 +34,7 @@ import {
 } from "../pb/c2";
 import { emsg } from "../utils";
 import { AgentCommand } from "../pb/implant";
+import { BuildEvent } from "../modules/implant";
 
 export interface TeamServerCerts {
     ca: Buffer | null;
@@ -66,6 +68,7 @@ export default class TeamServer implements ServerBase {
             killAgent: this.killAgent.bind(this),
 
             buildImplant: this.buildImplant.bind(this),
+            buildImplantStream: this.buildImplantStream.bind(this),
             getBuildLog: this.getBuildLog.bind(this),
 
             getConfig: this.getConfig.bind(this),
@@ -200,17 +203,10 @@ export default class TeamServer implements ServerBase {
         callback(null, responseProto);
     }
 
-    buildImplant(call: grpc.ServerUnaryCall<BuildImplantRequest, BuildImplantResponse>, callback: grpc.sendUnaryData<BuildImplantResponse>): void {
-        if (!this.checkAuth<BuildImplantRequest, BuildImplantResponse>(call)) throw new Error("Authentication failed");
-
-        call.on("error", (error) => {
-            this.log.error(`buildImplant() error: ${error}`);
-            throw new Error("Server error");
-        });
-
+    buildExecute(buildRequest: BuildImplantRequest): BuildImplantResponse {
         const implantModule = this.redchannel.modules.implant;
 
-        implantModule.buildParameters = { ...call.request };
+        implantModule.buildParameters = { ...buildRequest };
 
         const responseProto = BuildImplantResponse.create({
             status: CommandStatus.SUCCESS,
@@ -222,7 +218,69 @@ export default class TeamServer implements ServerBase {
             responseProto.status = CommandStatus.ERROR;
             responseProto.message = emsg(e);
         }
+        return responseProto;
+    }
+
+    buildImplant(call: grpc.ServerUnaryCall<BuildImplantRequest, BuildImplantResponse>, callback: grpc.sendUnaryData<BuildImplantResponse>): void {
+        if (!this.checkAuth<BuildImplantRequest, BuildImplantResponse>(call)) throw new Error("Authentication failed");
+
+        call.on("error", (error) => {
+            this.log.error(`buildImplant() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        const responseProto = this.buildExecute(call.request);
         callback(null, responseProto);
+    }
+
+    buildImplantStream(call: grpc.ServerWritableStream<BuildImplantRequest, BuildImplantStreamResponse>): void {
+        if (!this.checkAuth<BuildImplantRequest, BuildImplantStreamResponse>(call)) throw new Error("Authentication failed");
+
+        const stdOutCallback = (entry: string) => {
+            call.write(
+                BuildImplantStreamResponse.create({
+                    level: LogLevel.INFO,
+                    message: entry,
+                })
+            );
+        };
+        const stdErrCallback = (entry: string) => {
+            call.write(
+                BuildImplantStreamResponse.create({
+                    level: LogLevel.ERROR,
+                    message: entry,
+                })
+            );
+        };
+        const buildEndCallback = () => {
+            call.end();
+        };
+
+        this.redchannel.modules.implant.eventEmitter.addListener(BuildEvent.BUILD_STDOUT, stdOutCallback);
+        this.redchannel.modules.implant.eventEmitter.addListener(BuildEvent.BUILD_STDERR, stdErrCallback);
+        this.redchannel.modules.implant.eventEmitter.addListener(BuildEvent.BUILD_END, buildEndCallback);
+
+        this.log.info(`streaming implant build logs to ${call.metadata.get("operator")}`);
+
+        this.buildExecute(call.request);
+
+        call.on("error", (error) => {
+            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDOUT, stdOutCallback);
+            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDERR, stdErrCallback);
+            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_END, buildEndCallback);
+            this.log.error(`buildImplantStream() error: ${error}`);
+            throw new Error("Server error");
+        });
+        call.on("close", () => {
+            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDOUT, stdOutCallback);
+            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDERR, stdErrCallback);
+            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_END, buildEndCallback);
+        });
+        call.on("finish", () => {
+            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDOUT, stdOutCallback);
+            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDERR, stdErrCallback);
+            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_END, buildEndCallback);
+        });
     }
 
     getBuildLog(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetBuildLogResponse>): void {

@@ -13,12 +13,13 @@ import { ForceFetchResponse } from "./c2";
 import { ForceFetchRequest } from "./c2";
 import { ProxyLoopResponse } from "./c2";
 import { ProxyLoopRequest } from "./c2";
-import { KillAgentResponse } from "./c2";
-import { KillAgentRequest } from "./c2";
 import { GetBuildLogResponse } from "./c2";
 import { GetBuildLogRequest } from "./c2";
+import { BuildImplantStreamResponse } from "./c2";
 import { BuildImplantResponse } from "./c2";
 import { BuildImplantRequest } from "./c2";
+import { KillAgentResponse } from "./c2";
+import { KillAgentRequest } from "./c2";
 import { AgentCommandResponse } from "./c2";
 import { AgentCommandRequest } from "./c2";
 import { KeyxResponse } from "./c2";
@@ -43,17 +44,21 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
      */
     agentCommand: grpc.handleUnaryCall<AgentCommandRequest, AgentCommandResponse>;
     /**
+     * @generated from protobuf rpc: KillAgent(c2.KillAgentRequest) returns (c2.KillAgentResponse);
+     */
+    killAgent: grpc.handleUnaryCall<KillAgentRequest, KillAgentResponse>;
+    /**
      * @generated from protobuf rpc: BuildImplant(c2.BuildImplantRequest) returns (c2.BuildImplantResponse);
      */
     buildImplant: grpc.handleUnaryCall<BuildImplantRequest, BuildImplantResponse>;
     /**
+     * @generated from protobuf rpc: BuildImplantStream(c2.BuildImplantRequest) returns (stream c2.BuildImplantStreamResponse);
+     */
+    buildImplantStream: grpc.handleServerStreamingCall<BuildImplantRequest, BuildImplantStreamResponse>;
+    /**
      * @generated from protobuf rpc: GetBuildLog(c2.GetBuildLogRequest) returns (c2.GetBuildLogResponse);
      */
     getBuildLog: grpc.handleUnaryCall<GetBuildLogRequest, GetBuildLogResponse>;
-    /**
-     * @generated from protobuf rpc: KillAgent(c2.KillAgentRequest) returns (c2.KillAgentResponse);
-     */
-    killAgent: grpc.handleUnaryCall<KillAgentRequest, KillAgentResponse>;
     /**
      * @generated from protobuf rpc: ProxyLoop(c2.ProxyLoopRequest) returns (c2.ProxyLoopResponse);
      */
@@ -121,6 +126,16 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         responseSerialize: value => Buffer.from(AgentCommandResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(AgentCommandRequest.toBinary(value))
     },
+    killAgent: {
+        path: "/c2.RedChannel/KillAgent",
+        originalName: "KillAgent",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => KillAgentResponse.fromBinary(bytes),
+        requestDeserialize: bytes => KillAgentRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(KillAgentResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(KillAgentRequest.toBinary(value))
+    },
     buildImplant: {
         path: "/c2.RedChannel/BuildImplant",
         originalName: "BuildImplant",
@@ -129,6 +144,16 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         responseDeserialize: bytes => BuildImplantResponse.fromBinary(bytes),
         requestDeserialize: bytes => BuildImplantRequest.fromBinary(bytes),
         responseSerialize: value => Buffer.from(BuildImplantResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(BuildImplantRequest.toBinary(value))
+    },
+    buildImplantStream: {
+        path: "/c2.RedChannel/BuildImplantStream",
+        originalName: "BuildImplantStream",
+        requestStream: false,
+        responseStream: true,
+        responseDeserialize: bytes => BuildImplantStreamResponse.fromBinary(bytes),
+        requestDeserialize: bytes => BuildImplantRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(BuildImplantStreamResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(BuildImplantRequest.toBinary(value))
     },
     getBuildLog: {
@@ -140,16 +165,6 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         requestDeserialize: bytes => GetBuildLogRequest.fromBinary(bytes),
         responseSerialize: value => Buffer.from(GetBuildLogResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(GetBuildLogRequest.toBinary(value))
-    },
-    killAgent: {
-        path: "/c2.RedChannel/KillAgent",
-        originalName: "KillAgent",
-        requestStream: false,
-        responseStream: false,
-        responseDeserialize: bytes => KillAgentResponse.fromBinary(bytes),
-        requestDeserialize: bytes => KillAgentRequest.fromBinary(bytes),
-        responseSerialize: value => Buffer.from(KillAgentResponse.toBinary(value)),
-        requestSerialize: value => Buffer.from(KillAgentRequest.toBinary(value))
     },
     proxyLoop: {
         path: "/c2.RedChannel/ProxyLoop",

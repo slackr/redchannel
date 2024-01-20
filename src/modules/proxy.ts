@@ -5,7 +5,7 @@ import { Constants, emsg } from "../utils";
 import { Module } from "./base";
 import Logger from "../lib/logger";
 import { C2AnswerType, C2MessageRequest, C2MessageResponse } from "../lib/redchannel";
-import { RedChannelConfig } from "../pb/c2";
+import { RedChannelConfig } from "../pb/config";
 
 const PROXY_PAYLOAD_PATH = "payloads/proxy.php";
 
