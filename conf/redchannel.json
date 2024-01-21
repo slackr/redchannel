@@ -36,7 +36,7 @@
     "implant": {
         "debug": true,
         "interval": 5000,
-        "resolver": "127.0.0.1:53",
+        "resolver": "127.0.0.1:5353",
         "proxy_url": "http://127.0.0.1:8888/proxy.php",
         "proxy_enabled": false,
         "proxy_key": "redchannel",
