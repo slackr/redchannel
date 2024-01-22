@@ -184,12 +184,21 @@ message AuthenticateResponse {
   string token = 3;
 }
 
+message OperatorChatRequest { string message = 1; }
+message OperatorChatResponse {
+  CommandStatus status = 1;
+  string message = 2;
+}
+
 service RedChannel {
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
   rpc AgentCommand(AgentCommandRequest) returns (AgentCommandResponse);
   rpc KillAgent(KillAgentRequest) returns (KillAgentResponse);
+
+  rpc OperatorChat(stream OperatorChatRequest)
+      returns (stream OperatorChatResponse);
 
   rpc BuildImplant(BuildImplantRequest) returns (BuildImplantResponse);
   rpc BuildImplantStream(BuildImplantRequest)

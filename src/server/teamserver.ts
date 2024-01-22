@@ -2,6 +2,8 @@ import Logger from "../lib/logger";
 import RedChannel from "../lib/redchannel";
 import { OnSuccessCallback, ServerBase } from "./base";
 import * as grpc from "@grpc/grpc-js";
+import { EventEmitter } from "node:events";
+
 import jwt, { JwtPayload } from "jsonwebtoken";
 
 import { redChannelDefinition, IRedChannel } from "../pb/c2.grpc-server";
@@ -33,6 +35,8 @@ import {
     KillAgentRequest,
     KillAgentResponse,
     LogLevel,
+    OperatorChatRequest,
+    OperatorChatResponse,
     ProxyLoopRequest,
     ProxyLoopResponse,
     SetConfigRequest,
@@ -43,7 +47,7 @@ import {
     StreamLogRequest,
     StreamLogResponse,
 } from "../pb/c2";
-import { emsg } from "../utils";
+import { Config, emsg } from "../utils";
 import { AgentCommand } from "../pb/implant";
 import { BuildEvent } from "../modules/implant";
 
@@ -53,11 +57,20 @@ export interface TeamServerCerts {
     serverKey: Buffer;
 }
 
+export enum ChatEvent {
+    MESSAGE = "message",
+    CONNECT = "connect",
+    DISCONNECT = "disconnect",
+}
+
+export type CallServerTypes<I, O> = grpc.ServerUnaryCall<I, O> | grpc.ServerWritableStream<I, O> | grpc.ServerDuplexStream<I, O>;
+
 export default class TeamServer implements ServerBase {
     log: Logger;
     server: grpc.Server;
     service: IRedChannel;
     credentials: grpc.ServerCredentials;
+    chatEmitter: EventEmitter;
 
     constructor(protected redchannel: RedChannel, certs: TeamServerCerts, public port: number, public bindIp: string) {
         this.log = this.redchannel.log ?? new Logger();
@@ -72,8 +85,12 @@ export default class TeamServer implements ServerBase {
             ],
             false
         );
+        this.chatEmitter = new EventEmitter({});
+
         this.service = {
             authenticate: this.authenticate.bind(this),
+
+            operatorChat: this.operatorChat.bind(this),
 
             getAgents: this.getAgents.bind(this),
             keyx: this.keyx.bind(this),
@@ -112,7 +129,7 @@ export default class TeamServer implements ServerBase {
         });
     }
 
-    getCallSourceIps<I, O>(call: grpc.ServerUnaryCall<I, O> | grpc.ServerWritableStream<I, O>): string[] {
+    getCallSourceIps<I, O>(call: CallServerTypes<I, O>): string[] {
         const headersMap = call.metadata.getMap();
         const sourceIps: string[] = [call.getPeer()];
         if (headersMap["x-forwarded-for"]) sourceIps.push(headersMap["x-forwarded-for"] as string);
@@ -120,7 +137,7 @@ export default class TeamServer implements ServerBase {
         return sourceIps;
     }
 
-    checkAuth<I, O>(call: grpc.ServerUnaryCall<I, O> | grpc.ServerWritableStream<I, O>): boolean {
+    checkAuth<I, O>(call: CallServerTypes<I, O>): boolean {
         const headersMap = call.metadata.getMap();
         const sourceIps = this.getCallSourceIps<I, O>(call);
 
@@ -149,7 +166,7 @@ export default class TeamServer implements ServerBase {
 
         const operator = authenticated["operator"];
         if (!authenticated || operator === undefined) {
-            this.log.error(`auth error from client ${sourceIps}, token verified but is invalid`);
+            this.log.error(`auth error from client ${sourceIps}, token verified but has invalid data`);
             return false;
         }
 
@@ -179,7 +196,7 @@ export default class TeamServer implements ServerBase {
         }
 
         const token = jwt.sign({ operator: operator }, this.redchannel.hashedPassword, {
-            expiresIn: "1h",
+            expiresIn: Config.AUTH_TOKEN_VALIDITY_PERIOD,
             notBefore: 0,
             algorithm: "HS256",
         });
@@ -189,6 +206,60 @@ export default class TeamServer implements ServerBase {
 
         this.log.info(`operator ${operator} authenticate from: ${sourceIps}`);
         callback(null, responseProto);
+    }
+
+    operatorChat(call: grpc.ServerDuplexStream<OperatorChatRequest, OperatorChatResponse>): void {
+        if (!this.checkAuth<OperatorChatRequest, OperatorChatResponse>(call)) {
+            call.write(OperatorChatResponse.create({ status: CommandStatus.ERROR, message: "Authentication failed." }));
+            call.end();
+            return;
+        }
+
+        const incomingMessage = (message) => {
+            call.write(
+                OperatorChatResponse.create({
+                    status: CommandStatus.SUCCESS,
+                    message: message,
+                })
+            );
+        };
+        this.chatEmitter.addListener(ChatEvent.MESSAGE, incomingMessage);
+
+        const operator = call.metadata.get("operator");
+        const message = `* ${operator} connected to chat.`;
+        this.log.info(message);
+        this.chatEmitter.emit(ChatEvent.MESSAGE, message);
+
+        call.on("data", (data) => {
+            if (!data.message?.length) {
+                call.write(
+                    OperatorChatResponse.create({
+                        status: CommandStatus.ERROR,
+                        message: "say something...",
+                    })
+                );
+                return;
+            }
+
+            const chatProto = OperatorChatRequest.fromJson(data);
+            this.chatEmitter.emit(ChatEvent.MESSAGE, `<${operator}> ${chatProto.message}`);
+        });
+        call.on("error", (error) => {
+            this.chatEmitter.removeListener(ChatEvent.MESSAGE, incomingMessage);
+            this.log.error(`operatorChat() error: ${error.message}`);
+        });
+
+        const onEnd = () => {
+            this.chatEmitter.removeListener(ChatEvent.MESSAGE, incomingMessage);
+            if (operator) {
+                const message = `* ${operator} disconnected from chat`;
+                this.log.info(message);
+                this.chatEmitter.emit(ChatEvent.MESSAGE, message);
+            }
+        };
+        call.on("close", onEnd);
+        call.on("finish", onEnd);
+        call.on("end", onEnd);
     }
 
     getAgents(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetAgentsResponse>): void {
@@ -327,23 +398,19 @@ export default class TeamServer implements ServerBase {
 
         this.buildExecute(call.request);
 
-        call.on("error", (error) => {
+        const removeListeners = () => {
             this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDOUT, stdOutCallback);
             this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDERR, stdErrCallback);
             this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_END, buildEndCallback);
+        };
+        call.on("error", (error) => {
+            removeListeners();
+
             this.log.error(`buildImplantStream() error: ${error}`);
             throw new Error("Server error");
         });
-        call.on("close", () => {
-            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDOUT, stdOutCallback);
-            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDERR, stdErrCallback);
-            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_END, buildEndCallback);
-        });
-        call.on("finish", () => {
-            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDOUT, stdOutCallback);
-            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_STDERR, stdErrCallback);
-            this.redchannel.modules.implant.eventEmitter.removeListener(BuildEvent.BUILD_END, buildEndCallback);
-        });
+        call.on("close", removeListeners);
+        call.on("finish", removeListeners);
     }
 
     getBuildLog(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetBuildLogResponse>): void {

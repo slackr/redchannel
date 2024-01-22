@@ -24,6 +24,8 @@ import { GetBuildLogRequest } from "./c2";
 import { BuildImplantStreamResponse } from "./c2";
 import { BuildImplantResponse } from "./c2";
 import { BuildImplantRequest } from "./c2";
+import { OperatorChatResponse } from "./c2";
+import { OperatorChatRequest } from "./c2";
 import { KillAgentResponse } from "./c2";
 import { KillAgentRequest } from "./c2";
 import { AgentCommandResponse } from "./c2";
@@ -59,6 +61,10 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
      * @generated from protobuf rpc: KillAgent(c2.KillAgentRequest) returns (c2.KillAgentResponse);
      */
     killAgent: grpc.handleUnaryCall<KillAgentRequest, KillAgentResponse>;
+    /**
+     * @generated from protobuf rpc: OperatorChat(stream c2.OperatorChatRequest) returns (stream c2.OperatorChatResponse);
+     */
+    operatorChat: grpc.handleBidiStreamingCall<OperatorChatRequest, OperatorChatResponse>;
     /**
      * @generated from protobuf rpc: BuildImplant(c2.BuildImplantRequest) returns (c2.BuildImplantResponse);
      */
@@ -169,6 +175,16 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         requestDeserialize: bytes => KillAgentRequest.fromBinary(bytes),
         responseSerialize: value => Buffer.from(KillAgentResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(KillAgentRequest.toBinary(value))
+    },
+    operatorChat: {
+        path: "/c2.RedChannel/OperatorChat",
+        originalName: "OperatorChat",
+        requestStream: true,
+        responseStream: true,
+        responseDeserialize: bytes => OperatorChatResponse.fromBinary(bytes),
+        requestDeserialize: bytes => OperatorChatRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(OperatorChatResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(OperatorChatRequest.toBinary(value))
     },
     buildImplant: {
         path: "/c2.RedChannel/BuildImplant",

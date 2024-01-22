@@ -443,6 +443,28 @@ export interface AuthenticateResponse {
     token: string;
 }
 /**
+ * @generated from protobuf message c2.OperatorChatRequest
+ */
+export interface OperatorChatRequest {
+    /**
+     * @generated from protobuf field: string message = 1;
+     */
+    message: string;
+}
+/**
+ * @generated from protobuf message c2.OperatorChatResponse
+ */
+export interface OperatorChatResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
+}
+/**
  * @generated from protobuf enum c2.C2Command
  */
 export enum C2Command {
@@ -2333,6 +2355,108 @@ class AuthenticateResponse$Type extends MessageType<AuthenticateResponse> {
  * @generated MessageType for protobuf message c2.AuthenticateResponse
  */
 export const AuthenticateResponse = new AuthenticateResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class OperatorChatRequest$Type extends MessageType<OperatorChatRequest> {
+    constructor() {
+        super("c2.OperatorChatRequest", [
+            { no: 1, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<OperatorChatRequest>): OperatorChatRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<OperatorChatRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: OperatorChatRequest): OperatorChatRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string message */ 1:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: OperatorChatRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string message = 1; */
+        if (message.message !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.OperatorChatRequest
+ */
+export const OperatorChatRequest = new OperatorChatRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class OperatorChatResponse$Type extends MessageType<OperatorChatResponse> {
+    constructor() {
+        super("c2.OperatorChatResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<OperatorChatResponse>): OperatorChatResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.message = "";
+        if (value !== undefined)
+            reflectionMergePartial<OperatorChatResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: OperatorChatResponse): OperatorChatResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: OperatorChatResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.OperatorChatResponse
+ */
+export const OperatorChatResponse = new OperatorChatResponse$Type();
 /**
  * @generated ServiceType for protobuf service c2.RedChannel
  */
@@ -2342,6 +2466,7 @@ export const RedChannel = new ServiceType("c2.RedChannel", [
     { name: "Keyx", options: {}, I: KeyxRequest, O: KeyxResponse },
     { name: "AgentCommand", options: {}, I: AgentCommandRequest, O: AgentCommandResponse },
     { name: "KillAgent", options: {}, I: KillAgentRequest, O: KillAgentResponse },
+    { name: "OperatorChat", serverStreaming: true, clientStreaming: true, options: {}, I: OperatorChatRequest, O: OperatorChatResponse },
     { name: "BuildImplant", options: {}, I: BuildImplantRequest, O: BuildImplantResponse },
     { name: "BuildImplantStream", serverStreaming: true, options: {}, I: BuildImplantRequest, O: BuildImplantStreamResponse },
     { name: "GetBuildLog", options: {}, I: GetBuildLogRequest, O: GetBuildLogResponse },

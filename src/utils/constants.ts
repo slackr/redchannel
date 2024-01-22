@@ -14,6 +14,7 @@ export const Constants = {
 };
 
 export const Config = {
+    AUTH_TOKEN_VALIDITY_PERIOD: "8h",
     C2_ANSWER_TTL_SECS: 300,
     DEFAULT_CONFIG_FILE: "conf/redchannel.json",
     DATA_PAD_HEXBYTE: "ff",
