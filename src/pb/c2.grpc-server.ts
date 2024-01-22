@@ -32,11 +32,17 @@ import { KeyxResponse } from "./c2";
 import { KeyxRequest } from "./c2";
 import { GetAgentsResponse } from "./c2";
 import { GetAgentsRequest } from "./c2";
+import { AuthenticateResponse } from "./c2";
+import { AuthenticateRequest } from "./c2";
 import type * as grpc from "@grpc/grpc-js";
 /**
  * @generated from protobuf service c2.RedChannel
  */
 export interface IRedChannel extends grpc.UntypedServiceImplementation {
+    /**
+     * @generated from protobuf rpc: Authenticate(c2.AuthenticateRequest) returns (c2.AuthenticateResponse);
+     */
+    authenticate: grpc.handleUnaryCall<AuthenticateRequest, AuthenticateResponse>;
     /**
      * @generated from protobuf rpc: GetAgents(c2.GetAgentsRequest) returns (c2.GetAgentsResponse);
      */
@@ -114,6 +120,16 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
  * ```
  */
 export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
+    authenticate: {
+        path: "/c2.RedChannel/Authenticate",
+        originalName: "Authenticate",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => AuthenticateResponse.fromBinary(bytes),
+        requestDeserialize: bytes => AuthenticateRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(AuthenticateResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(AuthenticateRequest.toBinary(value))
+    },
     getAgents: {
         path: "/c2.RedChannel/GetAgents",
         originalName: "GetAgents",

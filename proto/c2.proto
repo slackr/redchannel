@@ -174,7 +174,18 @@ message GetStaticDnsResponse {
   string message = 2;
 }
 
+message AuthenticateRequest {
+  string operator = 1;
+  string password = 2;
+}
+message AuthenticateResponse {
+  CommandStatus status = 1;
+  string message = 2;
+  string token = 3;
+}
+
 service RedChannel {
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
   rpc AgentCommand(AgentCommandRequest) returns (AgentCommandResponse);

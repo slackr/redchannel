@@ -413,6 +413,36 @@ export interface GetStaticDnsResponse {
     message: string;
 }
 /**
+ * @generated from protobuf message c2.AuthenticateRequest
+ */
+export interface AuthenticateRequest {
+    /**
+     * @generated from protobuf field: string operator = 1;
+     */
+    operator: string;
+    /**
+     * @generated from protobuf field: string password = 2;
+     */
+    password: string;
+}
+/**
+ * @generated from protobuf message c2.AuthenticateResponse
+ */
+export interface AuthenticateResponse {
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
+    /**
+     * @generated from protobuf field: string token = 3;
+     */
+    token: string;
+}
+/**
  * @generated from protobuf enum c2.C2Command
  */
 export enum C2Command {
@@ -2185,10 +2215,129 @@ class GetStaticDnsResponse$Type extends MessageType<GetStaticDnsResponse> {
  * @generated MessageType for protobuf message c2.GetStaticDnsResponse
  */
 export const GetStaticDnsResponse = new GetStaticDnsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AuthenticateRequest$Type extends MessageType<AuthenticateRequest> {
+    constructor() {
+        super("c2.AuthenticateRequest", [
+            { no: 1, name: "operator", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "password", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AuthenticateRequest>): AuthenticateRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.operator = "";
+        message.password = "";
+        if (value !== undefined)
+            reflectionMergePartial<AuthenticateRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AuthenticateRequest): AuthenticateRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string operator */ 1:
+                    message.operator = reader.string();
+                    break;
+                case /* string password */ 2:
+                    message.password = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AuthenticateRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string operator = 1; */
+        if (message.operator !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.operator);
+        /* string password = 2; */
+        if (message.password !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.password);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.AuthenticateRequest
+ */
+export const AuthenticateRequest = new AuthenticateRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AuthenticateResponse$Type extends MessageType<AuthenticateResponse> {
+    constructor() {
+        super("c2.AuthenticateResponse", [
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "token", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AuthenticateResponse>): AuthenticateResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
+        message.message = "";
+        message.token = "";
+        if (value !== undefined)
+            reflectionMergePartial<AuthenticateResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AuthenticateResponse): AuthenticateResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                case /* string token */ 3:
+                    message.token = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AuthenticateResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        /* string token = 3; */
+        if (message.token !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.token);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message c2.AuthenticateResponse
+ */
+export const AuthenticateResponse = new AuthenticateResponse$Type();
 /**
  * @generated ServiceType for protobuf service c2.RedChannel
  */
 export const RedChannel = new ServiceType("c2.RedChannel", [
+    { name: "Authenticate", options: {}, I: AuthenticateRequest, O: AuthenticateResponse },
     { name: "GetAgents", options: {}, I: GetAgentsRequest, O: GetAgentsResponse },
     { name: "Keyx", options: {}, I: KeyxRequest, O: KeyxResponse },
     { name: "AgentCommand", options: {}, I: AgentCommandRequest, O: AgentCommandResponse },

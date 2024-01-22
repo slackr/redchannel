@@ -34,15 +34,21 @@ import type { AgentCommandResponse } from "./c2";
 import type { AgentCommandRequest } from "./c2";
 import type { KeyxResponse } from "./c2";
 import type { KeyxRequest } from "./c2";
-import { stackIntercept } from "@protobuf-ts/runtime-rpc";
 import type { GetAgentsResponse } from "./c2";
 import type { GetAgentsRequest } from "./c2";
+import { stackIntercept } from "@protobuf-ts/runtime-rpc";
+import type { AuthenticateResponse } from "./c2";
+import type { AuthenticateRequest } from "./c2";
 import type { UnaryCall } from "@protobuf-ts/runtime-rpc";
 import type { RpcOptions } from "@protobuf-ts/runtime-rpc";
 /**
  * @generated from protobuf service c2.RedChannel
  */
 export interface IRedChannelClient {
+    /**
+     * @generated from protobuf rpc: Authenticate(c2.AuthenticateRequest) returns (c2.AuthenticateResponse);
+     */
+    authenticate(input: AuthenticateRequest, options?: RpcOptions): UnaryCall<AuthenticateRequest, AuthenticateResponse>;
     /**
      * @generated from protobuf rpc: GetAgents(c2.GetAgentsRequest) returns (c2.GetAgentsResponse);
      */
@@ -118,115 +124,122 @@ export class RedChannelClient implements IRedChannelClient, ServiceInfo {
     constructor(private readonly _transport: RpcTransport) {
     }
     /**
+     * @generated from protobuf rpc: Authenticate(c2.AuthenticateRequest) returns (c2.AuthenticateResponse);
+     */
+    authenticate(input: AuthenticateRequest, options?: RpcOptions): UnaryCall<AuthenticateRequest, AuthenticateResponse> {
+        const method = this.methods[0], opt = this._transport.mergeOptions(options);
+        return stackIntercept<AuthenticateRequest, AuthenticateResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
      * @generated from protobuf rpc: GetAgents(c2.GetAgentsRequest) returns (c2.GetAgentsResponse);
      */
     getAgents(input: GetAgentsRequest, options?: RpcOptions): UnaryCall<GetAgentsRequest, GetAgentsResponse> {
-        const method = this.methods[0], opt = this._transport.mergeOptions(options);
+        const method = this.methods[1], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetAgentsRequest, GetAgentsResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: Keyx(c2.KeyxRequest) returns (c2.KeyxResponse);
      */
     keyx(input: KeyxRequest, options?: RpcOptions): UnaryCall<KeyxRequest, KeyxResponse> {
-        const method = this.methods[1], opt = this._transport.mergeOptions(options);
+        const method = this.methods[2], opt = this._transport.mergeOptions(options);
         return stackIntercept<KeyxRequest, KeyxResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: AgentCommand(c2.AgentCommandRequest) returns (c2.AgentCommandResponse);
      */
     agentCommand(input: AgentCommandRequest, options?: RpcOptions): UnaryCall<AgentCommandRequest, AgentCommandResponse> {
-        const method = this.methods[2], opt = this._transport.mergeOptions(options);
+        const method = this.methods[3], opt = this._transport.mergeOptions(options);
         return stackIntercept<AgentCommandRequest, AgentCommandResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: KillAgent(c2.KillAgentRequest) returns (c2.KillAgentResponse);
      */
     killAgent(input: KillAgentRequest, options?: RpcOptions): UnaryCall<KillAgentRequest, KillAgentResponse> {
-        const method = this.methods[3], opt = this._transport.mergeOptions(options);
+        const method = this.methods[4], opt = this._transport.mergeOptions(options);
         return stackIntercept<KillAgentRequest, KillAgentResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: BuildImplant(c2.BuildImplantRequest) returns (c2.BuildImplantResponse);
      */
     buildImplant(input: BuildImplantRequest, options?: RpcOptions): UnaryCall<BuildImplantRequest, BuildImplantResponse> {
-        const method = this.methods[4], opt = this._transport.mergeOptions(options);
+        const method = this.methods[5], opt = this._transport.mergeOptions(options);
         return stackIntercept<BuildImplantRequest, BuildImplantResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: BuildImplantStream(c2.BuildImplantRequest) returns (stream c2.BuildImplantStreamResponse);
      */
     buildImplantStream(input: BuildImplantRequest, options?: RpcOptions): ServerStreamingCall<BuildImplantRequest, BuildImplantStreamResponse> {
-        const method = this.methods[5], opt = this._transport.mergeOptions(options);
+        const method = this.methods[6], opt = this._transport.mergeOptions(options);
         return stackIntercept<BuildImplantRequest, BuildImplantStreamResponse>("serverStreaming", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GetBuildLog(c2.GetBuildLogRequest) returns (c2.GetBuildLogResponse);
      */
     getBuildLog(input: GetBuildLogRequest, options?: RpcOptions): UnaryCall<GetBuildLogRequest, GetBuildLogResponse> {
-        const method = this.methods[6], opt = this._transport.mergeOptions(options);
+        const method = this.methods[7], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetBuildLogRequest, GetBuildLogResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: ProxyLoop(c2.ProxyLoopRequest) returns (c2.ProxyLoopResponse);
      */
     proxyLoop(input: ProxyLoopRequest, options?: RpcOptions): UnaryCall<ProxyLoopRequest, ProxyLoopResponse> {
-        const method = this.methods[7], opt = this._transport.mergeOptions(options);
+        const method = this.methods[8], opt = this._transport.mergeOptions(options);
         return stackIntercept<ProxyLoopRequest, ProxyLoopResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: ForceFetch(c2.ForceFetchRequest) returns (c2.ForceFetchResponse);
      */
     forceFetch(input: ForceFetchRequest, options?: RpcOptions): UnaryCall<ForceFetchRequest, ForceFetchResponse> {
-        const method = this.methods[8], opt = this._transport.mergeOptions(options);
+        const method = this.methods[9], opt = this._transport.mergeOptions(options);
         return stackIntercept<ForceFetchRequest, ForceFetchResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GenerateProxyPayload(c2.GenerateProxyPayloadRequest) returns (c2.GenerateProxyPayloadResponse);
      */
     generateProxyPayload(input: GenerateProxyPayloadRequest, options?: RpcOptions): UnaryCall<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse> {
-        const method = this.methods[9], opt = this._transport.mergeOptions(options);
+        const method = this.methods[10], opt = this._transport.mergeOptions(options);
         return stackIntercept<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GenerateSkimmerPayload(c2.GenerateSkimmerPayloadRequest) returns (c2.GenerateSkimmerPayloadResponse);
      */
     generateSkimmerPayload(input: GenerateSkimmerPayloadRequest, options?: RpcOptions): UnaryCall<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse> {
-        const method = this.methods[10], opt = this._transport.mergeOptions(options);
+        const method = this.methods[11], opt = this._transport.mergeOptions(options);
         return stackIntercept<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: SetStaticDns(c2.SetStaticDnsRequest) returns (c2.SetStaticDnsResponse);
      */
     setStaticDns(input: SetStaticDnsRequest, options?: RpcOptions): UnaryCall<SetStaticDnsRequest, SetStaticDnsResponse> {
-        const method = this.methods[11], opt = this._transport.mergeOptions(options);
+        const method = this.methods[12], opt = this._transport.mergeOptions(options);
         return stackIntercept<SetStaticDnsRequest, SetStaticDnsResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GetStaticDns(c2.GetStaticDnsRequest) returns (c2.GetStaticDnsResponse);
      */
     getStaticDns(input: GetStaticDnsRequest, options?: RpcOptions): UnaryCall<GetStaticDnsRequest, GetStaticDnsResponse> {
-        const method = this.methods[12], opt = this._transport.mergeOptions(options);
+        const method = this.methods[13], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetStaticDnsRequest, GetStaticDnsResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
     setConfig(input: SetConfigRequest, options?: RpcOptions): UnaryCall<SetConfigRequest, SetConfigResponse> {
-        const method = this.methods[13], opt = this._transport.mergeOptions(options);
+        const method = this.methods[14], opt = this._transport.mergeOptions(options);
         return stackIntercept<SetConfigRequest, SetConfigResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GetConfig(c2.GetConfigRequest) returns (c2.GetConfigResponse);
      */
     getConfig(input: GetConfigRequest, options?: RpcOptions): UnaryCall<GetConfigRequest, GetConfigResponse> {
-        const method = this.methods[14], opt = this._transport.mergeOptions(options);
+        const method = this.methods[15], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetConfigRequest, GetConfigResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: StreamLog(c2.StreamLogRequest) returns (stream c2.StreamLogResponse);
      */
     streamLog(input: StreamLogRequest, options?: RpcOptions): ServerStreamingCall<StreamLogRequest, StreamLogResponse> {
-        const method = this.methods[15], opt = this._transport.mergeOptions(options);
+        const method = this.methods[16], opt = this._transport.mergeOptions(options);
         return stackIntercept<StreamLogRequest, StreamLogResponse>("serverStreaming", this._transport, method, opt, input);
     }
 }

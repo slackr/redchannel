@@ -2,11 +2,15 @@ import Logger from "../lib/logger";
 import RedChannel from "../lib/redchannel";
 import { OnSuccessCallback, ServerBase } from "./base";
 import * as grpc from "@grpc/grpc-js";
+import jwt, { JwtPayload } from "jsonwebtoken";
+
 import { redChannelDefinition, IRedChannel } from "../pb/c2.grpc-server";
 import {
     Agent,
     AgentCommandRequest,
     AgentCommandResponse,
+    AuthenticateRequest,
+    AuthenticateResponse,
     BuildImplantRequest,
     BuildImplantResponse,
     BuildImplantStreamResponse,
@@ -69,6 +73,8 @@ export default class TeamServer implements ServerBase {
             false
         );
         this.service = {
+            authenticate: this.authenticate.bind(this),
+
             getAgents: this.getAgents.bind(this),
             keyx: this.keyx.bind(this),
             agentCommand: this.agentCommand.bind(this),
@@ -106,11 +112,17 @@ export default class TeamServer implements ServerBase {
         });
     }
 
-    checkAuth<I, O>(call: grpc.ServerUnaryCall<I, O> | grpc.ServerWritableStream<I, O>): boolean {
+    getCallSourceIps<I, O>(call: grpc.ServerUnaryCall<I, O> | grpc.ServerWritableStream<I, O>): string[] {
         const headersMap = call.metadata.getMap();
-
         const sourceIps: string[] = [call.getPeer()];
         if (headersMap["x-forwarded-for"]) sourceIps.push(headersMap["x-forwarded-for"] as string);
+
+        return sourceIps;
+    }
+
+    checkAuth<I, O>(call: grpc.ServerUnaryCall<I, O> | grpc.ServerWritableStream<I, O>): boolean {
+        const headersMap = call.metadata.getMap();
+        const sourceIps = this.getCallSourceIps<I, O>(call);
 
         const authHeader = headersMap.authorization as string;
         if (!authHeader?.length) {
@@ -123,21 +135,60 @@ export default class TeamServer implements ServerBase {
             return false;
         }
 
-        const tokenSplit = headerSplit[1].split(":");
-        if (tokenSplit.length < 2) {
-            this.log.error(`auth error from client ${sourceIps}, invalid authorization token`);
+        const token = headerSplit[1];
+
+        let authenticated: string | JwtPayload;
+        try {
+            authenticated = jwt.verify(token, this.redchannel.hashedPassword, {
+                algorithms: ["HS256"],
+            });
+        } catch (e) {
+            this.log.error(`auth error from client ${sourceIps}, token did not verify: ${emsg(e)}`);
             return false;
         }
 
-        const operator = tokenSplit[0];
-        const passwordHash = tokenSplit[1];
-        if (!this.redchannel.verifyOperator(operator, passwordHash)) {
-            this.log.error(`auth error from client ${sourceIps}, operator did not verify: ${operator}/${passwordHash}`);
+        const operator = authenticated["operator"];
+        if (!authenticated || operator === undefined) {
+            this.log.error(`auth error from client ${sourceIps}, token verified but is invalid`);
             return false;
         }
 
         call.metadata.add("operator", operator);
         return true;
+    }
+
+    authenticate(call: grpc.ServerUnaryCall<AuthenticateRequest, AuthenticateResponse>, callback: grpc.sendUnaryData<AuthenticateResponse>): void {
+        call.on("error", (error) => {
+            this.log.error(`authenticate() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        const responseProto = AuthenticateResponse.create({});
+
+        const sourceIps = this.getCallSourceIps<AuthenticateRequest, AuthenticateResponse>(call);
+
+        const operator = call.request.operator;
+        const passwordHash = call.request.password;
+        if (!this.redchannel.verifyOperator(operator, passwordHash)) {
+            responseProto.message = "invalid credentials";
+            responseProto.status = CommandStatus.ERROR;
+            callback(null, responseProto);
+
+            this.log.error(`auth error from client ${sourceIps}, operator did not verify: ${operator}/*`);
+            return;
+        }
+
+        const token = jwt.sign({ operator: operator }, this.redchannel.hashedPassword, {
+            expiresIn: "1h",
+            notBefore: 0,
+            algorithm: "HS256",
+        });
+
+        responseProto.status = CommandStatus.SUCCESS;
+        responseProto.token = token;
+
+        this.log.info(`operator ${operator} authenticate from: ${sourceIps}`);
+        callback(null, responseProto);
     }
 
     getAgents(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetAgentsResponse>): void {
