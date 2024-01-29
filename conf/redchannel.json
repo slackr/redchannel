@@ -2,7 +2,7 @@
     "c2": {
         "domain": "c2.redchannel.tld",
         "dns_ip": "127.0.0.1",
-        "dns_port": 5353,
+        "dns_port": 53,
         "web_ip": "127.0.0.1",
         "web_port": 8080,
         "ts_ip": "0.0.0.0",
@@ -36,7 +36,7 @@
     "implant": {
         "debug": true,
         "interval": 5000,
-        "resolver": "127.0.0.1:5353",
+        "resolver": "127.0.0.1:53",
         "proxy_url": "http://127.0.0.1:8888/proxy.php",
         "proxy_enabled": false,
         "proxy_key": "redchannel",
