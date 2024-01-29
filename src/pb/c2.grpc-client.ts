@@ -29,6 +29,8 @@ import type { BuildImplantResponse } from "./c2";
 import type { BuildImplantRequest } from "./c2";
 import type { OperatorChatResponse } from "./c2";
 import type { OperatorChatRequest } from "./c2";
+import type { AgentOutputResponse } from "./c2";
+import type { AgentOutputRequest } from "./c2";
 import type { KillAgentResponse } from "./c2";
 import type { KillAgentRequest } from "./c2";
 import type { AgentCommandResponse } from "./c2";
@@ -79,6 +81,18 @@ export interface IRedChannelClient {
     killAgent(input: KillAgentRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: KillAgentResponse) => void): grpc.ClientUnaryCall;
     killAgent(input: KillAgentRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: KillAgentResponse) => void): grpc.ClientUnaryCall;
     killAgent(input: KillAgentRequest, callback: (err: grpc.ServiceError | null, value?: KillAgentResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: AgentOutput(c2.AgentOutputRequest) returns (c2.AgentOutputResponse);
+     */
+    agentOutput(input: AgentOutputRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AgentOutputResponse) => void): grpc.ClientUnaryCall;
+    agentOutput(input: AgentOutputRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: AgentOutputResponse) => void): grpc.ClientUnaryCall;
+    agentOutput(input: AgentOutputRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AgentOutputResponse) => void): grpc.ClientUnaryCall;
+    agentOutput(input: AgentOutputRequest, callback: (err: grpc.ServiceError | null, value?: AgentOutputResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: AgentOutputStream(c2.AgentOutputRequest) returns (stream c2.AgentOutputResponse);
+     */
+    agentOutputStream(input: AgentOutputRequest, metadata?: grpc.Metadata, options?: grpc.CallOptions): grpc.ClientReadableStream<AgentOutputResponse>;
+    agentOutputStream(input: AgentOutputRequest, options?: grpc.CallOptions): grpc.ClientReadableStream<AgentOutputResponse>;
     /**
      * @generated from protobuf rpc: OperatorChat(stream c2.OperatorChatRequest) returns (stream c2.OperatorChatResponse);
      */
@@ -210,94 +224,108 @@ export class RedChannelClient extends grpc.Client implements IRedChannelClient {
         return this.makeUnaryRequest<KillAgentRequest, KillAgentResponse>(`/${RedChannel.typeName}/${method.name}`, (value: KillAgentRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): KillAgentResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
+     * @generated from protobuf rpc: AgentOutput(c2.AgentOutputRequest) returns (c2.AgentOutputResponse);
+     */
+    agentOutput(input: AgentOutputRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AgentOutputResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AgentOutputResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: AgentOutputResponse) => void)): grpc.ClientUnaryCall {
+        const method = RedChannel.methods[5];
+        return this.makeUnaryRequest<AgentOutputRequest, AgentOutputResponse>(`/${RedChannel.typeName}/${method.name}`, (value: AgentOutputRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): AgentOutputResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: AgentOutputStream(c2.AgentOutputRequest) returns (stream c2.AgentOutputResponse);
+     */
+    agentOutputStream(input: AgentOutputRequest, metadata?: grpc.Metadata | grpc.CallOptions, options?: grpc.CallOptions): grpc.ClientReadableStream<AgentOutputResponse> {
+        const method = RedChannel.methods[6];
+        return this.makeServerStreamRequest<AgentOutputRequest, AgentOutputResponse>(`/${RedChannel.typeName}/${method.name}`, (value: AgentOutputRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): AgentOutputResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), options);
+    }
+    /**
      * @generated from protobuf rpc: OperatorChat(stream c2.OperatorChatRequest) returns (stream c2.OperatorChatResponse);
      */
     operatorChat(metadata?: grpc.Metadata | grpc.CallOptions, options?: grpc.CallOptions): grpc.ClientDuplexStream<OperatorChatRequest, OperatorChatResponse> {
-        const method = RedChannel.methods[5];
+        const method = RedChannel.methods[7];
         return this.makeBidiStreamRequest<OperatorChatRequest, OperatorChatResponse>(`/${RedChannel.typeName}/${method.name}`, (value: OperatorChatRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): OperatorChatResponse => method.O.fromBinary(value, this._binaryOptions), (metadata as any), options);
     }
     /**
      * @generated from protobuf rpc: BuildImplant(c2.BuildImplantRequest) returns (c2.BuildImplantResponse);
      */
     buildImplant(input: BuildImplantRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: BuildImplantResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: BuildImplantResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: BuildImplantResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[6];
+        const method = RedChannel.methods[8];
         return this.makeUnaryRequest<BuildImplantRequest, BuildImplantResponse>(`/${RedChannel.typeName}/${method.name}`, (value: BuildImplantRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): BuildImplantResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: BuildImplantStream(c2.BuildImplantRequest) returns (stream c2.BuildImplantStreamResponse);
      */
     buildImplantStream(input: BuildImplantRequest, metadata?: grpc.Metadata | grpc.CallOptions, options?: grpc.CallOptions): grpc.ClientReadableStream<BuildImplantStreamResponse> {
-        const method = RedChannel.methods[7];
+        const method = RedChannel.methods[9];
         return this.makeServerStreamRequest<BuildImplantRequest, BuildImplantStreamResponse>(`/${RedChannel.typeName}/${method.name}`, (value: BuildImplantRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): BuildImplantStreamResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), options);
     }
     /**
      * @generated from protobuf rpc: GetBuildLog(c2.GetBuildLogRequest) returns (c2.GetBuildLogResponse);
      */
     getBuildLog(input: GetBuildLogRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetBuildLogResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetBuildLogResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: GetBuildLogResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[8];
+        const method = RedChannel.methods[10];
         return this.makeUnaryRequest<GetBuildLogRequest, GetBuildLogResponse>(`/${RedChannel.typeName}/${method.name}`, (value: GetBuildLogRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): GetBuildLogResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ProxyLoop(c2.ProxyLoopRequest) returns (c2.ProxyLoopResponse);
      */
     proxyLoop(input: ProxyLoopRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ProxyLoopResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ProxyLoopResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ProxyLoopResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[9];
+        const method = RedChannel.methods[11];
         return this.makeUnaryRequest<ProxyLoopRequest, ProxyLoopResponse>(`/${RedChannel.typeName}/${method.name}`, (value: ProxyLoopRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ProxyLoopResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ForceFetch(c2.ForceFetchRequest) returns (c2.ForceFetchResponse);
      */
     forceFetch(input: ForceFetchRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ForceFetchResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ForceFetchResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ForceFetchResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[10];
+        const method = RedChannel.methods[12];
         return this.makeUnaryRequest<ForceFetchRequest, ForceFetchResponse>(`/${RedChannel.typeName}/${method.name}`, (value: ForceFetchRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ForceFetchResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: GenerateProxyPayload(c2.GenerateProxyPayloadRequest) returns (c2.GenerateProxyPayloadResponse);
      */
     generateProxyPayload(input: GenerateProxyPayloadRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GenerateProxyPayloadResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GenerateProxyPayloadResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: GenerateProxyPayloadResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[11];
+        const method = RedChannel.methods[13];
         return this.makeUnaryRequest<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>(`/${RedChannel.typeName}/${method.name}`, (value: GenerateProxyPayloadRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): GenerateProxyPayloadResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: GenerateSkimmerPayload(c2.GenerateSkimmerPayloadRequest) returns (c2.GenerateSkimmerPayloadResponse);
      */
     generateSkimmerPayload(input: GenerateSkimmerPayloadRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GenerateSkimmerPayloadResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GenerateSkimmerPayloadResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: GenerateSkimmerPayloadResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[12];
+        const method = RedChannel.methods[14];
         return this.makeUnaryRequest<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>(`/${RedChannel.typeName}/${method.name}`, (value: GenerateSkimmerPayloadRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): GenerateSkimmerPayloadResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: SetStaticDns(c2.SetStaticDnsRequest) returns (c2.SetStaticDnsResponse);
      */
     setStaticDns(input: SetStaticDnsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SetStaticDnsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SetStaticDnsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: SetStaticDnsResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[13];
+        const method = RedChannel.methods[15];
         return this.makeUnaryRequest<SetStaticDnsRequest, SetStaticDnsResponse>(`/${RedChannel.typeName}/${method.name}`, (value: SetStaticDnsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): SetStaticDnsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: GetStaticDns(c2.GetStaticDnsRequest) returns (c2.GetStaticDnsResponse);
      */
     getStaticDns(input: GetStaticDnsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetStaticDnsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetStaticDnsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: GetStaticDnsResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[14];
+        const method = RedChannel.methods[16];
         return this.makeUnaryRequest<GetStaticDnsRequest, GetStaticDnsResponse>(`/${RedChannel.typeName}/${method.name}`, (value: GetStaticDnsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): GetStaticDnsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: SetConfig(c2.SetConfigRequest) returns (c2.SetConfigResponse);
      */
     setConfig(input: SetConfigRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SetConfigResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SetConfigResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: SetConfigResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[15];
+        const method = RedChannel.methods[17];
         return this.makeUnaryRequest<SetConfigRequest, SetConfigResponse>(`/${RedChannel.typeName}/${method.name}`, (value: SetConfigRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): SetConfigResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: GetConfig(c2.GetConfigRequest) returns (c2.GetConfigResponse);
      */
     getConfig(input: GetConfigRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetConfigResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetConfigResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: GetConfigResponse) => void)): grpc.ClientUnaryCall {
-        const method = RedChannel.methods[16];
+        const method = RedChannel.methods[18];
         return this.makeUnaryRequest<GetConfigRequest, GetConfigResponse>(`/${RedChannel.typeName}/${method.name}`, (value: GetConfigRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): GetConfigResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: StreamLog(c2.StreamLogRequest) returns (stream c2.StreamLogResponse);
      */
     streamLog(input: StreamLogRequest, metadata?: grpc.Metadata | grpc.CallOptions, options?: grpc.CallOptions): grpc.ClientReadableStream<StreamLogResponse> {
-        const method = RedChannel.methods[17];
+        const method = RedChannel.methods[19];
         return this.makeServerStreamRequest<StreamLogRequest, StreamLogResponse>(`/${RedChannel.typeName}/${method.name}`, (value: StreamLogRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): StreamLogResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), options);
     }
 }

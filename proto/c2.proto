@@ -190,12 +190,21 @@ message OperatorChatResponse {
   string message = 2;
 }
 
+message AgentOutputRequest { string agent_id = 1; }
+message AgentOutputResponse {
+  CommandStatus status = 1;
+  repeated string message = 2;
+}
+
 service RedChannel {
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
   rpc GetAgents(GetAgentsRequest) returns (GetAgentsResponse);
   rpc Keyx(KeyxRequest) returns (KeyxResponse);
   rpc AgentCommand(AgentCommandRequest) returns (AgentCommandResponse);
   rpc KillAgent(KillAgentRequest) returns (KillAgentResponse);
+
+  rpc AgentOutput(AgentOutputRequest) returns (AgentOutputResponse);
+  rpc AgentOutputStream(AgentOutputRequest) returns (stream AgentOutputResponse);
 
   rpc OperatorChat(stream OperatorChatRequest)
       returns (stream OperatorChatResponse);

@@ -1,5 +1,5 @@
 import Logger from "../lib/logger";
-import RedChannel from "../lib/redchannel";
+import RedChannel, { AgentOutputEvent } from "../lib/redchannel";
 import { OnSuccessCallback, ServerBase } from "./base";
 import * as grpc from "@grpc/grpc-js";
 import { EventEmitter } from "node:events";
@@ -11,6 +11,8 @@ import {
     Agent,
     AgentCommandRequest,
     AgentCommandResponse,
+    AgentOutputRequest,
+    AgentOutputResponse,
     AuthenticateRequest,
     AuthenticateResponse,
     BuildImplantRequest,
@@ -91,6 +93,9 @@ export default class TeamServer implements ServerBase {
             authenticate: this.authenticate.bind(this),
 
             operatorChat: this.operatorChat.bind(this),
+
+            agentOutput: this.agentOutput.bind(this),
+            agentOutputStream: this.agentOutputStream.bind(this),
 
             getAgents: this.getAgents.bind(this),
             keyx: this.keyx.bind(this),
@@ -364,6 +369,90 @@ export default class TeamServer implements ServerBase {
         });
 
         const responseProto = this.buildExecute(call.request);
+        callback(null, responseProto);
+    }
+
+    agentOutputStream(call: grpc.ServerWritableStream<AgentOutputRequest, AgentOutputResponse>): void {
+        if (!this.checkAuth<AgentOutputRequest, AgentOutputResponse>(call)) throw new Error("Authentication failed");
+
+        const agentIdRequested = call.request.agentId;
+
+        // we don't check if the agent exists, as it may come online later
+        // and we want to catch any output
+        if (!agentIdRequested?.length) {
+            call.write(
+                AgentOutputResponse.create({
+                    status: CommandStatus.ERROR,
+                    message: [`invalid agent id: ${agentIdRequested}`],
+                })
+            );
+            call.end();
+            return;
+        }
+
+        const stdOutCallback = (agentId, entry: string) => {
+            if (agentId !== agentIdRequested) return;
+
+            call.write(
+                AgentOutputResponse.create({
+                    status: CommandStatus.SUCCESS,
+                    message: [entry],
+                })
+            );
+        };
+        const stdErrCallback = (agentId, entry: string) => {
+            if (agentId !== agentIdRequested) return;
+
+            call.write(
+                AgentOutputResponse.create({
+                    status: CommandStatus.ERROR,
+                    message: [entry],
+                })
+            );
+        };
+
+        this.redchannel.modules.implant.eventEmitter.addListener(AgentOutputEvent.AGENT_OUTPUT, stdOutCallback);
+        this.redchannel.modules.implant.eventEmitter.addListener(AgentOutputEvent.AGENT_OUTPUT_ERROR, stdErrCallback);
+
+        this.log.info(`streaming agent (${agentIdRequested}) output logs to ${call.metadata.get("operator")}`);
+
+        const removeListeners = () => {
+            this.redchannel.modules.implant.eventEmitter.removeListener(AgentOutputEvent.AGENT_OUTPUT, stdOutCallback);
+            this.redchannel.modules.implant.eventEmitter.removeListener(AgentOutputEvent.AGENT_OUTPUT_ERROR, stdErrCallback);
+        };
+        call.on("error", (error) => {
+            removeListeners();
+
+            this.log.error(`agentOutputStream() error: ${error}`);
+            throw new Error("Server error");
+        });
+        call.on("close", removeListeners);
+        call.on("finish", removeListeners);
+    }
+
+    agentOutput(call: grpc.ServerUnaryCall<AgentOutputRequest, AgentOutputResponse>, callback: grpc.sendUnaryData<AgentOutputResponse>): void {
+        if (!this.checkAuth<AgentOutputRequest, AgentOutputResponse>(call)) throw new Error("Authentication failed");
+
+        const agent = this.redchannel.agents.get(call.request.agentId);
+        if (!agent) {
+            const responseProto = AgentOutputResponse.create({
+                status: CommandStatus.ERROR,
+                message: [`unknown agent with id: ${call.request.agentId}`],
+            });
+            callback(null, responseProto);
+            return;
+        }
+
+        call.on("error", (error) => {
+            this.log.error(`agentOutput() error: ${error}`);
+            throw new Error("Server error");
+        });
+
+        const responseProto = AgentOutputResponse.create({
+            status: CommandStatus.SUCCESS,
+            message: agent.output,
+        });
+
         callback(null, responseProto);
     }
 

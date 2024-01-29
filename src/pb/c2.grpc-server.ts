@@ -26,6 +26,8 @@ import { BuildImplantResponse } from "./c2";
 import { BuildImplantRequest } from "./c2";
 import { OperatorChatResponse } from "./c2";
 import { OperatorChatRequest } from "./c2";
+import { AgentOutputResponse } from "./c2";
+import { AgentOutputRequest } from "./c2";
 import { KillAgentResponse } from "./c2";
 import { KillAgentRequest } from "./c2";
 import { AgentCommandResponse } from "./c2";
@@ -61,6 +63,14 @@ export interface IRedChannel extends grpc.UntypedServiceImplementation {
      * @generated from protobuf rpc: KillAgent(c2.KillAgentRequest) returns (c2.KillAgentResponse);
      */
     killAgent: grpc.handleUnaryCall<KillAgentRequest, KillAgentResponse>;
+    /**
+     * @generated from protobuf rpc: AgentOutput(c2.AgentOutputRequest) returns (c2.AgentOutputResponse);
+     */
+    agentOutput: grpc.handleUnaryCall<AgentOutputRequest, AgentOutputResponse>;
+    /**
+     * @generated from protobuf rpc: AgentOutputStream(c2.AgentOutputRequest) returns (stream c2.AgentOutputResponse);
+     */
+    agentOutputStream: grpc.handleServerStreamingCall<AgentOutputRequest, AgentOutputResponse>;
     /**
      * @generated from protobuf rpc: OperatorChat(stream c2.OperatorChatRequest) returns (stream c2.OperatorChatResponse);
      */
@@ -175,6 +185,26 @@ export const redChannelDefinition: grpc.ServiceDefinition<IRedChannel> = {
         requestDeserialize: bytes => KillAgentRequest.fromBinary(bytes),
         responseSerialize: value => Buffer.from(KillAgentResponse.toBinary(value)),
         requestSerialize: value => Buffer.from(KillAgentRequest.toBinary(value))
+    },
+    agentOutput: {
+        path: "/c2.RedChannel/AgentOutput",
+        originalName: "AgentOutput",
+        requestStream: false,
+        responseStream: false,
+        responseDeserialize: bytes => AgentOutputResponse.fromBinary(bytes),
+        requestDeserialize: bytes => AgentOutputRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(AgentOutputResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(AgentOutputRequest.toBinary(value))
+    },
+    agentOutputStream: {
+        path: "/c2.RedChannel/AgentOutputStream",
+        originalName: "AgentOutputStream",
+        requestStream: false,
+        responseStream: true,
+        responseDeserialize: bytes => AgentOutputResponse.fromBinary(bytes),
+        requestDeserialize: bytes => AgentOutputRequest.fromBinary(bytes),
+        responseSerialize: value => Buffer.from(AgentOutputResponse.toBinary(value)),
+        requestSerialize: value => Buffer.from(AgentOutputRequest.toBinary(value))
     },
     operatorChat: {
         path: "/c2.RedChannel/OperatorChat",

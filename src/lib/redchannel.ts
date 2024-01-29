@@ -4,6 +4,8 @@ import ECKey from "ec-key";
 import * as fs from "fs";
 import _merge from "lodash.merge";
 
+import { EventEmitter } from "node:events";
+
 import { chunkString, Config, Constants, emsg, padZero } from "../utils";
 import Crypto, { CipherModel, KeyExportType } from "./crypto";
 import Logger from "./logger";
@@ -89,6 +91,7 @@ export type AgentModel = {
     // each agent has a map of dataId => chunks[]
     recvq: RecvQMap;
     sysinfo?: implant.SysInfoData;
+    output: string[];
 };
 
 export type RedChannelModules = {
@@ -97,6 +100,11 @@ export type RedChannelModules = {
     static_dns: StaticDnsModule;
     skimmer: SkimmerModule;
 };
+
+export enum AgentOutputEvent {
+    AGENT_OUTPUT = "agentOutput",
+    AGENT_OUTPUT_ERROR = "agentOutputError",
+}
 
 // operators list
 type OperatorHashedPassword = string;
@@ -127,12 +135,16 @@ export default class RedChannel {
 
     operators: OperatorsList = {};
 
+    agentOutputEmitter: EventEmitter;
+
     constructor(c2Password: string, configFile: string, initialConfig?: RedChannelConfig) {
         this.log = new Logger();
 
         this.agents = new Map<AgentId, AgentModel>();
 
         this.configFile = configFile ?? Config.DEFAULT_CONFIG_FILE;
+
+        this.agentOutputEmitter = new EventEmitter({});
 
         this.config = this.resetConfig(initialConfig ?? DefaultConfig);
         this.resetLogLevel();
@@ -229,6 +241,7 @@ export default class RedChannel {
                 sendq: [],
                 recvq: new Map<DataId, DataChunk[]>(),
                 sysinfo: implant.SysInfoData.create({}),
+                output: [],
             });
         }
     }
@@ -892,7 +905,9 @@ export default class RedChannel {
                     const agentCommandResponseProto = this.decryptAgentData(agentId, data);
                     if (agentCommandResponseProto) agentMessage = Buffer.from(agentCommandResponseProto.data).toString();
                 } catch (ex) {
-                    this.log.error(`cannot decrypt message from ${agentId}: ${emsg(ex)}`);
+                    const errorMessage = `cannot decrypt message from ${agentId}: ${emsg(ex)}`;
+                    this.log.error(errorMessage);
+                    this.agentOutputEmitter.emit(AgentOutputEvent.AGENT_OUTPUT_ERROR, agentId, errorMessage);
                     return [
                         {
                             name: hostname,
@@ -903,6 +918,8 @@ export default class RedChannel {
                     ];
                 }
                 this.log.info(`agent(${agentId}) output>\n ${agentMessage}`);
+                agent.output.push(agentMessage)
+                this.agentOutputEmitter.emit(AgentOutputEvent.AGENT_OUTPUT, agentId, agentMessage);
                 break;
             }
             case implant.AgentCommand.SYSINFO: {
