@@ -984,13 +984,7 @@ export default class RedChannel {
         const iv = dataBuffer.subarray(0, this.crypto.BLOCK_LENGTH);
         const ciphertext = dataBuffer.subarray(this.crypto.BLOCK_LENGTH);
 
-        // may throw errors
-        let plaintext: Buffer;
-        try {
-            plaintext = this.crypto.aesDecrypt(ciphertext, agent.secret, iv);
-        } catch (ex) {
-            throw new Error(`aes decrypt: ${emsg(ex)}`);
-        }
+        const plaintext = this.crypto.aesDecrypt(ciphertext, agent.secret, iv);
 
         try {
             const commandProto = implant.Command_Response.fromBinary(plaintext);
