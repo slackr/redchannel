@@ -411,14 +411,14 @@ export default class TeamServer implements ServerBase {
             );
         };
 
-        this.redchannel.modules.implant.eventEmitter.addListener(AgentOutputEvent.AGENT_OUTPUT, stdOutCallback);
-        this.redchannel.modules.implant.eventEmitter.addListener(AgentOutputEvent.AGENT_OUTPUT_ERROR, stdErrCallback);
+        this.redchannel.agentOutputEmitter.addListener(AgentOutputEvent.AGENT_OUTPUT, stdOutCallback);
+        this.redchannel.agentOutputEmitter.addListener(AgentOutputEvent.AGENT_OUTPUT_ERROR, stdErrCallback);
 
-        this.log.info(`streaming agent (${agentIdRequested}) output logs to ${call.metadata.get("operator")}`);
+        this.log.info(`streaming agent (${agentIdRequested}) output to ${call.metadata.get("operator")}`);
 
         const removeListeners = () => {
-            this.redchannel.modules.implant.eventEmitter.removeListener(AgentOutputEvent.AGENT_OUTPUT, stdOutCallback);
-            this.redchannel.modules.implant.eventEmitter.removeListener(AgentOutputEvent.AGENT_OUTPUT_ERROR, stdErrCallback);
+            this.redchannel.agentOutputEmitter.removeListener(AgentOutputEvent.AGENT_OUTPUT, stdOutCallback);
+            this.redchannel.agentOutputEmitter.removeListener(AgentOutputEvent.AGENT_OUTPUT_ERROR, stdErrCallback);
         };
         call.on("error", (error) => {
             removeListeners();

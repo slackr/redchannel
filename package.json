@@ -8,8 +8,6 @@
         "@protobuf-ts/plugin": "^2.9.3",
         "@protobuf-ts/runtime": "^2.9.3",
         "axios": "^1.6.2",
-        "chalk": "^4.1.2",
-        "cli-table": "^0.3.11",
         "commander": "^11.1.0",
         "dnsd2": "^0.9.8",
         "ec-key": "^0.0.4",
@@ -17,7 +15,6 @@
         "javascript-obfuscator": "^4.1.0",
         "jsonwebtoken": "^9.0.2",
         "lodash.merge": "^4.6.2",
-        "socket.io": "^4.7.3",
         "ts-node": "^10.9.2",
         "ts-proto": "^1.166.2"
     },
@@ -36,8 +33,6 @@
         "eslint-plugin-import": "^2.29.1",
         "eslint-plugin-n": "^16.4.0",
         "eslint-plugin-promise": "^6.1.1",
-        "protobufjs": "^7.2.5",
-        "protobufjs-cli": "^1.1.2",
         "typescript": "^5.3.3"
     },
     "scripts": {

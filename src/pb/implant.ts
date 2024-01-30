@@ -180,9 +180,9 @@ export enum C2ResponseStatus {
      */
     DATA_RECEIVED = 2,
     /**
-     * @generated from protobuf enum value: NO_DATA = 3;
+     * @generated from protobuf enum value: NOTHING_TO_DO = 3;
      */
-    NO_DATA = 3,
+    NOTHING_TO_DO = 3,
     /**
      * @generated from protobuf enum value: ERROR_IMPORTING_KEY = 4;
      */

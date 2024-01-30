@@ -67,10 +67,10 @@ if (redchannel.config.c2?.debug) {
     log.level = LogLevel.DEBUG;
 }
 
-// process.on("uncaughtException", (ex, origin) => {
-//     log.error(`process error: ${emsg(ex)}, origin: ${origin}`);
-//     log.debug(ex, origin);
-// });
+process.on("uncaughtException", (ex, origin) => {
+    log.error(`process error: ${emsg(ex)}, origin: ${origin}`);
+    log.debug(ex, origin);
+});
 
 const c2Config = redchannel.config.c2;
 if (!c2Config?.webPort || !c2Config.webIp) throw new Error(`invalid c2 configuration: invalid ip or port`);

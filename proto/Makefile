@@ -3,7 +3,7 @@ proto:
 	npx protoc --ts_out=../src/pb/ --ts_opt client_grpc1,server_grpc1,long_type_string,generate_dependencies --proto_path=./ config.proto c2.proto implant.proto
 	
 	# creating redchannel ts code for client, should be a submodule in the redchannel/client directory
-	npx protoc --ts_out=../client/src/pb --ts_opt client_grpc1,server_grpc1,long_type_string,generate_dependencies --proto_path=./ config.proto c2.proto implant.proto
+	#npx protoc --ts_out=../client/src/pb --ts_opt client_grpc1,server_grpc1,long_type_string,generate_dependencies --proto_path=./ config.proto c2.proto implant.proto
 
 	# create pb for connectrpc
 	#npx buf generate --template ./buf.gen-server.yaml
