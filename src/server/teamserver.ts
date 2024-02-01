@@ -4,8 +4,6 @@ import { OnSuccessCallback, ServerBase } from "./base";
 import * as grpc from "@grpc/grpc-js";
 import { EventEmitter } from "node:events";
 
-import jwt, { JwtPayload } from "jsonwebtoken";
-
 import { redChannelDefinition, IRedChannel } from "../pb/c2.grpc-server";
 import {
     Agent,
@@ -49,9 +47,10 @@ import {
     StreamLogRequest,
     StreamLogResponse,
 } from "../pb/c2";
-import { Config, emsg } from "../utils";
+import { emsg, signJwt, verifyJwt } from "../utils";
 import { AgentCommand } from "../pb/implant";
 import { BuildEvent } from "../modules/implant";
+import { JwtPayload } from "jsonwebtoken";
 
 export interface TeamServerCerts {
     ca: Buffer | null;
@@ -161,9 +160,7 @@ export default class TeamServer implements ServerBase {
 
         let authenticated: string | JwtPayload;
         try {
-            authenticated = jwt.verify(token, this.redchannel.hashedPassword, {
-                algorithms: ["HS256"],
-            });
+            authenticated = verifyJwt(token, this.redchannel.hashedPassword);
         } catch (e) {
             this.log.error(`auth error from client ${sourceIps}, token did not verify: ${emsg(e)}`);
             return false;
@@ -200,11 +197,7 @@ export default class TeamServer implements ServerBase {
             return;
         }
 
-        const token = jwt.sign({ operator: operator }, this.redchannel.hashedPassword, {
-            expiresIn: Config.AUTH_TOKEN_VALIDITY_PERIOD,
-            notBefore: 0,
-            algorithm: "HS256",
-        });
+        const token = signJwt({ operator: operator }, this.redchannel.hashedPassword);
 
         responseProto.status = CommandStatus.SUCCESS;
         responseProto.token = token;

@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+
 import { Config, Constants, RedChannelBanner } from "./constants";
 
 export const emsg = (e: unknown) => {
@@ -21,6 +23,24 @@ export const chunkString = (dataString: string, chunkSize: number): string[] => 
     }
 
     return chunks;
+};
+
+export const verifyJwt = (token: string, key: string) => {
+    const verified = jwt.verify(token, key, {
+        algorithms: ["HS256"],
+    });
+
+    return verified;
+};
+
+export const signJwt = (data: object, key: string) => {
+    const token = jwt.sign(data, key, {
+        expiresIn: Config.AUTH_TOKEN_VALIDITY_PERIOD,
+        notBefore: 0,
+        algorithm: "HS256",
+    });
+
+    return token;
 };
 
 export { Config, Constants, RedChannelBanner };
