@@ -38,7 +38,7 @@ class Crypto {
             const cipher = crypto.createCipheriv(this.AES_ALGO, key, iv);
             ciphertext = Buffer.concat([cipher.update(buffer), cipher.final()]);
         } catch (ex) {
-            throw new Error(`failed to AES encrypt: ${emsg(ex)}`);
+            throw new Error(`failed to aes encrypt: ${emsg(ex)}`);
         }
 
         //decipher.setAutoPadding(false);
@@ -52,7 +52,7 @@ class Crypto {
             //plaintext.setAutoPadding(true);
             result = Buffer.concat([plaintext.update(buffer), plaintext.final()]);
         } catch (ex) {
-            throw new Error(`failed to AES decrypt: ${emsg(ex)}`);
+            throw new Error(`failed to aes decrypt: ${emsg(ex)}`);
         }
         return result;
     }

@@ -5,10 +5,10 @@ export const emsg = (e: unknown) => {
     return message;
 };
 
-export const padZero = (proxyData, maxLength) => {
+export const padZero = (proxyData: string, maxLength: number) => {
     return "0".repeat(maxLength - proxyData.length) + proxyData;
 };
-export const padTail = (proxyData, maxLength) => {
+export const padTail = (proxyData: string, maxLength: number) => {
     return proxyData + Config.DATA_PAD_HEXBYTE.repeat(maxLength - proxyData.length);
 };
 

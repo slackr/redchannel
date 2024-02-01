@@ -62,9 +62,9 @@ export interface SysInfoData {
      */
     hostname: string;
     /**
-     * @generated from protobuf field: repeated string ip = 2;
+     * @generated from protobuf field: repeated string ips = 2;
      */
-    ip: string[];
+    ips: string[];
     /**
      * @generated from protobuf field: string user = 3;
      */
@@ -84,14 +84,9 @@ export interface SysInfoData {
  * (command) with the input, along with any additional data, such as config in
  * the event of a SET_CONFIG command
  *
- * @generated from protobuf message implant.Command
+ * @generated from protobuf message implant.CommandRequest
  */
-export interface Command {
-}
-/**
- * @generated from protobuf message implant.Command.Request
- */
-export interface Command_Request {
+export interface CommandRequest {
     /**
      * @generated from protobuf field: implant.AgentCommand command = 1;
      */
@@ -102,9 +97,9 @@ export interface Command_Request {
     data: Uint8Array;
 }
 /**
- * @generated from protobuf message implant.Command.Response
+ * @generated from protobuf message implant.CommandResponse
  */
-export interface Command_Response {
+export interface CommandResponse {
     /**
      * @generated from protobuf field: implant.AgentCommand command = 1;
      */
@@ -164,63 +159,63 @@ export enum AgentCommand {
     IGNORE = 9
 }
 /**
- * @generated from protobuf enum implant.C2ResponseStatus
+ * @generated from protobuf enum implant.C2Response
  */
-export enum C2ResponseStatus {
+export enum C2Response {
     /**
-     * @generated from protobuf enum value: C2_STATUS_UNSPECIFIED = 0;
+     * @generated from protobuf enum value: C2_RESPONSE_UNSPECIFIED = 0;
      */
-    C2_STATUS_UNSPECIFIED = 0,
+    UNSPECIFIED = 0,
     /**
-     * @generated from protobuf enum value: NEED_MORE_DATA = 1;
+     * @generated from protobuf enum value: C2_RESPONSE_NEED_MORE_DATA = 1;
      */
     NEED_MORE_DATA = 1,
     /**
-     * @generated from protobuf enum value: DATA_RECEIVED = 2;
+     * @generated from protobuf enum value: C2_RESPONSE_DATA_RECEIVED = 2;
      */
     DATA_RECEIVED = 2,
     /**
-     * @generated from protobuf enum value: NOTHING_TO_DO = 3;
+     * @generated from protobuf enum value: C2_RESPONSE_NOTHING_TO_DO = 3;
      */
     NOTHING_TO_DO = 3,
     /**
-     * @generated from protobuf enum value: ERROR_IMPORTING_KEY = 4;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_IMPORTING_KEY = 4;
      */
     ERROR_IMPORTING_KEY = 4,
     /**
-     * @generated from protobuf enum value: ERROR_DERIVING_SECRET = 5;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_DERIVING_SECRET = 5;
      */
     ERROR_DERIVING_SECRET = 5,
     /**
-     * @generated from protobuf enum value: ERROR_DECRYPTING_MESSAGE = 6;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_DECRYPTING_MESSAGE = 6;
      */
     ERROR_DECRYPTING_MESSAGE = 6,
     /**
-     * @generated from protobuf enum value: ERROR_GENERATING_KEYS = 7;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_GENERATING_KEYS = 7;
      */
     ERROR_GENERATING_KEYS = 7,
     /**
-     * @generated from protobuf enum value: ERROR_INVALID_MESSAGE = 8;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_INVALID_MESSAGE = 8;
      */
     ERROR_INVALID_MESSAGE = 8,
     /**
-     * @generated from protobuf enum value: ERROR_AGENT_UNKNOWN = 9;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_AGENT_UNKNOWN = 9;
      */
     ERROR_AGENT_UNKNOWN = 9,
     /**
-     * @generated from protobuf enum value: ERROR_CHECKING_IN = 10;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_CHECKING_IN = 10;
      */
     ERROR_CHECKING_IN = 10,
     /**
-     * @generated from protobuf enum value: ERROR_KEYX_NOT_ALLOWED = 11;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_KEYX_NOT_ALLOWED = 11;
      */
     ERROR_KEYX_NOT_ALLOWED = 11,
     /**
-     * @generated from protobuf enum value: ERROR_INVALID_SYSINFO = 12;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_INVALID_SYSINFO = 12;
      */
     ERROR_INVALID_SYSINFO = 12,
     /**
-     * @generated from protobuf enum value: ERROR_FAILED = 13;
+     * @generated from protobuf enum value: C2_RESPONSE_ERROR_FAILED = 13;
      */
     ERROR_FAILED = 13
 }
@@ -229,17 +224,17 @@ export enum C2ResponseStatus {
  */
 export enum AgentCommandStatus {
     /**
-     * @generated from protobuf enum value: COMMAND_STATUS_UNSPECIFIED = 0;
+     * @generated from protobuf enum value: AGENT_COMMAND_STATUS_UNSPECIFIED = 0;
      */
-    COMMAND_STATUS_UNSPECIFIED = 0,
+    UNSPECIFIED = 0,
     /**
-     * @generated from protobuf enum value: COMMAND_STATUS_SUCCESS = 1;
+     * @generated from protobuf enum value: AGENT_COMMAND_STATUS_SUCCESS = 1;
      */
-    COMMAND_STATUS_SUCCESS = 1,
+    SUCCESS = 1,
     /**
-     * @generated from protobuf enum value: COMMAND_STATUS_ERROR = 2;
+     * @generated from protobuf enum value: AGENT_COMMAND_STATUS_ERROR = 2;
      */
-    COMMAND_STATUS_ERROR = 2
+    ERROR = 2
 }
 // @generated message type with reflection information, may provide speed optimized methods
 class AgentConfig$Type extends MessageType<AgentConfig> {
@@ -343,7 +338,7 @@ class SysInfoData$Type extends MessageType<SysInfoData> {
     constructor() {
         super("implant.SysInfoData", [
             { no: 1, name: "hostname", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 2, name: "ip", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "ips", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
             { no: 3, name: "user", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 4, name: "uid", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 5, name: "gid", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
@@ -352,7 +347,7 @@ class SysInfoData$Type extends MessageType<SysInfoData> {
     create(value?: PartialMessage<SysInfoData>): SysInfoData {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.hostname = "";
-        message.ip = [];
+        message.ips = [];
         message.user = "";
         message.uid = "";
         message.gid = "";
@@ -368,8 +363,8 @@ class SysInfoData$Type extends MessageType<SysInfoData> {
                 case /* string hostname */ 1:
                     message.hostname = reader.string();
                     break;
-                case /* repeated string ip */ 2:
-                    message.ip.push(reader.string());
+                case /* repeated string ips */ 2:
+                    message.ips.push(reader.string());
                     break;
                 case /* string user */ 3:
                     message.user = reader.string();
@@ -395,9 +390,9 @@ class SysInfoData$Type extends MessageType<SysInfoData> {
         /* string hostname = 1; */
         if (message.hostname !== "")
             writer.tag(1, WireType.LengthDelimited).string(message.hostname);
-        /* repeated string ip = 2; */
-        for (let i = 0; i < message.ip.length; i++)
-            writer.tag(2, WireType.LengthDelimited).string(message.ip[i]);
+        /* repeated string ips = 2; */
+        for (let i = 0; i < message.ips.length; i++)
+            writer.tag(2, WireType.LengthDelimited).string(message.ips[i]);
         /* string user = 3; */
         if (message.user !== "")
             writer.tag(3, WireType.LengthDelimited).string(message.user);
@@ -418,47 +413,22 @@ class SysInfoData$Type extends MessageType<SysInfoData> {
  */
 export const SysInfoData = new SysInfoData$Type();
 // @generated message type with reflection information, may provide speed optimized methods
-class Command$Type extends MessageType<Command> {
+class CommandRequest$Type extends MessageType<CommandRequest> {
     constructor() {
-        super("implant.Command", []);
-    }
-    create(value?: PartialMessage<Command>): Command {
-        const message = globalThis.Object.create((this.messagePrototype!));
-        if (value !== undefined)
-            reflectionMergePartial<Command>(this, message, value);
-        return message;
-    }
-    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Command): Command {
-        return target ?? this.create();
-    }
-    internalBinaryWrite(message: Command, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
-        let u = options.writeUnknownFields;
-        if (u !== false)
-            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
-        return writer;
-    }
-}
-/**
- * @generated MessageType for protobuf message implant.Command
- */
-export const Command = new Command$Type();
-// @generated message type with reflection information, may provide speed optimized methods
-class Command_Request$Type extends MessageType<Command_Request> {
-    constructor() {
-        super("implant.Command.Request", [
+        super("implant.CommandRequest", [
             { no: 1, name: "command", kind: "enum", T: () => ["implant.AgentCommand", AgentCommand, "AGENT_COMMAND_"] },
             { no: 2, name: "data", kind: "scalar", T: 12 /*ScalarType.BYTES*/ }
         ]);
     }
-    create(value?: PartialMessage<Command_Request>): Command_Request {
+    create(value?: PartialMessage<CommandRequest>): CommandRequest {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.command = 0;
         message.data = new Uint8Array(0);
         if (value !== undefined)
-            reflectionMergePartial<Command_Request>(this, message, value);
+            reflectionMergePartial<CommandRequest>(this, message, value);
         return message;
     }
-    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Command_Request): Command_Request {
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CommandRequest): CommandRequest {
         let message = target ?? this.create(), end = reader.pos + length;
         while (reader.pos < end) {
             let [fieldNo, wireType] = reader.tag();
@@ -480,7 +450,7 @@ class Command_Request$Type extends MessageType<Command_Request> {
         }
         return message;
     }
-    internalBinaryWrite(message: Command_Request, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+    internalBinaryWrite(message: CommandRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
         /* implant.AgentCommand command = 1; */
         if (message.command !== 0)
             writer.tag(1, WireType.Varint).int32(message.command);
@@ -494,28 +464,28 @@ class Command_Request$Type extends MessageType<Command_Request> {
     }
 }
 /**
- * @generated MessageType for protobuf message implant.Command.Request
+ * @generated MessageType for protobuf message implant.CommandRequest
  */
-export const Command_Request = new Command_Request$Type();
+export const CommandRequest = new CommandRequest$Type();
 // @generated message type with reflection information, may provide speed optimized methods
-class Command_Response$Type extends MessageType<Command_Response> {
+class CommandResponse$Type extends MessageType<CommandResponse> {
     constructor() {
-        super("implant.Command.Response", [
+        super("implant.CommandResponse", [
             { no: 1, name: "command", kind: "enum", T: () => ["implant.AgentCommand", AgentCommand, "AGENT_COMMAND_"] },
             { no: 2, name: "data", kind: "scalar", T: 12 /*ScalarType.BYTES*/ },
-            { no: 3, name: "status", kind: "enum", T: () => ["implant.AgentCommandStatus", AgentCommandStatus] }
+            { no: 3, name: "status", kind: "enum", T: () => ["implant.AgentCommandStatus", AgentCommandStatus, "AGENT_COMMAND_STATUS_"] }
         ]);
     }
-    create(value?: PartialMessage<Command_Response>): Command_Response {
+    create(value?: PartialMessage<CommandResponse>): CommandResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.command = 0;
         message.data = new Uint8Array(0);
         message.status = 0;
         if (value !== undefined)
-            reflectionMergePartial<Command_Response>(this, message, value);
+            reflectionMergePartial<CommandResponse>(this, message, value);
         return message;
     }
-    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Command_Response): Command_Response {
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CommandResponse): CommandResponse {
         let message = target ?? this.create(), end = reader.pos + length;
         while (reader.pos < end) {
             let [fieldNo, wireType] = reader.tag();
@@ -540,7 +510,7 @@ class Command_Response$Type extends MessageType<Command_Response> {
         }
         return message;
     }
-    internalBinaryWrite(message: Command_Response, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+    internalBinaryWrite(message: CommandResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
         /* implant.AgentCommand command = 1; */
         if (message.command !== 0)
             writer.tag(1, WireType.Varint).int32(message.command);
@@ -557,6 +527,6 @@ class Command_Response$Type extends MessageType<Command_Response> {
     }
 }
 /**
- * @generated MessageType for protobuf message implant.Command.Response
+ * @generated MessageType for protobuf message implant.CommandResponse
  */
-export const Command_Response = new Command_Response$Type();
+export const CommandResponse = new CommandResponse$Type();

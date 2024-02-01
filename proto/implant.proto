@@ -4,7 +4,7 @@ package implant;
 
 import "google/protobuf/wrappers.proto";
 
-option go_package = './implant';
+option go_package = "./implant";
 
 enum AgentCommand {
   AGENT_COMMAND_UNSPECIFIED = 0;
@@ -19,27 +19,27 @@ enum AgentCommand {
   AGENT_COMMAND_IGNORE = 9;
 }
 
-enum C2ResponseStatus {
-  C2_STATUS_UNSPECIFIED = 0;
-  NEED_MORE_DATA = 1;
-  DATA_RECEIVED = 2;
-  NOTHING_TO_DO = 3;
-  ERROR_IMPORTING_KEY = 4;
-  ERROR_DERIVING_SECRET = 5;
-  ERROR_DECRYPTING_MESSAGE = 6;
-  ERROR_GENERATING_KEYS = 7;
-  ERROR_INVALID_MESSAGE = 8;
-  ERROR_AGENT_UNKNOWN = 9;
-  ERROR_CHECKING_IN = 10;
-  ERROR_KEYX_NOT_ALLOWED = 11;
-  ERROR_INVALID_SYSINFO = 12;
-  ERROR_FAILED = 13;
+enum C2Response {
+  C2_RESPONSE_UNSPECIFIED = 0;
+  C2_RESPONSE_NEED_MORE_DATA = 1;
+  C2_RESPONSE_DATA_RECEIVED = 2;
+  C2_RESPONSE_NOTHING_TO_DO = 3;
+  C2_RESPONSE_ERROR_IMPORTING_KEY = 4;
+  C2_RESPONSE_ERROR_DERIVING_SECRET = 5;
+  C2_RESPONSE_ERROR_DECRYPTING_MESSAGE = 6;
+  C2_RESPONSE_ERROR_GENERATING_KEYS = 7;
+  C2_RESPONSE_ERROR_INVALID_MESSAGE = 8;
+  C2_RESPONSE_ERROR_AGENT_UNKNOWN = 9;
+  C2_RESPONSE_ERROR_CHECKING_IN = 10;
+  C2_RESPONSE_ERROR_KEYX_NOT_ALLOWED = 11;
+  C2_RESPONSE_ERROR_INVALID_SYSINFO = 12;
+  C2_RESPONSE_ERROR_FAILED = 13;
 }
 
 enum AgentCommandStatus {
-  COMMAND_STATUS_UNSPECIFIED = 0;
-  COMMAND_STATUS_SUCCESS = 1;
-  COMMAND_STATUS_ERROR = 2;
+  AGENT_COMMAND_STATUS_UNSPECIFIED = 0;
+  AGENT_COMMAND_STATUS_SUCCESS = 1;
+  AGENT_COMMAND_STATUS_ERROR = 2;
 }
 
 message AgentConfig {
@@ -57,7 +57,7 @@ message AgentConfig {
 
 message SysInfoData {
   string hostname = 1;
-  repeated string ip = 2;
+  repeated string ips = 2;
   string user = 3;
   string uid = 4;
   string gid = 5;
@@ -67,14 +67,12 @@ message SysInfoData {
 // Request message comes from the c2 and instructs the agent on what to do
 // (command) with the input, along with any additional data, such as config in
 // the event of a SET_CONFIG command
-message Command {
-  message Request {
-    AgentCommand command = 1;
-    bytes data = 2;
-  }
-  message Response {
-    AgentCommand command = 1;
-    bytes data = 2;
-    AgentCommandStatus status = 3;
-  }
+message CommandRequest {
+  AgentCommand command = 1;
+  bytes data = 2;
+}
+message CommandResponse {
+  AgentCommand command = 1;
+  bytes data = 2;
+  AgentCommandStatus status = 3;
 }
