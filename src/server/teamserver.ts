@@ -25,6 +25,7 @@ import {
     GenerateSkimmerPayloadResponse,
     GetAgentsRequest,
     GetAgentsResponse,
+    GetBuildLogRequest,
     GetBuildLogResponse,
     GetConfigRequest,
     GetConfigResponse,
@@ -208,7 +209,7 @@ export default class TeamServer implements ServerBase {
 
     operatorChat(call: grpc.ServerDuplexStream<OperatorChatRequest, OperatorChatResponse>): void {
         if (!this.checkAuth<OperatorChatRequest, OperatorChatResponse>(call)) {
-            call.write(OperatorChatResponse.create({ status: CommandStatus.ERROR, message: "Authentication failed." }));
+            call.write(OperatorChatResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
             call.end();
             return;
         }
@@ -261,7 +262,10 @@ export default class TeamServer implements ServerBase {
     }
 
     getAgents(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetAgentsResponse>): void {
-        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) {
+            callback(null, GetAgentsResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`getAgents() error: ${error}`);
@@ -293,7 +297,10 @@ export default class TeamServer implements ServerBase {
     }
 
     killAgent(call: grpc.ServerUnaryCall<KillAgentRequest, KillAgentResponse>, callback: grpc.sendUnaryData<KillAgentResponse>): void {
-        if (!this.checkAuth<KillAgentRequest, KillAgentResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<KillAgentRequest, KillAgentResponse>(call)) {
+            callback(null, KillAgentResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`killAgent() error: ${error}`);
@@ -315,7 +322,10 @@ export default class TeamServer implements ServerBase {
     }
 
     keyx(call: grpc.ServerUnaryCall<KeyxRequest, KeyxResponse>, callback: grpc.sendUnaryData<KeyxResponse>): void {
-        if (!this.checkAuth<KeyxRequest, KeyxResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<KeyxRequest, KeyxResponse>(call)) {
+            callback(null, KeyxResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`keyx() error: ${error}`);
@@ -354,7 +364,10 @@ export default class TeamServer implements ServerBase {
     }
 
     buildImplant(call: grpc.ServerUnaryCall<BuildImplantRequest, BuildImplantResponse>, callback: grpc.sendUnaryData<BuildImplantResponse>): void {
-        if (!this.checkAuth<BuildImplantRequest, BuildImplantResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<BuildImplantRequest, BuildImplantResponse>(call)) {
+            callback(null, BuildImplantResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`buildImplant() error: ${error}`);
@@ -366,7 +379,11 @@ export default class TeamServer implements ServerBase {
     }
 
     agentOutputStream(call: grpc.ServerWritableStream<AgentOutputRequest, AgentOutputResponse>): void {
-        if (!this.checkAuth<AgentOutputRequest, AgentOutputResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<AgentOutputRequest, AgentOutputResponse>(call)) {
+            call.write(AgentOutputResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            call.end();
+            return;
+        }
 
         const agentIdRequested = call.request.agentId;
 
@@ -376,7 +393,7 @@ export default class TeamServer implements ServerBase {
             call.write(
                 AgentOutputResponse.create({
                     status: CommandStatus.ERROR,
-                    message: [`invalid agent id: ${agentIdRequested}`],
+                    message: `invalid agent id: ${agentIdRequested}`,
                 })
             );
             call.end();
@@ -389,7 +406,7 @@ export default class TeamServer implements ServerBase {
             call.write(
                 AgentOutputResponse.create({
                     status: CommandStatus.SUCCESS,
-                    message: [entry],
+                    output: [entry],
                 })
             );
         };
@@ -399,7 +416,7 @@ export default class TeamServer implements ServerBase {
             call.write(
                 AgentOutputResponse.create({
                     status: CommandStatus.ERROR,
-                    message: [entry],
+                    output: [entry],
                 })
             );
         };
@@ -424,13 +441,16 @@ export default class TeamServer implements ServerBase {
     }
 
     agentOutput(call: grpc.ServerUnaryCall<AgentOutputRequest, AgentOutputResponse>, callback: grpc.sendUnaryData<AgentOutputResponse>): void {
-        if (!this.checkAuth<AgentOutputRequest, AgentOutputResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<AgentOutputRequest, AgentOutputResponse>(call)) {
+            callback(null, AgentOutputResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         const agent = this.redchannel.agents.get(call.request.agentId);
         if (!agent) {
             const responseProto = AgentOutputResponse.create({
                 status: CommandStatus.ERROR,
-                message: [`unknown agent with id: ${call.request.agentId}`],
+                message: `unknown agent with id: ${call.request.agentId}`,
             });
             callback(null, responseProto);
             return;
@@ -443,14 +463,18 @@ export default class TeamServer implements ServerBase {
 
         const responseProto = AgentOutputResponse.create({
             status: CommandStatus.SUCCESS,
-            message: agent.output,
+            output: agent.output,
         });
 
         callback(null, responseProto);
     }
 
     buildImplantStream(call: grpc.ServerWritableStream<BuildImplantRequest, BuildImplantStreamResponse>): void {
-        if (!this.checkAuth<BuildImplantRequest, BuildImplantStreamResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<BuildImplantRequest, BuildImplantStreamResponse>(call)) {
+            call.write(BuildImplantStreamResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            call.end();
+            return;
+        }
 
         const stdOutCallback = (entry: string) => {
             call.write(
@@ -495,8 +519,11 @@ export default class TeamServer implements ServerBase {
         call.on("finish", removeListeners);
     }
 
-    getBuildLog(call: grpc.ServerUnaryCall<GetAgentsRequest, GetAgentsResponse>, callback: grpc.sendUnaryData<GetBuildLogResponse>): void {
-        if (!this.checkAuth<GetAgentsRequest, GetAgentsResponse>(call)) throw new Error("Authentication failed");
+    getBuildLog(call: grpc.ServerUnaryCall<GetBuildLogRequest, GetBuildLogResponse>, callback: grpc.sendUnaryData<GetBuildLogResponse>): void {
+        if (!this.checkAuth<GetBuildLogRequest, GetBuildLogResponse>(call)) {
+            callback(null, GetBuildLogResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`getBuildLog() error: ${error}`);
@@ -519,7 +546,10 @@ export default class TeamServer implements ServerBase {
     }
 
     agentCommand(call: grpc.ServerUnaryCall<AgentCommandRequest, AgentCommandResponse>, callback: grpc.sendUnaryData<AgentCommandResponse>): void {
-        if (!this.checkAuth<AgentCommandRequest, AgentCommandResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<AgentCommandRequest, AgentCommandResponse>(call)) {
+            callback(null, AgentCommandResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`agentCommand() error: ${error}`);
@@ -545,7 +575,10 @@ export default class TeamServer implements ServerBase {
     }
 
     getConfig(call: grpc.ServerUnaryCall<GetConfigRequest, GetConfigResponse>, callback: grpc.sendUnaryData<GetConfigResponse>): void {
-        if (!this.checkAuth<GetConfigRequest, GetConfigResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<GetConfigRequest, GetConfigResponse>(call)) {
+            callback(null, GetConfigResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`getConfig() error: ${error}`);
@@ -564,7 +597,10 @@ export default class TeamServer implements ServerBase {
     }
 
     setConfig(call: grpc.ServerUnaryCall<SetConfigRequest, SetConfigResponse>, callback: grpc.sendUnaryData<SetConfigResponse>): void {
-        if (!this.checkAuth<SetConfigRequest, SetConfigResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<SetConfigRequest, SetConfigResponse>(call)) {
+            callback(null, SetConfigResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`setConfig() error: ${error}`);
@@ -607,7 +643,11 @@ export default class TeamServer implements ServerBase {
     }
 
     streamLog(call: grpc.ServerWritableStream<StreamLogRequest, StreamLogResponse>): void {
-        if (!this.checkAuth<StreamLogRequest, StreamLogResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<StreamLogRequest, StreamLogResponse>(call)) {
+            call.write(StreamLogResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            call.end();
+            return;
+        }
 
         const requestedLogLevel = call.request.level;
 
@@ -644,7 +684,10 @@ export default class TeamServer implements ServerBase {
     }
 
     proxyLoop(call: grpc.ServerUnaryCall<ProxyLoopRequest, ProxyLoopResponse>, callback: grpc.sendUnaryData<ProxyLoopResponse>): void {
-        if (!this.checkAuth<ProxyLoopRequest, ProxyLoopResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<ProxyLoopRequest, ProxyLoopResponse>(call)) {
+            callback(null, ProxyLoopResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`proxyLoop() error: ${error}`);
@@ -666,7 +709,10 @@ export default class TeamServer implements ServerBase {
     }
 
     forceFetch(call: grpc.ServerUnaryCall<ForceFetchRequest, ForceFetchResponse>, callback: grpc.sendUnaryData<ForceFetchResponse>): void {
-        if (!this.checkAuth<ForceFetchRequest, ForceFetchResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<ForceFetchRequest, ForceFetchResponse>(call)) {
+            callback(null, ForceFetchResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`forceFetch() error: ${error}`);
@@ -687,7 +733,10 @@ export default class TeamServer implements ServerBase {
     }
 
     generateProxyPayload(call: grpc.ServerUnaryCall<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>, callback: grpc.sendUnaryData<GenerateProxyPayloadResponse>): void {
-        if (!this.checkAuth<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<GenerateProxyPayloadRequest, GenerateProxyPayloadResponse>(call)) {
+            callback(null, GenerateProxyPayloadResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`generateProxyPayload() error: ${error}`);
@@ -710,7 +759,10 @@ export default class TeamServer implements ServerBase {
     }
 
     generateSkimmerPayload(call: grpc.ServerUnaryCall<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>, callback: grpc.sendUnaryData<GenerateSkimmerPayloadResponse>): void {
-        if (!this.checkAuth<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<GenerateSkimmerPayloadRequest, GenerateSkimmerPayloadResponse>(call)) {
+            callback(null, GenerateSkimmerPayloadResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`generateSkimmerPayload() error: ${error}`);
@@ -733,7 +785,10 @@ export default class TeamServer implements ServerBase {
     }
 
     setStaticDns(call: grpc.ServerUnaryCall<SetStaticDnsRequest, SetStaticDnsResponse>, callback: grpc.sendUnaryData<SetStaticDnsResponse>): void {
-        if (!this.checkAuth<SetStaticDnsRequest, SetStaticDnsResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<SetStaticDnsRequest, SetStaticDnsResponse>(call)) {
+            callback(null, SetStaticDnsResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`setStaticDns() error: ${error}`);
@@ -768,7 +823,10 @@ export default class TeamServer implements ServerBase {
     }
 
     getStaticDns(call: grpc.ServerUnaryCall<GetStaticDnsRequest, GetStaticDnsResponse>, callback: grpc.sendUnaryData<GetStaticDnsResponse>): void {
-        if (!this.checkAuth<GetStaticDnsRequest, GetStaticDnsResponse>(call)) throw new Error("Authentication failed");
+        if (!this.checkAuth<GetStaticDnsRequest, GetStaticDnsResponse>(call)) {
+            callback(null, GetStaticDnsResponse.create({ status: CommandStatus.ERROR_AUTH, message: "Authentication failed." }));
+            return;
+        }
 
         call.on("error", (error) => {
             this.log.error(`getConfig() error: ${error}`);

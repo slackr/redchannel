@@ -139,6 +139,10 @@ export interface BuildImplantStreamResponse {
      * @generated from protobuf field: string message = 2;
      */
     message: string;
+    /**
+     * @generated from protobuf field: c2.CommandStatus status = 3;
+     */
+    status: CommandStatus;
 }
 /**
  * @generated from protobuf message c2.GetBuildLogRequest
@@ -154,13 +158,13 @@ export interface GetBuildLogResponse {
      */
     status: CommandStatus;
     /**
-     * @generated from protobuf field: string log = 2;
-     */
-    log: string;
-    /**
-     * @generated from protobuf field: string message = 3;
+     * @generated from protobuf field: string message = 2;
      */
     message: string;
+    /**
+     * @generated from protobuf field: string log = 3;
+     */
+    log: string;
 }
 /**
  * @generated from protobuf message c2.AgentCommandRequest
@@ -232,7 +236,11 @@ export interface GetConfigResponse {
      */
     status: CommandStatus;
     /**
-     * @generated from protobuf field: c2.RedChannelConfig config = 2;
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
+    /**
+     * @generated from protobuf field: c2.RedChannelConfig config = 3;
      */
     config?: RedChannelConfig;
 }
@@ -250,11 +258,15 @@ export interface StreamLogRequest {
  */
 export interface StreamLogResponse {
     /**
-     * @generated from protobuf field: c2.LogLevel level = 1;
+     * @generated from protobuf field: c2.CommandStatus status = 1;
+     */
+    status: CommandStatus;
+    /**
+     * @generated from protobuf field: c2.LogLevel level = 2;
      */
     level: LogLevel;
     /**
-     * @generated from protobuf field: string message = 2;
+     * @generated from protobuf field: string message = 3;
      */
     message: string;
 }
@@ -312,13 +324,13 @@ export interface GenerateProxyPayloadResponse {
      */
     status: CommandStatus;
     /**
-     * @generated from protobuf field: string payload = 2;
-     */
-    payload: string;
-    /**
-     * @generated from protobuf field: string message = 3;
+     * @generated from protobuf field: string message = 2;
      */
     message: string;
+    /**
+     * @generated from protobuf field: string payload = 3;
+     */
+    payload: string;
 }
 /**
  * @generated from protobuf message c2.GenerateSkimmerPayloadRequest
@@ -334,13 +346,13 @@ export interface GenerateSkimmerPayloadResponse {
      */
     status: CommandStatus;
     /**
-     * @generated from protobuf field: string payload = 2;
-     */
-    payload: string;
-    /**
-     * @generated from protobuf field: string message = 3;
+     * @generated from protobuf field: string message = 2;
      */
     message: string;
+    /**
+     * @generated from protobuf field: string payload = 3;
+     */
+    payload: string;
 }
 /**
  * @generated from protobuf message c2.KillAgentRequest
@@ -482,9 +494,13 @@ export interface AgentOutputResponse {
      */
     status: CommandStatus;
     /**
-     * @generated from protobuf field: repeated string message = 2;
+     * @generated from protobuf field: string message = 2;
      */
-    message: string[];
+    message: string;
+    /**
+     * @generated from protobuf field: repeated string output = 3;
+     */
+    output: string[];
 }
 /**
  * @generated from protobuf enum c2.C2Command
@@ -522,7 +538,11 @@ export enum CommandStatus {
     /**
      * @generated from protobuf enum value: COMMAND_STATUS_ERROR = 2;
      */
-    ERROR = 2
+    ERROR = 2,
+    /**
+     * @generated from protobuf enum value: COMMAND_STATUS_ERROR_AUTH = 3;
+     */
+    ERROR_AUTH = 3
 }
 /**
  * @generated from protobuf enum c2.C2Module
@@ -1056,13 +1076,15 @@ class BuildImplantStreamResponse$Type extends MessageType<BuildImplantStreamResp
     constructor() {
         super("c2.BuildImplantStreamResponse", [
             { no: 1, name: "level", kind: "enum", T: () => ["c2.LogLevel", LogLevel, "LOG_LEVEL_"] },
-            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] }
         ]);
     }
     create(value?: PartialMessage<BuildImplantStreamResponse>): BuildImplantStreamResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.level = 0;
         message.message = "";
+        message.status = 0;
         if (value !== undefined)
             reflectionMergePartial<BuildImplantStreamResponse>(this, message, value);
         return message;
@@ -1077,6 +1099,9 @@ class BuildImplantStreamResponse$Type extends MessageType<BuildImplantStreamResp
                     break;
                 case /* string message */ 2:
                     message.message = reader.string();
+                    break;
+                case /* c2.CommandStatus status */ 3:
+                    message.status = reader.int32();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1096,6 +1121,9 @@ class BuildImplantStreamResponse$Type extends MessageType<BuildImplantStreamResp
         /* string message = 2; */
         if (message.message !== "")
             writer.tag(2, WireType.LengthDelimited).string(message.message);
+        /* c2.CommandStatus status = 3; */
+        if (message.status !== 0)
+            writer.tag(3, WireType.Varint).int32(message.status);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1136,15 +1164,15 @@ class GetBuildLogResponse$Type extends MessageType<GetBuildLogResponse> {
     constructor() {
         super("c2.GetBuildLogResponse", [
             { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
-            { no: 2, name: "log", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 3, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "log", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<GetBuildLogResponse>): GetBuildLogResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.status = 0;
-        message.log = "";
         message.message = "";
+        message.log = "";
         if (value !== undefined)
             reflectionMergePartial<GetBuildLogResponse>(this, message, value);
         return message;
@@ -1157,11 +1185,11 @@ class GetBuildLogResponse$Type extends MessageType<GetBuildLogResponse> {
                 case /* c2.CommandStatus status */ 1:
                     message.status = reader.int32();
                     break;
-                case /* string log */ 2:
-                    message.log = reader.string();
-                    break;
-                case /* string message */ 3:
+                case /* string message */ 2:
                     message.message = reader.string();
+                    break;
+                case /* string log */ 3:
+                    message.log = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1178,12 +1206,12 @@ class GetBuildLogResponse$Type extends MessageType<GetBuildLogResponse> {
         /* c2.CommandStatus status = 1; */
         if (message.status !== 0)
             writer.tag(1, WireType.Varint).int32(message.status);
-        /* string log = 2; */
-        if (message.log !== "")
-            writer.tag(2, WireType.LengthDelimited).string(message.log);
-        /* string message = 3; */
+        /* string message = 2; */
         if (message.message !== "")
-            writer.tag(3, WireType.LengthDelimited).string(message.message);
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        /* string log = 3; */
+        if (message.log !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.log);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1450,12 +1478,14 @@ class GetConfigResponse$Type extends MessageType<GetConfigResponse> {
     constructor() {
         super("c2.GetConfigResponse", [
             { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
-            { no: 2, name: "config", kind: "message", T: () => RedChannelConfig }
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "config", kind: "message", T: () => RedChannelConfig }
         ]);
     }
     create(value?: PartialMessage<GetConfigResponse>): GetConfigResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.status = 0;
+        message.message = "";
         if (value !== undefined)
             reflectionMergePartial<GetConfigResponse>(this, message, value);
         return message;
@@ -1468,7 +1498,10 @@ class GetConfigResponse$Type extends MessageType<GetConfigResponse> {
                 case /* c2.CommandStatus status */ 1:
                     message.status = reader.int32();
                     break;
-                case /* c2.RedChannelConfig config */ 2:
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                case /* c2.RedChannelConfig config */ 3:
                     message.config = RedChannelConfig.internalBinaryRead(reader, reader.uint32(), options, message.config);
                     break;
                 default:
@@ -1486,9 +1519,12 @@ class GetConfigResponse$Type extends MessageType<GetConfigResponse> {
         /* c2.CommandStatus status = 1; */
         if (message.status !== 0)
             writer.tag(1, WireType.Varint).int32(message.status);
-        /* c2.RedChannelConfig config = 2; */
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        /* c2.RedChannelConfig config = 3; */
         if (message.config)
-            RedChannelConfig.internalBinaryWrite(message.config, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+            RedChannelConfig.internalBinaryWrite(message.config, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1550,12 +1586,14 @@ export const StreamLogRequest = new StreamLogRequest$Type();
 class StreamLogResponse$Type extends MessageType<StreamLogResponse> {
     constructor() {
         super("c2.StreamLogResponse", [
-            { no: 1, name: "level", kind: "enum", T: () => ["c2.LogLevel", LogLevel, "LOG_LEVEL_"] },
-            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
+            { no: 2, name: "level", kind: "enum", T: () => ["c2.LogLevel", LogLevel, "LOG_LEVEL_"] },
+            { no: 3, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<StreamLogResponse>): StreamLogResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
+        message.status = 0;
         message.level = 0;
         message.message = "";
         if (value !== undefined)
@@ -1567,10 +1605,13 @@ class StreamLogResponse$Type extends MessageType<StreamLogResponse> {
         while (reader.pos < end) {
             let [fieldNo, wireType] = reader.tag();
             switch (fieldNo) {
-                case /* c2.LogLevel level */ 1:
+                case /* c2.CommandStatus status */ 1:
+                    message.status = reader.int32();
+                    break;
+                case /* c2.LogLevel level */ 2:
                     message.level = reader.int32();
                     break;
-                case /* string message */ 2:
+                case /* string message */ 3:
                     message.message = reader.string();
                     break;
                 default:
@@ -1585,12 +1626,15 @@ class StreamLogResponse$Type extends MessageType<StreamLogResponse> {
         return message;
     }
     internalBinaryWrite(message: StreamLogResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
-        /* c2.LogLevel level = 1; */
+        /* c2.CommandStatus status = 1; */
+        if (message.status !== 0)
+            writer.tag(1, WireType.Varint).int32(message.status);
+        /* c2.LogLevel level = 2; */
         if (message.level !== 0)
-            writer.tag(1, WireType.Varint).int32(message.level);
-        /* string message = 2; */
+            writer.tag(2, WireType.Varint).int32(message.level);
+        /* string message = 3; */
         if (message.message !== "")
-            writer.tag(2, WireType.LengthDelimited).string(message.message);
+            writer.tag(3, WireType.LengthDelimited).string(message.message);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1813,15 +1857,15 @@ class GenerateProxyPayloadResponse$Type extends MessageType<GenerateProxyPayload
     constructor() {
         super("c2.GenerateProxyPayloadResponse", [
             { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
-            { no: 2, name: "payload", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 3, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "payload", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<GenerateProxyPayloadResponse>): GenerateProxyPayloadResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.status = 0;
-        message.payload = "";
         message.message = "";
+        message.payload = "";
         if (value !== undefined)
             reflectionMergePartial<GenerateProxyPayloadResponse>(this, message, value);
         return message;
@@ -1834,11 +1878,11 @@ class GenerateProxyPayloadResponse$Type extends MessageType<GenerateProxyPayload
                 case /* c2.CommandStatus status */ 1:
                     message.status = reader.int32();
                     break;
-                case /* string payload */ 2:
-                    message.payload = reader.string();
-                    break;
-                case /* string message */ 3:
+                case /* string message */ 2:
                     message.message = reader.string();
+                    break;
+                case /* string payload */ 3:
+                    message.payload = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1855,12 +1899,12 @@ class GenerateProxyPayloadResponse$Type extends MessageType<GenerateProxyPayload
         /* c2.CommandStatus status = 1; */
         if (message.status !== 0)
             writer.tag(1, WireType.Varint).int32(message.status);
-        /* string payload = 2; */
-        if (message.payload !== "")
-            writer.tag(2, WireType.LengthDelimited).string(message.payload);
-        /* string message = 3; */
+        /* string message = 2; */
         if (message.message !== "")
-            writer.tag(3, WireType.LengthDelimited).string(message.message);
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        /* string payload = 3; */
+        if (message.payload !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.payload);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1901,15 +1945,15 @@ class GenerateSkimmerPayloadResponse$Type extends MessageType<GenerateSkimmerPay
     constructor() {
         super("c2.GenerateSkimmerPayloadResponse", [
             { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
-            { no: 2, name: "payload", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 3, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "payload", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<GenerateSkimmerPayloadResponse>): GenerateSkimmerPayloadResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.status = 0;
-        message.payload = "";
         message.message = "";
+        message.payload = "";
         if (value !== undefined)
             reflectionMergePartial<GenerateSkimmerPayloadResponse>(this, message, value);
         return message;
@@ -1922,11 +1966,11 @@ class GenerateSkimmerPayloadResponse$Type extends MessageType<GenerateSkimmerPay
                 case /* c2.CommandStatus status */ 1:
                     message.status = reader.int32();
                     break;
-                case /* string payload */ 2:
-                    message.payload = reader.string();
-                    break;
-                case /* string message */ 3:
+                case /* string message */ 2:
                     message.message = reader.string();
+                    break;
+                case /* string payload */ 3:
+                    message.payload = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1943,12 +1987,12 @@ class GenerateSkimmerPayloadResponse$Type extends MessageType<GenerateSkimmerPay
         /* c2.CommandStatus status = 1; */
         if (message.status !== 0)
             writer.tag(1, WireType.Varint).int32(message.status);
-        /* string payload = 2; */
-        if (message.payload !== "")
-            writer.tag(2, WireType.LengthDelimited).string(message.payload);
-        /* string message = 3; */
+        /* string message = 2; */
         if (message.message !== "")
-            writer.tag(3, WireType.LengthDelimited).string(message.message);
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        /* string payload = 3; */
+        if (message.payload !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.payload);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -2531,13 +2575,15 @@ class AgentOutputResponse$Type extends MessageType<AgentOutputResponse> {
     constructor() {
         super("c2.AgentOutputResponse", [
             { no: 1, name: "status", kind: "enum", T: () => ["c2.CommandStatus", CommandStatus, "COMMAND_STATUS_"] },
-            { no: 2, name: "message", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ }
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "output", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<AgentOutputResponse>): AgentOutputResponse {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.status = 0;
-        message.message = [];
+        message.message = "";
+        message.output = [];
         if (value !== undefined)
             reflectionMergePartial<AgentOutputResponse>(this, message, value);
         return message;
@@ -2550,8 +2596,11 @@ class AgentOutputResponse$Type extends MessageType<AgentOutputResponse> {
                 case /* c2.CommandStatus status */ 1:
                     message.status = reader.int32();
                     break;
-                case /* repeated string message */ 2:
-                    message.message.push(reader.string());
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                case /* repeated string output */ 3:
+                    message.output.push(reader.string());
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -2568,9 +2617,12 @@ class AgentOutputResponse$Type extends MessageType<AgentOutputResponse> {
         /* c2.CommandStatus status = 1; */
         if (message.status !== 0)
             writer.tag(1, WireType.Varint).int32(message.status);
-        /* repeated string message = 2; */
-        for (let i = 0; i < message.message.length; i++)
-            writer.tag(2, WireType.LengthDelimited).string(message.message[i]);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        /* repeated string output = 3; */
+        for (let i = 0; i < message.output.length; i++)
+            writer.tag(3, WireType.LengthDelimited).string(message.output[i]);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
